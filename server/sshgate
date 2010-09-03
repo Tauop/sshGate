@@ -31,7 +31,10 @@
 [ -z "${__SSHGATE_CONF__}" -a -r ./sshgate.conf       ] && . ./sshgate.conf
 [ -z "${__SSHGATE_FUNC__}" -a -r ./sshgate.func       ] && . ./sshgate.func
 
-CHECK_ROOT
+# don't want to add exec.lib.sh in dependencies :/
+user_id=`id -u`
+[ "${user_id}" != "0" ] \
+  && KO "You must execute $0 with root privileges"
 
 CLI_REGISTER_MENU    'user'
 CLI_REGISTER_COMMAND 'user list'           'USERS_LIST'
@@ -133,6 +136,8 @@ HELP_LIST () {
   MSG "= Misc ="
   MSG_INDENT_INC
     MESSAGE "save - forge re-write of sshgate account ./ssh/authorized_keys2 file"
+    MESSAGE "quit - exit the current CLI context menu, or exit the CLI"
+    MESSAGE "exit - exit the CLI"
   MSG_INDENT_DEC
   BR
 
