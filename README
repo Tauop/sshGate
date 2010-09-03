@@ -1,0 +1,34 @@
+== Welcome to sshGate
+
+sshGate is a tool which help to configure openssh server in order to have
+a ssh proxy. sshGate use the double ssh method, to be able to connect to
+a target host. In fact, sshGate has private sshkey of target hosts, make
+ACL checks and can log what users do on target host.
+
+                        /-------> target host N
+                       /-------->     . . .
+         user ----> sshGate ----> target host 1
+                      |-> ACL
+                      |-> private sshkeys
+
+
+sshGate is under GPLv2 license.
+
+== Description of content
+
+build.sh : use to build sshGate-server and/or sshGate-client .tar.gz package(s)
+
+lib/ : sshGate project make some use of ScriptHelper project.
+       for more information : http://github.com/Tauop/ScriptHelper
+
+server/ : server source
+  - install.sh : help to install sshGate-server.
+  - sshgate.conf : configuration file
+  - sshgate.func : main code of sshGate admin. used by 'sshgate' CLI
+  - sshgate : CLI for administration of sshGate.
+  - sshgate.sh : script which will be used on user connection (ACL, ...)
+
+client/ : client source
+  - config-sshgate.sh : help user to configure the ssh client
+  - sshg : script to make ssh through the sshGate-server
+  - scpg : script to make scp through the sshGate-server

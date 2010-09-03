@@ -1,0 +1,770 @@
+#
+# Copyright (c) 2010 Linagora
+# Patrick Guiran <pguiran@linagora.com>
+# http://github.com/Tauop/sshGate
+#
+# sshGate is free software, you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of
+# the License, or (at your option) any later version.
+#
+# sshGate is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# README ---------------------------------------------------------------------
+# Collection of all need functions to deal with sshgate administrations.
+#
+# FUNCTIONS ------------------------------------------------------------------
+#
+# HELP()
+#   usage: HELP [ <function_name> ]
+#   desc: if called without argument, display all functions usage list.
+#         if called with a function_name, display all information about this function
+#
+# SETUP_SSHGATE_GATE_ACCOUNT()
+#   usage: SETUP_SSHGATE_GATE_ACCOUNT
+#   desc: update the authorized_key2 of the sshGate account
+#   important: need to be root to be able to update authorized_keys2 and chown files
+#
+# TARGET_LOG_FILE()
+#   usage: TARGET_LOG_FILE [ <target_host> ]
+#   desc: echo-return the target global log file
+#   note: create the target main directory in ${SSHGATGE_DIR_LOG} if needed
+#   note: if called without argument, try to use ${TARGET_HOST} variable
+#
+# TARGET_SESSION_LOG_FILE()
+#   usage: TARGET_SESSION_LOG_FILE [ <target_host> [ <username> ] ]
+#   desc: echo-return the target session log file path
+#   note: if called without argument, try to use ${SSHKEY_USER} and ${TARGET_HOST} variable
+#   note: if called without second argument, try to use ${SSHKEY_USER} variable
+#
+# TARGET_USER_ACCESS_FILE()
+#   usage: TARGET_USER_ACCESS_FILE [ <target_host> ]
+#   desc: echo-return the path of the user access list file of the target host
+#   note: if called without argument, try to use ${TARGET_HOST} variable
+#
+# TARGET_GROUP_ACCESS_FILE()
+#   usage: TARGET_GROUP_ACCESS_FILE [ <target_host> ]
+#   desc: echo-return the path to the group access list file of the target host
+#   note: if called without argument, try to use ${TARGET_HOST} variable
+#
+# USER_SSHKEY_FILE()
+#   usage: USER_SSHKEY_FILE [ <user> ]
+#   desc: echo-return the path to the user sshkey file
+#   note: if called without argument, try to use ${SSHKEY_USER}
+#
+# TARGET_PRIVATE_SSHKEY()
+#   usage: TARGET_PRIVATE_SSHKEY [ <target_host> ]
+#   desc: echo-return the path to the private ssh key of the target host
+#   note: if called without argument, try to use ${TARGET_HOST} variable
+#
+# TARGET_PUBLIC_SSHKEY()
+#   usage: TARGET_PUBLIC_SSHKEY [ <target_host> ]
+#   desc: echo-return the path to the public ssh key of the target host
+#   note: if called without argument, try to use ${TARGET_HOST} variable
+#
+#
+# HAS_ACCESS()
+#   usage: HAS_ACCESS [ <username> [ <target_host> ] ]
+#   desc: echo-return 'true' if <username> is allowed to access to <target_host>, 'false' otherwise
+#         if check this, by using TARGET_USER_ACCESS_FILE() and TARGET_GROUP_ACCESS_FILE()
+#   note: if called without argument, try to use ${SSHKEY_USER} and ${TARGET_HOST} variable
+#   note: if called without second argument, try to use ${TARGET_HOST} variable
+#
+# TARGETS_LIST()
+#   usage: TARGETS_LIST
+#   desc: echo-return the list of target host, separated by '\n'
+#
+# TARGET_ADD()
+#   usage: TARGET_ADD <target_host> <target_private_sshkey_file
+#   desc: add a target host to sshGate
+#   important: need to be root to be able to chown ssh priv key
+#
+# TARGET_DEL()
+#   usage: TARGET_DEL <target_host>
+#   desc: delete a target host from sshGate
+#
+# TARGET_LIST_ALIASES()
+#   usage: TARGET_LIST_ALIASES [ <target_host> ]
+#   desc: list aliases of host(s)
+#   note: if called without argument, list aliases of all hosts
+#
+# TARGET_ADD_ALIAS()
+#   usage: TARGET_ADD_ALIAS <target_host> <alias>
+#   desc: add an <alias> name to the <target_host>
+#
+# TARGET_DEL_ALIAS()
+#   usage: TARGET_DEL_ALIAS <alias>
+#   desc: delete an <alias> name of a target_host
+#
+# TARGET_REAL()
+#   usage: TARGET_REAL [ <target_host> ]
+#   desc: echo-return the 'real' <target_host> name if the argument
+#         is an alias. Otherwise, echo-return <target_host>
+#   note: if called without argument, try to use ${TARGET_HOST} variable
+#
+# TARGET_ACCESS_LIST_USERS()
+#   usage: TARGET_ACCESS_LIST_USERS <target_host>
+#   desc: list user who have access to <target_host>
+#   alias: TARGET_LIST_USERS()
+#
+# TARGET_ACCESS_ADD_USER()
+#   usage: TARGET_ACCESS_ADD_USER <target_host> <user>
+#   desc: give access to <target_host> to the <user>
+#
+# TARGET_ACCESS_DEL_USER()
+#   usage: TARGET_ACCESS_DEL_USER <target_host> <user>
+#   desc: revoke access to <target_host> for the <user>
+#
+# TARGET_ACCESS_LIST_GROUPS()
+#   usage: TARGET_ACCESS_LIST_GROUPS <target_host>
+#   desc: list group which have access to <target_host>
+#   alias: TARGET_LIST_GROUPS()
+#
+# TARGET_ACCESS_ADD_GROUP()
+#   usage: TARGET_ACCESS_ADD_GROUP <target_host> <group>
+#   desc: give access to <target_host> to the <group>, ie to all users in this <group>
+#
+# TARGET_ACCESS_DEL_GROUP()
+#   usage: TARGET_ACCESS_DEL_GROUP <target_host> <group>
+#   desc: revoke access to <target_host> for the <group>, ie to all users in this <group>
+#
+# USERS_LIST()
+#   usage: USERS_LIST
+#   desc: list all sshGate users, separated by '\n'
+#
+# USER_ADD()
+#   usage: USER_ADD <user> <public_sshkey_file>
+#   desc: add a user in the sshGate users list.
+#
+# USER_DEL()
+#   usage: USER_DEL <user>
+#   desc: delete a user from the sshGate users list
+#
+# USER_LIST_GROUPS()
+#   usage: USER_LIST_GROUPS [ <user> ]
+#   desc: List all group, which the user is in.
+#   note: group name are separated by \n
+#   note: if called without argument, try to use ${SSHKEY_USER} variable
+#
+# USER_LIST_TARGETS()
+#   usage: USER_LIST_TARGETS [ <user> ]
+#   desc: List all target host, which the <user> has access on
+#   note: target host name are separated by '\n' string.
+#   note: if called without argument, try to use ${SSHKEY_USER} variable
+#
+# USERGROUPS_LIST()
+#   usage: USERGROUPS_LIST
+#   desc: List all group of the sshGate
+#   note: group name are separated by '\n'
+#
+# USERGROUP_ADD()
+#   usage: USERGROUP_ADD <group>
+#   desc: Add a user group to sshGate
+#
+# USERGROUP_DEL()
+#   usage: USERGROUP_DEL <group>
+#   desc: Delete a group from sshGate
+#
+# USERGROUP_LIST_USERS()
+#   usage: USERGROUP_LIST_USERS <group>
+#   desc: List all users who are in the <group>
+#   note: user names are separated by \n
+#
+# USERGROUP_ADD_USER()
+#   usage: USERGROUP_ADD_USER <group> <user>
+#   desc: Add <user> into the <group>
+#
+# USERGROUP_DEL_USER()
+#   usage: USERGROUP_DEL_USER <group> <user>
+#   desc: Remove <user> from the <group>
+#
+
+# ----------------------------------------------------------------------------
+if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
+  __SSHGATE_FUNC__='Loaded'
+
+  # Try to source sshgate.conf
+  # %% __SSHGATE_CONF__ %% <-- WARNING: don't remove. used by install.sh
+  if [ -z "${__SSHGATE_CONF__:-}" ]; then
+    [ -r "`pwd`/sshgate.conf"   ] && . `pwd`/sshgate.conf
+    [ -r "${0%/*}/sshgate.conf" ] && . "${0%/*}/sshgate.conf"
+    if [ -z "${__SSHGATE_CONF__:-}" ]; then
+      echo "ERROR: Unable to load sshgate.conf"
+      exit 1;
+    fi
+  fi
+
+  HELP () {
+    local func=
+    [ $# -eq 1 ] && func="$1"
+
+    if [ -z "${func}" ]; then
+      # == sed explanation ==
+      # 1: :loop label
+      # 2: read the next line
+      # 3: match line which begin by # and ended with () -> ex: "# USERGROUP_DEL_USER()"
+      # 4: if the current line not match, goto :loop
+      # 5: the current line match 3:, read the next line and print the usage
+      # 6: if not at the end of the file, goto :loop
+      help=$( < "${SSHGATE_DIR_BIN}/sshgate.func" \
+                sed -n -e \
+                ':loop
+                 n;
+                 s/^# \([^ ].*[(][)]\)$/\1/;
+                 T loop;
+                 n; s/^# *usage: \(.*\)$/\1/p;
+                 $! b loop;' )
+      echo "== FILES =="
+      echo "${help}" | grep --color=never "_FILE"
+      echo
+      echo "== USERS =="
+      echo "${help}" | grep "^USERS\{0,1\}_" | grep -v "_FILE"
+      echo
+      echo "== GROUPS =="
+      echo "${help}" | grep "^USERGROUP" | grep -v "_FILE"
+      echo
+      echo "== TARGETS =="
+      echo "${help}" | grep "^TARGET" | grep -v "_ACCESS" | grep -v "_FILE"
+      echo
+      echo "== ACCESS =="
+      echo "${help}" | grep "_ACCESS" | grep -v "_FILE"
+      echo
+      echo "== others =="
+      echo "${help}" | grep -v "_FILE"          \
+                     | grep -v "^USERS\{0,1\}_" \
+                     | grep -v "^USERGROUP"     \
+                     | grep -v "^TARGET"        \
+                     | grep -v "_ACCESS"
+      echo
+    else
+      # == sed explanation ==
+      # 1: :search_func label
+      # 2: read the next line
+      # 3: match line which contain ${func} -> ex: "# ${func}()". print it if match
+      # 4: if the current line not match, goto :search_func
+      # 5: :loop label
+      # 6: read the next line
+      # 7: match line which don't only contain "#"
+      # 8: if the current line match, goto :loop, else end
+      < "${SSHGATE_DIR_BIN}/sshgate.func" \
+        sed -n -e \
+        ":search_func
+         n;
+         s/^# \\(${func}[(][)]\\)$/\1/p;
+         T search_func
+         :loop
+         n;
+         s/^#\\(..*\\)$/\1/p;
+         t loop;
+        "
+    fi
+    return 0;
+  }
+
+  SETUP_SSHGATE_GATE_ACCOUNT () {
+    local home_dir= authorized_keys2= user_key= real_target=
+
+    home_dir=$( cat /etc/passwd | grep "${SSHGATE_GATE_ACCOUNT}" | cut -d':' -f6 )
+    [ -z "${home_dir}" ] && return 1;
+
+    authorized_keys2="${home_dir}/.ssh/authorized_keys2"
+
+    [ ! -d "${home_dir}/.ssh/" ] && mkdir "${home_dir}/.ssh"
+
+    # reset the authorized_keys2 file
+    echo -n '' > "${authorized_keys2}"
+
+    for user in $( USERS_LIST ); do
+      user_key=$( cat ` USER_SSHKEY_FILE "${user}" ` )
+      echo "command=\"/bin/sh ${SSHGATE_DIR_BIN}/sshgate.sh ${user}\" ${user_key}" >> "${authorized_keys2}"
+    done
+
+    chown "${SSHGATE_GATE_ACCOUNT}" "${authorized_keys2}"
+
+    echo -n '' > "${home_dir}/.ssh/known_hosts"
+    for target in $( TARGETS_LIST ); do
+      real_target=$( TARGET_REAL "${target}" )
+      if [ "${real_target}" = "${target}" ]; then
+        ssh-keyscan -t dsa,rsa "${target}" >> "${home_dir}/.ssh/known_hosts" 2>/dev/null
+      fi
+    done
+    chown "${SSHGATE_GATE_ACCOUNT}" "${home_dir}/.ssh/known_hosts"
+
+    return 0;
+  }
+
+  # the target global log file
+  # create the log directory if not exists
+  TARGET_LOG_FILE () {
+    local target= dir=
+    [ $# -eq 0 ] && target=${TARGET_HOST:-unknown} || target="$1"
+    target=$( TARGET_REAL "${target}" )
+
+    dir="${SSHGATE_DIR_LOG}/${target}"
+    [ ! -d "${dir}/" ] && mkdir -p "${dir}"
+    touch "${dir}/global.log"
+    echo "${dir}/global.log"
+  }
+
+  # the user session log file
+  TARGET_SESSION_LOG_FILE () {
+    local user= target= f=
+    if [ $# -eq 0 ]; then
+      target=${TARGET_HOST:-unknown}
+      user=${SSHKEY_USER:-unknown}
+    else
+      target="$1"
+      [ $# -lt 2 ] && user=${SSHKEY_USER:-unknown} || user="$2"
+    fi
+    target=$( TARGET_REAL "${target}" )
+    f="${SSHGATE_DIR_LOG}/${target}/$(date +%Y%m%d%H%M%S).${user}.$$"
+    touch "$f"
+    echo "$f"
+  }
+
+  # return the path to the user access list file of the target host
+  TARGET_USER_ACCESS_FILE () {
+    local target= f=
+    [ $# -eq 0 ] && target=${TARGET_HOST:-unknown} || target=$1
+    f="${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USER_ACCESS_FILENAME}"
+    [ ! -r "$f" ] && f=''
+    echo "$f"
+  }
+
+  TARGET_GROUP_ACCESS_FILE () {
+    local target= f=
+    [ $# -eq 0 ] && target=${TARGET_HOST:-unknown} || target="$1"
+    f="${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_GROUP_ACCESS_FILENAME}"
+    [ ! -r "$f" ] && f=''
+    echo "$f"
+  }
+
+  USER_SSHKEY_FILE () {
+    local user= f=
+    [ $# -eq 0 ] && user=${SSHKEY_USER:-unknown} || user="$1"
+    f="${SSHGATE_DIR_USERS}/${user}"
+    [ ! -r "$f" ] && f=''
+    echo "$f"
+  }
+
+  TARGET_PRIVATE_SSHKEY () {
+    local target= f=
+    [ $# -eq 0 ] && target=${TARGET_HOST:-unknown} || target=$1
+    f="${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGET_PRIVATE_SSHKEY_FILENAME}"
+    [ ! -r "$f" ] && f=''
+    echo "$f"
+  }
+
+  TARGET_PUBLIC_SSHKEY () {
+    local target= f=
+    [ $# -eq 0 ] && target=${TARGET_HOST:-unknown} || target=$1
+    f="${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGET_PUBLIC_SSHKEY_FILENAME}"
+    [ ! -r "$f" ] && f=''
+    echo "$f"
+  }
+
+  # check wether a user ($1) has access to a target host ($2)
+  HAS_ACCESS() {
+    local user= target=
+    local user_access_file= group_access_file= user_groups=
+
+    if [ $# -eq 0 ]; then
+      user=${SSHKEY_USER:-unknown}
+      target=${TARGET_HOST:-unknown}
+    else
+      user=$1
+      [ $# -lt 2 ] && target=${TARGET_HOST:-unknown} || target=$2
+    fi
+
+    user_access_file=$(TARGET_USER_ACCESS_FILE $target)
+    group_access_file=$(TARGET_GROUP_ACCESS_FILE $target)
+
+    # individual access check
+    if [ -n "${user_access_file}" ]; then
+      < ${user_access_file} grep "^${user}$" >/dev/null 2>/dev/null
+      if [ $? -eq 0 ]; then
+        echo 'true'; return 0;
+      fi
+    fi
+
+    # group access check
+    if [ -n "${group_access_file}" ]; then
+      user_groups=$(USER_LIST_GROUPS ${user})
+      if [ -n "${user_groups}" ]; then
+        user_groups=" ${user_groups} "
+        if [ "${user_groups/ all /}" != "${user_groups}" ]; then
+          # user in the "all" group. he has access to all target !
+          echo 'true'; return 0;
+        fi
+
+        # check wether the target host is in one of the user group
+        for grp in ${user_groups}; do
+          < ${group_access_file} grep "^${grp}\$" >/dev/null 2>/dev/null
+          if [ $? -eq 0 ]; then
+            echo 'true'; return 0;
+          fi
+        done
+      fi
+    fi
+
+    # no access granted for the user on the target host
+    echo 'false'; return 1;
+  }
+
+  TARGETS_LIST () {
+    ls --color=none -m "${SSHGATE_DIR_TARGETS}" | sed -e 's/, /,/g' | tr ',' $'\n'
+    return 0;
+  }
+
+  TARGET_ADD () {
+    local target= privsshkey= target_privsshkey= target_pubsshkey=
+    [ $# -ne 2 ] && return 1;
+
+    target=$1; privsshkey=$2
+    [ -d "${SSHGATE_DIR_TARGETS}/${target}" ] && return 1;
+    [ ! -r "${privsshkey}" ] && return 1;
+
+    target_privsshkey="${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGET_PRIVATE_SSHKEY_FILENAME}"
+    target_pubsshkey="${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGET_PUBLIC_SSHKEY_FILENAME}"
+
+    mkdir -p "${SSHGATE_DIR_TARGETS}/${target}"
+    cp "${privsshkey}" "${target_privsshkey}"
+
+    # try to generate the public key, to check that the key doesn't have passphrase
+    ssh-keygen -y -f "${target_privsshkey}" > "${target_pubsshkey}"
+    if [ $? -ne 0 ]; then
+      rm -rf "${SSHGATE_DIR_TARGETS}/${target}"
+      return 1;
+    fi
+
+    chmod 600 "${target_privsshkey}"
+    chown "${SSHGATE_GATE_ACCOUNT}" "${target_privsshkey}"
+    chown "${SSHGATE_GATE_ACCOUNT}" "${target_pubsshkey}"
+
+    # create empty access files
+    touch "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USER_ACCESS_FILENAME}"
+    touch "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_GROUP_ACCESS_FILENAME}"
+
+    return 0;
+  }
+
+  TARGET_DEL () {
+    local target=
+    [ $# -ne 1 ] && return 1;
+
+    target="$1"
+    [ ! -d "${SSHGATE_DIR_TARGETS}/${target}" ] && return 1
+
+    rm -rf "${SSHGATE_DIR_TARGETS}/${target}"
+    return 0;
+  }
+
+  TARGET_LIST_ALIASES () {
+    local target= t=
+    [ $# -eq 1 ] && target="$1"
+
+    for file in $( find "${SSHGATE_DIR_TARGETS}/" -type l ); do
+      t=$( readlink -f "${file}" )
+      [ -z "${target}" -o "${t##*/}" = "${target}" ] && echo "${file##*/}"
+    done
+  }
+
+  TARGET_ADD_ALIAS () {
+    local target=
+    [ $# -ne 2 ] && return 1;
+
+    target="$1"; alias="$2"
+    [ ! -d "${SSHGATE_DIR_TARGETS}/${target}" ] && return 1
+    [ -L "${SSHGATE_DIR_TARGETS}/${alias}" ] && return 1
+
+    ln -s "${SSHGATE_DIR_TARGETS}/${target}" "${SSHGATE_DIR_TARGETS}/${alias}"
+    return 0;
+  }
+
+  TARGET_DEL_ALIAS () {
+    local alias=
+    [ $# -ne 1 ] && return 1;
+
+    alias="$1"
+    rm -f "${SSHGATE_DIR_TARGETS}/${alias}"
+    return 0;
+  }
+
+  TARGET_REAL () {
+    local target=
+    [ $# -ne 1 ] && target="${TARGET_HOST:-unknown}" || target="$1"
+
+    if [ -L "${SSHGATE_DIR_TARGETS}/${target}" ]; then
+      target=$( readlink -f "${SSHGATE_DIR_TARGETS}/${target}" )
+      echo "${target##*/}"
+    else
+      echo "${target}"
+    fi
+    return 0;
+  }
+
+  TARGET_ACCESS_LIST_USERS () {
+    local target= files=
+    [ $# -ne 1 ] && return 1;
+
+    target="$1"
+    [ ! -d "${SSHGATE_DIR_TARGETS}/${target}" ] && return 1;
+
+    files="${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USER_ACCESS_FILENAME}"
+
+    # through groups
+    for group in $( cat "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_GROUP_ACCESS_FILENAME}" ); do
+      files="${files} ${SSHGATE_DIR_USERS_GROUPS}/${group}"
+    done
+    cat ${files} | sort -u
+    return 0;
+  }
+
+  TARGET_LIST_USERS () { TARGET_ACCESS_LIST_USERS $@; }
+
+  TARGET_ACCESS_ADD_USER () {
+    local target= user= access_file=
+    [ $# -ne 2 ] && return 1;
+
+    target="$1"; user="$2";
+    [ ! -d "${SSHGATE_DIR_TARGETS}/${target}" ] && return 1;
+    [ ! -f "${SSHGATE_DIR_USERS}/${user}" ] && return 1;
+
+    access_file="${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USER_ACCESS_FILENAME}"
+    < "${access_file}" grep "^${user}\$" >/dev/null 2>/dev/null
+    if [ $? -ne 0 ]; then
+      echo "${user}" >> "${access_file}"
+    fi
+    return 0;
+  }
+
+  TARGET_ACCESS_DEL_USER () {
+    local target= user= access_file= random=
+    [ $# -ne 2 ] && return 1
+
+    target="$1"; user="$2"
+    [ ! -d "${SSHGATE_DIR_TARGETS}/${target}" ] && return 1;
+    [ ! -f "${SSHGATE_DIR_USERS}/${user}" ] && return 1;
+
+    access_file="${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USER_ACCESS_FILENAME}"
+    random=${RANDOM}
+
+    grep -v "^${user}\$" < "${access_file}" >"/tmp/access.${random}"
+    mv "/tmp/access.${random}" "${access_file}"
+   return 0;
+  }
+
+  TARGET_ACCESS_LIST_GROUPS () {
+    local target=
+    [ $# -ne 1 ] && return 1;
+
+    target="$1"
+    [ ! -d "${SSHGATE_DIR_TARGETS}/${target}" ] && return 1;
+
+    cat "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_GROUP_ACCESS_FILENAME}"
+    return 0;
+  }
+  TARGET_LIST_GROUPS () { TARGET_ACCESS_LIST_GROUPS $@; }
+
+  TARGET_ACCESS_ADD_GROUP () {
+    local target= group= access_file=
+    [ $# -ne 2 ] && return 1;
+
+    target="$1"; group="$2"
+    [ ! -d "${SSHGATE_DIR_TARGETS}/${target}" ] && return 1;
+    [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${group}" ] && return 1;
+
+    access_file="${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_GROUP_ACCESS_FILENAME}"
+    < "${access_file}" grep "^${group}\$" >/dev/null 2>/dev/null
+    if [ $? -ne 0 ]; then
+      echo "${group}" >> "${access_file}"
+    fi
+    return 0;
+  }
+
+  TARGET_ACCESS_DEL_GROUP () {
+    local target= group= access_file=
+    [ $# -ne 2 ] && return 1
+
+    target="$1"; group="$2"
+    [ ! -d "${SSHGATE_DIR_TARGETS}/${target}" ] && return 1;
+    [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${group}" ] && return 1;
+
+    access_file="${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_GROUP_ACCESS_FILENAME}"
+    random=$RANDOM
+
+    grep -v "^${group}\$" < "${access_file}" >"/tmp/access.${random}"
+    mv "/tmp/access.${random}" "${access_file}"
+    return 0;
+  }
+
+  USERS_LIST () {
+    ls --color=none -m "${SSHGATE_DIR_USERS}" | sed -e 's/, /,/g' | tr ',' $'\n'
+    return 0;
+  }
+
+  USER_ADD () {
+    [ $# -ne 2 ] && return 1;
+
+    local user=$1 userkey=$2
+
+    [ ! -r "${userkey}" ] && return 1;
+    [ -z "${user}" -o "${user/ }" != "${user}" ] && return 1
+
+    [ -f "${SSHGATE_DIR_USERS}/${user}" ] && return 1;
+
+    cp ${userkey} ${SSHGATE_DIR_USERS}/${user}
+    SETUP_SSHGATE_GATE_ACCOUNT
+  }
+
+  USER_DEL () {
+    [ $# -ne 1 ] && return 1
+    local user=$1
+
+    [ ! -f "${SSHGATE_DIR_USERS}/${user}" ] && return 1;
+
+    rm -f "${SSHGATE_DIR_USERS}/${user}"
+
+    random=$RANDOM
+
+    # delete user from groups
+    for group in $( USER_LIST_GROUPS "${user}" ); do
+      grep -v "^${user}\$"                         \
+          < "${SSHGATE_DIR_USERS_GROUPS}/${group}" \
+          > "/tmp/${group}.${random}"
+      mv "/tmp/${group}.${random}" "${SSHGATE_DIR_USERS_GROUPS}/${group}"
+    done
+
+    # delete user from target access list
+    for target in $( USER_LIST_TARGETS "${user}" ); do
+      grep -v "^${user}\$"                                                             \
+          < "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USER_ACCESS_FILENAME}" \
+          > "/tmp/${target}.${random}"
+      mv "/tmp/${target}.${random}"     \
+          "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USER_ACCESS_FILENAME}"
+    done
+    SETUP_SSHGATE_GATE_ACCOUNT
+    return 0
+  }
+
+  USER_LIST_GROUPS () {
+    local user=
+    [ $# -eq 0 ] && user=${SSHKEY_USER:-unknown} || user=$1
+
+    if [ ! -f "${SSHGATE_DIR_USERS}/${user}" ]; then
+      echo ''; return 1;
+    fi
+
+    for group in $( grep -l -r "^${user}\$" "${SSHGATE_DIR_USERS_GROUPS}/" | sort -u ); do
+      echo ${group##*/}
+    done
+    return 0;
+  }
+
+  USER_LIST_TARGETS () {
+    local user=
+    [ $# -eq 0 ] && user=${SSHKEY_USER:-unknown} || user=$1
+
+    if [ ! -f "${SSHGATE_DIR_USERS}/${user}" ]; then
+      echo ''; return 1;
+    fi
+
+    ( # subshell :(
+        for file in $( find "${SSHGATE_DIR_TARGETS}"                      \
+                          -name "${SSHGATE_TARGETS_USER_ACCESS_FILENAME}" \
+                          -exec grep -l "^${user}\$" {} \; ); do
+          file="${file%%/${SSHGATE_TARGETS_USER_ACCESS_FILENAME}}"
+          echo "${file##*/}"
+        done
+
+        for group in $( USER_LIST_GROUPS "${user}" ); do
+          for file in $( find "${SSHGATE_DIR_TARGETS}"                       \
+                            -name "${SSHGATE_TARGETS_GROUP_ACCESS_FILENAME}" \
+                            -exec grep -l "^${group}\$" {} \; ); do
+            file="${file%%/${SSHGATE_TARGETS_GROUP_ACCESS_FILENAME}}"
+            echo "${file##*/}"
+          done
+        done
+    ) | sort -u
+    return 0;
+  }
+
+  USERGROUPS_LIST () {
+    ls --color=none -m "${SSHGATE_DIR_USERS_GROUPS}" | sed -e 's/, /,/g' | tr ',' $'\n'
+    return 0;
+  }
+
+  USERGROUP_ADD () {
+    local group=
+
+    [ $# -ne 1 ] && return 1;
+    group=$1
+
+    [ -f "${SSHGATE_DIR_USERS_GROUPS}/${group}" ] && return 1
+
+    touch "${SSHGATE_DIR_USERS_GROUPS}/${group}"
+    return 0;
+  }
+
+  USERGROUP_DEL () {
+    local group=
+
+    [ $# -ne 1 ] && return 1;
+    group=$1
+
+    [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${group}" ] && return 1
+    rm -f "${SSHGATE_DIR_USERS_GROUPS}/${group}"
+
+    return 0
+  }
+
+  USERGROUP_LIST_USERS () {
+    local group=
+    if [ $# -ne 1 ]; then
+      echo ''; return 1;
+    fi
+    group="$1"
+
+    if [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${group}" ]; then
+      echo ''; return 1;
+    fi
+
+    cat "${SSHGATE_DIR_USERS_GROUPS}/${group}"
+    return 0;
+  }
+
+  USERGROUP_ADD_USER () {
+    local group= user=
+    [ $# -ne 2 ] && return 1;
+
+    group="$1"; user="$2";
+    [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${group}" ] && return 1;
+    [ ! -f "${SSHGATE_DIR_USERS}/${user}" ] && return 1;
+
+    echo "${user}" >> "${SSHGATE_DIR_USERS_GROUPS}/${group}"
+  }
+
+  USERGROUP_DEL_USER () {
+    local group= user=
+    [ $# -ne 2 ] && return 1;
+
+    group=$1
+    user=$2
+
+    [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${group}" ] && return 1;
+    [ ! -f "${SSHGATE_DIR_USERS}/${user}" ] && return 1;
+
+    random=${RANDOM}
+    grep -v "^${user}\$"                         \
+        < "${SSHGATE_DIR_USERS_GROUPS}/${group}" \
+        > "/tmp/${group}.${random}"
+    mv "/tmp/${group}.${random}" "${SSHGATE_DIR_USERS_GROUPS}/${group}"
+  }
+
+fi # __SSHGATE_FUNC__

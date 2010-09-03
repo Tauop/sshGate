@@ -1,0 +1,20 @@
+= README =
+
+config-sshgate.sh will help the user to update his ~/.ssh/config to
+setup a "sshgate" host, which will be used by 'sshg' and 'scpg' script.
+
+'sshg' and 'scpg' scripts may be put into the /usr/local/bin/ directory.
+
+DETAILS
+
+'sshg' is quite simple. It's an equivalent of 'ssh sshgate <target_host>'
+
+'scpg' is more complex. Here are the 'scp - scp' equivalent syntaxes:
+
+in send mode:
+  scpg [<options>] <file1> <file2> <target_host>:<target_location>
+ --> scp [<options>] <file1> <file2> sshgate:<target_host>/<target_location>
+
+in receive mode:
+  scpg [<options>] <target_host>:<target_location> <local_location>
+ --> scp [<options] sshgate:<target_host>/<target_location> <local_location>

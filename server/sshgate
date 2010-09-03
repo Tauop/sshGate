@@ -1,0 +1,149 @@
+#!/bin/bash
+#
+# Copyright (c) 2010 Linagora
+# Patrick Guiran <pguiran@linagora.com>
+# http://github.com/Tauop/sshGate
+#
+# sshGate is free software, you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of
+# the License, or (at your option) any later version.
+#
+# sshGate is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+
+
+# %% __LIB_MESSAGE__ %% <-- WARNING: don't remove. used by install.sh
+# %% __LIB_ASK__ %% <-- WARNING: don't remove. used by install.sh
+# %% __LIB_CLI__ %% <-- WARNING: don't remove. used by install.sh
+# %% __SSHGATE_CONF__ %% <-- WARNING: don't remove. used by install.sh
+# %% __SSHGATE_FUNC__ %% <-- WARNING: don't remove. used by install.sh
+
+[ -z "${__LIB_MESSAGE__}"  -a -r ./lib/message.lib.sh ] && . ./lib/message.lib.sh
+[ -z "${__LIB_ASK__}"      -a -r ./lib/ask.lib.sh     ] && . ./lib/ask.lib.sh
+[ -z "${__LIB_CLI__}"      -a -r ./lib/cli.lib.sh     ] && . ./lib/cli.lib.sh
+[ -z "${__SSHGATE_CONF__}" -a -r ./sshgate.conf       ] && . ./sshgate.conf
+[ -z "${__SSHGATE_FUNC__}" -a -r ./sshgate.func       ] && . ./sshgate.func
+
+CHECK_ROOT
+
+CLI_REGISTER_MENU    'user'
+CLI_REGISTER_COMMAND 'user list'           'USERS_LIST'
+CLI_REGISTER_COMMAND 'user add ? key ?'    'USER_ADD \1 \2'
+CLI_REGISTER_COMMAND 'user del ?'          'USER_DEL \1'
+
+CLI_REGISTER_MENU    'user ?'
+CLI_REGISTER_COMMAND 'user ? list groups'  'USER_LIST_GROUPS \1'
+CLI_REGISTER_COMMAND 'user ? list targets' 'USER_LIST_TARGETS \1'
+CLI_REGISTER_COMMAND 'user ? has access ?' 'HAS_ACCESS \1 \2'
+
+CLI_REGISTER_MENU    'usergroup'
+CLI_REGISTER_COMMAND 'usergroup list' 'USERGROUPS_LIST'
+CLI_REGISTER_COMMAND 'usergroup add ?' 'USERGROUP_ADD \1'
+CLI_REGISTER_COMMAND 'usergroup del ?' 'USERGROUP_DEL \1'
+
+CLI_REGISTER_MENU    'usergroup ?'
+CLI_REGISTER_COMMAND 'usergroup ? list'       'USERGROUP_LIST_USERS \1'
+CLI_REGISTER_COMMAND 'usergroup ? list users' 'USERGROUP_LIST_USERS \1'
+CLI_REGISTER_COMMAND 'usergroup ? add user ?' 'USERGROUP_ADD_USER \1 \2'
+CLI_REGISTER_COMMAND 'usergroup ? del user ?' 'USERGROUP_DEL_USER \1 \2'
+
+CLI_REGISTER_MENU    'target'
+CLI_REGISTER_COMMAND 'target list'        'TARGETS_LIST'
+CLI_REGISTER_COMMAND 'target add ? key ?' 'TARGET_ADD \1 \2'
+CLI_REGISTER_COMMAND 'target del ?'       'TARGET_DEL \1'
+
+CLI_REGISTER_MENU    'target alias'
+CLI_REGISTER_COMMAND 'target alias list'    'TARGET_LIST_ALIASES'
+CLI_REGISTER_COMMAND 'target alias del ?'   'TARGET_DEL_ALIAS \1'
+
+CLI_REGISTER_MENU    'target ?'
+CLI_REGISTER_COMMAND 'target ? realname'    'TARGET_REAL \1'
+CLI_REGISTER_COMMAND 'target ? alias add ?' 'TARGET_ADD_ALIAS \1 \2'
+CLI_REGISTER_COMMAND 'target ? alias del ?' 'TARGET_DEL_ALIAS \2'
+CLI_REGISTER_COMMAND 'target ? alias list'  'TARGET_LIST_ALIASES \1'
+
+CLI_REGISTER_MENU    'target ? access'
+CLI_REGISTER_COMMAND 'target ? access list users'  'TARGET_ACCESS_LIST_USERS'
+CLI_REGISTER_COMMAND 'target ? access add user ?'  'TARGET_ACCESS_ADD_USER \1 \2'
+CLI_REGISTER_COMMAND 'target ? access del user ?'  'TARGET_ACCESS_DEL_USER \1 \2'
+CLI_REGISTER_COMMAND 'target ? access list groups' 'TARGET_ACCESS_LIST_GROUPS'
+CLI_REGISTER_COMMAND 'target ? access add group ?' 'TARGET_ACCESS_ADD_GROUP \1 \2'
+CLI_REGISTER_COMMAND 'target ? access del group ?' 'TARGET_ACCESS_DEL_GROUP \1 \2'
+
+CLI_REGISTER_COMMAND 'help' 'HELP_LIST'
+
+CLI_REGISTER_COMMAND 'save' 'SETUP_SSHGATE_GATE_ACCOUNT'
+
+HELP_LIST () {
+  MSG_INDENT_INC
+  MSG "= Users ="
+  MSG_INDENT_INC
+    MESSAGE "user list                                 - List all users"
+    MESSAGE "user add <username> key <sshkey-file>     - add a new user"
+    MESSAGE "user del <username>                       - delete a user"
+    MESSAGE "user <username> list groups               - list group of user"
+    MESSAGE "user <username> list targets              - list targets hosts of user"
+    MESSAGE "user <username> has access <target-name>  - tell if a user has access to a target host"
+  MSG_INDENT_DEC
+  BR
+
+  MSG "= User's Group ="
+  MSG_INDENT_INC
+    MESSAGE "usergroup list                              - list all users groups"
+    MESSAGE "usergroup add <group-name>                  - create a users group"
+    MESSAGE "usergroup del <group-name>                  - delete a users group"
+    MESSAGE "usergroup <group-name> list [users]         - list users of a group"
+    MESSAGE "usergroup <group-name> add user <username>  - add an user into a group"
+    MESSAGE "usergroup <group-name> del user <username>  - delete an user from a group"
+  MSG_INDENT_DEC
+  BR
+
+  MSG "= Target ="
+  MSG_INDENT_INC
+    MESSAGE "target list                                  - list all targets"
+    MESSAGE "target add <target-name> key <sshkey-file>   - add a new target host"
+    MESSAGE "target del <target-name>                     - delete a target host"
+    MESSAGE "target alias list                            - list all aliases of a target host"
+    MESSAGE "target alias del <alias-name>                - delete an alias name"
+    MESSAGE "target <target-name> realname                - print the real name of a target host"
+    MESSAGE "target <target-name> alias add <alias-name>  - add an alias of target hostname"
+    MESSAGE "target <target-name> alias del <alias-name>  - delete an alias of the target"
+    MESSAGE "target <target-name> alias list              - list aliases of the target host"
+  MSG_INDENT_DEC
+  BR
+
+  MSG "= Access ="
+  MSG_INDENT_INC
+    MESSAGE "target <target-name> access list users              - list all users who can access to the target host"
+    MESSAGE "target <target-name> access add user <user-name>    - give user access to a target host"
+    MESSAGE "target <target-name> access del user <user-name>    - revoke user access of target host"
+    MESSAGE "target <target-name> access list groups             - list all groups who can access to the target host"
+    MESSAGE "target <target-name> access add group <group-name>  - give group access to a target host"
+    MESSAGE "target <target-name> access del group <group-name>  - revoke group access of a target host"
+  MSG_INDENT_DEC
+  BR
+
+  MSG "= Misc ="
+  MSG_INDENT_INC
+    MESSAGE "save - forge re-write of sshgate account ./ssh/authorized_keys2 file"
+  MSG_INDENT_DEC
+  BR
+
+  MSG_INDENT_DEC
+}
+
+MSG "sshGate administration Interface"
+MSG "By Patrick Guiran <pguiran@linagora.com>"
+BR
+MSG "Use 'help' command to list all avariable commands"
+BR
+
+CLI_SET_PROMPT "sshGate"
+CLI_RUN
