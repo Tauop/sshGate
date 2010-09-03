@@ -68,6 +68,7 @@ if [ "${action}" = 'all' -o "${action}" = 'server' ]; then
     CMD cp ./lib/ask.lib.sh     $dir/lib/
     CMD cp ./lib/message.lib.sh $dir/lib/
     CMD cp ./lib/conf.lib.sh    $dir/lib/
+    CMD cp ./lib/cli.lib.sh     $dir/lib/
 
     CMD chmod +x ${dir}/install.sh
 
