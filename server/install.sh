@@ -1,3 +1,4 @@
+#!/bin/bash
 #
 # Copyright (c) 2010 Linagora
 # Patrick Guiran <pguiran@linagora.com
@@ -21,8 +22,18 @@
 . ./lib/ask.lib.sh
 . ./lib/conf.lib.sh
 
+# don't want to add exec.lib.sh in dependencies :/
+user_id=`id -u`
+[ "${user_id}" != "0" ] \
+  && KO "You must execute $0 with root privileges"
+
 CONF_SET_FILE "sshgate.conf"
 CONF_LOAD
+
+BR
+MESSAGE "   --- sshGate server configuration ---"
+MESSAGE "             by Patrick Guiran"
+BR
 
 ASK SSHGATE_DIR \
     "Where do you want to install sshGate [${SSHGATE_DIR}] ? " \
