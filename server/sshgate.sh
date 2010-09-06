@@ -23,7 +23,9 @@ if [ $# -ne 1 ]; then
   exit 1
 fi
 
+# GLOBAL configuration -------------------------------------------------------
 SSHKEY_USER=$1
+SFTP_SERVER=/usr/libexec/openssh/sftp-server
 
 # %% __SSHGATE_CONF__ %% <-- WARNING: don't remove. used by install.sh
 if [ -z "${__SSHGATE_CONF__}" ]; then
@@ -45,8 +47,6 @@ if [ -z "${__SSHGATE_FUNC__}" ]; then
   fi
 fi
 
-# GLOBAL configuration
-SFTP_SERVER=/usr/libexec/openssh/sftp-server
 
 # one little function
 LOG () { local file=$1; shift; echo "$(date +'[%D %T]') $*" >> ${file}; }
@@ -57,6 +57,7 @@ if [ -z ${SSHKEY_USER:-} ]; then
 fi
 
 
+# determine action type (ssh or scp) and build TARGET_HOST -------------------
 do_ssh='false'
 
 if [ "${SSH_ORIGINAL_COMMAND}" != "${SSH_ORIGINAL_COMMAND#${SFTP_SERVER} }" \
@@ -82,45 +83,57 @@ else
   do_ssh='true'
 fi
 
+# public commands ------------------------------------------------------------
+if [ "${do_ssh}" = 'true' -a "${TARGET_HOST}" = 'cmd' ]; then
+  # inpired from ScriptHelper/cli.lib.sh
+  BUILD_SED_CODE () {
+    local sed_cmd=
+    for word in $( echo "$1" | tr ' ' $'\n' ); do
+      [ "${word}" = '?' ] && word="\([^ ]*\)"
+      sed_cmd="${sed_cmd} *${word}"
+    done
+    echo -n "s/^${sed_cmd} *$/$2/p; t;"
+  }
+  code=
+  code="${code} $(BUILD_SED_CODE 'cmd list targets'   'USER_LIST_TARGETS')"
+  code="${code} $(BUILD_SED_CODE 'cmd list targets ?' 'USER_LIST_TARGETS \1')"
+  code="${code} $(BUILD_SED_CODE 'cmd sshkey all'     'DISPLAY_USER_SSHKEY all')"
+  code="${code} $(BUILD_SED_CODE 'cmd sshkey ?'       'DISPLAY_USER_SSHKEY \1')"
+  code="${code} a echo 'ERROR: unknown command' "
+  eval $(echo "${SSH_ORIGINAL_COMMAND}" | sed -n -e "$code" )
+  exit 0;
+fi
+
+# Determine information for connecting to the host ---------------------------
+TARGET_USER=${SSHGATE_TARGETS_DEFAULT_USER}
+TARGET_HOST=$( TARGET_REAL "${TARGET_HOST}" )
+GLOG_FILE=$( TARGET_LOG_FILE )
+
 TARGET_SSHKEY=$( TARGET_PRIVATE_SSHKEY )
 if [ -z "${TARGET_SSHKEY}" -o ! -r "${TARGET_SSHKEY:-}" ]; then
   echo "ERROR: can't read target host ssh key. Please contact the sshGate administrator"
   exit 1
 fi
 
-# here, you can make some ACL verification if you want :)
+# check ACL ------------------------------------------------------------------
 if [ $( HAS_ACCESS ) = 'false' ]; then
   echo "ERROR: The ${TARGET_HOST} doesn't exist or you don't have access to it"
   exit 1
 fi
 
-# you can either determine the TARGET_USER :)
-TARGET_USER=${SSHGATE_TARGETS_DEFAULT_USER}
-TARGET_HOST=$( TARGET_REAL "${TARGET_HOST}" )
-GLOG_FILE=$( TARGET_LOG_FILE )
-
+# Do the stuff ;-) -----------------------------------------------------------
 LOG ${GLOG_FILE} "New session $$. Connection from ${SSH_CONNECTION%% *} with SSH_ORIGINAL_COMMAND = ${SSH_ORIGINAL_COMMAND:-}"
-
-RETURN_VALUE=0
 if [ "${do_ssh:-}" = 'true' ]; then
   SLOG_FILE=$( TARGET_SESSION_LOG_FILE )
   LOG ${GLOG_FILE} "Creating session log file ${SLOG_FILE}"
   LOG ${SSHGATE_LOG_FILE} "[SSSH] ${SSHKEY_USER} -> ${TARGET_USER}@${TARGET_HOST}"
 
   ssh -i ${TARGET_SSHKEY} ${TARGET_USER}@${TARGET_HOST} | tee ${SLOG_FILE}
-#  if [ $? -ne 0 ]; then
-#    LOG ${SSHGATE_LOG_FILE} "[ERROR] ${SSHKEY_USER} -> ssh -o 'StrictHostKeyChecking no' -i ${TARGET_SSHKEY} ${TARGET_USER}@${TARGET_HOST}"
-#    RETURN_VALUE=1
-#  fi
   LOG ${GLOG_FILE} "Session $$ ended. logfile = ${SLOG_FILE}"
 else
   LOG ${SSHGATE_LOG_FILE} "[SCP] ${SSHKEY_USER} -> ${TARGET_USER}@${TARGET_HOST} ${SSH_ORIGINAL_COMMAND}"
 
   ssh -i ${TARGET_SSHKEY} ${TARGET_USER}@${TARGET_HOST} ${SSH_ORIGINAL_COMMAND}
-#  if [ $? -ne 0 ]; then
-#    LOG ${SSHGATE_LOG_FILE} "[ERROR] ${SSHKEY_USER} -> ssh -o 'StrictHostKeyChecking no' -i ${TARGET_SSHKEY} ${TARGET_USER}@${TARGET_HOST} ${SSH_ORIGINAL_COMMAND}"
-#    RETURN_VALUE=1
-#  fi
   LOG ${GLOG_FILE} "Transfert $$ completed."
 fi
 
