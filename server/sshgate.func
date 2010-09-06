@@ -445,7 +445,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
   }
 
   TARGETS_LIST () {
-    ls --color=none -m "${SSHGATE_DIR_TARGETS}" | sed -e 's/, /,/g' | tr ',' $'\n'
+    ls --color=none -m "${SSHGATE_DIR_TARGETS}" | tr $'\n' ' ' | sed -e 's/, /,/g' | tr ',' $'\n'
     return 0;
   }
 
@@ -632,7 +632,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
   }
 
   USERS_LIST () {
-    ls --color=none -m "${SSHGATE_DIR_USERS}" | sed -e 's/, /,/g' | tr ',' $'\n'
+    ls --color=none -m "${SSHGATE_DIR_USERS}" | tr $'\n' ' ' | sed -e 's/, /,/g' | tr ',' $'\n'
     return 0;
   }
 
@@ -723,7 +723,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
   }
 
   USERGROUPS_LIST () {
-    ls --color=none -m "${SSHGATE_DIR_USERS_GROUPS}" | sed -e 's/, /,/g' | tr ',' $'\n'
+    ls --color=none -m "${SSHGATE_DIR_USERS_GROUPS}" | tr $'\n' ' ' | sed -e 's/, /,/g' | tr ',' $'\n'
     return 0;
   }
 
