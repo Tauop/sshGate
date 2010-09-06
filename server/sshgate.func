@@ -58,6 +58,12 @@
 #   desc: echo-return the path to the user sshkey file
 #   note: if called without argument, try to use ${SSHKEY_USER}
 #
+# DISPLAY_USER_SSHKEY()
+#   usage: DISPLAY_USER_SSHKEY [ <user> ]
+#   desc: echo-return the public sshkey of a user
+#   note: if called without argument, try to use ${SSHKEY_USER}
+#   note: if called without argument and ${SSHKEY_USER} is not set, display the public sshkey of all users
+#
 # TARGET_PRIVATE_SSHKEY()
 #   usage: TARGET_PRIVATE_SSHKEY [ <target_host> ]
 #   desc: echo-return the path to the private ssh key of the target host
@@ -351,6 +357,27 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     f="${SSHGATE_DIR_USERS}/${user}"
     [ ! -r "$f" ] && f=''
     echo "$f"
+  }
+
+  DISPLAY_USER_SSHKEY () {
+    local user= f=
+    [ $# -eq 0 ] && user=${SSHKEY_USER:-all} || user="$1"
+    if [ "${user}" != 'all' ]; then
+      f=$( USER_SSHKEY_FILE "${user}" )
+      if [ -n "$f" ]; then
+        echo "# public sshkey ${user}"
+        cat "$f";
+      else
+        echo "ERROR: unknown user $user"
+        return 1;
+      fi
+    else
+      for user in $( USERS_LIST ); do
+        echo "# public sshkey ${user}"
+        cat $( USER_SSHKEY_FILE "${user}" )
+      done
+    fi
+    return 0;
   }
 
   TARGET_PRIVATE_SSHKEY () {
