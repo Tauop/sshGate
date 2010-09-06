@@ -73,10 +73,10 @@ CLI_REGISTER_COMMAND 'target ? alias del ?' 'TARGET_DEL_ALIAS \2'
 CLI_REGISTER_COMMAND 'target ? alias list'  'TARGET_LIST_ALIASES \1'
 
 CLI_REGISTER_MENU    'target ? access'
-CLI_REGISTER_COMMAND 'target ? access list users'  'TARGET_ACCESS_LIST_USERS'
+CLI_REGISTER_COMMAND 'target ? access list users'  'TARGET_ACCESS_LIST_USERS \1'
 CLI_REGISTER_COMMAND 'target ? access add user ?'  'TARGET_ACCESS_ADD_USER \1 \2'
 CLI_REGISTER_COMMAND 'target ? access del user ?'  'TARGET_ACCESS_DEL_USER \1 \2'
-CLI_REGISTER_COMMAND 'target ? access list groups' 'TARGET_ACCESS_LIST_GROUPS'
+CLI_REGISTER_COMMAND 'target ? access list groups' 'TARGET_ACCESS_LIST_GROUPS \1'
 CLI_REGISTER_COMMAND 'target ? access add group ?' 'TARGET_ACCESS_ADD_GROUP \1 \2'
 CLI_REGISTER_COMMAND 'target ? access del group ?' 'TARGET_ACCESS_DEL_GROUP \1 \2'
 
