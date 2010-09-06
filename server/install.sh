@@ -82,6 +82,8 @@ DOTHIS 'Installing sshGate'
   chown "${SSHGATE_GATE_ACCOUNT}" "${SSHGATE_DIR_LOG}"
   chmod -R a+x "${SSHGATE_DIR}"
   find "${SSHGATE_DIR_BIN}" -type f -exec chmod a+r {} \;
+  # sshkeys must be in 400
+  find "${SSHGATE_DIR_USERS}" -type f -exec chmod 400 {} \;
 OK
 
 DOTHIS 'Update sshGate installation'
