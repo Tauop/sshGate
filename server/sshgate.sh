@@ -97,8 +97,8 @@ if [ "${do_ssh}" = 'true' -a "${TARGET_HOST}" = 'cmd' ]; then
   code=
   code="${code} $(BUILD_SED_CODE 'cmd list targets'   'USER_LIST_TARGETS')"
   code="${code} $(BUILD_SED_CODE 'cmd list targets ?' 'USER_LIST_TARGETS \1')"
-  code="${code} $(BUILD_SED_CODE 'cmd sshkey all'     'DISPLAY_USER_SSHKEY all')"
-  code="${code} $(BUILD_SED_CODE 'cmd sshkey ?'       'DISPLAY_USER_SSHKEY \1')"
+  code="${code} $(BUILD_SED_CODE 'cmd sshkey all'     'DISPLAY_USER_SSHKEY_FILE all')"
+  code="${code} $(BUILD_SED_CODE 'cmd sshkey ?'       'DISPLAY_USER_SSHKEY_FILE \1')"
   code="${code} a echo 'ERROR: unknown command' "
   eval $(echo "${SSH_ORIGINAL_COMMAND}" | sed -n -e "$code" )
   exit 0;
@@ -109,7 +109,7 @@ TARGET_USER=${SSHGATE_TARGETS_DEFAULT_USER}
 TARGET_HOST=$( TARGET_REAL "${TARGET_HOST}" )
 GLOG_FILE=$( TARGET_LOG_FILE )
 
-TARGET_SSHKEY=$( TARGET_PRIVATE_SSHKEY )
+TARGET_SSHKEY=$( TARGET_PRIVATE_SSHKEY_FILE )
 if [ -z "${TARGET_SSHKEY}" -o ! -r "${TARGET_SSHKEY:-}" ]; then
   echo "ERROR: can't read target host ssh key. Please contact the sshGate administrator"
   exit 1
