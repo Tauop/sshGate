@@ -165,7 +165,7 @@ HELP_LIST () {
 
   MSG "= Targets' Group's Access ="
   MSG_INDENT_INC
-    MESSGAE "targetgroup <target-groupname> access list users - list all users who can access to the targetgroup"
+    MESSAGE "targetgroup <target-groupname> access list users - list all users who can access to the targetgroup"
     MESSAGE "targetgroup <target-groupname> access add user <user-name> - give user acess to the targetgroup"
     MESSAGE "targetgroup <target-groupname> access del user <user-name> - revoke user access to the targetgroup"
     MESSAGE "targetgroup <target-groupname> access list usergroup - list all usergroup who can access to the targetgroup"
