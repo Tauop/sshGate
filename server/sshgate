@@ -86,9 +86,11 @@ CLI_REGISTER_COMMAND 'target ? access add usergroup ?'  'TARGET_ACCESS_ADD_USERG
 CLI_REGISTER_COMMAND 'target ? access del usergroup ?'  'TARGET_ACCESS_DEL_USERGROUP \1 \2'
 
 CLI_REGISTER_MENU    'targetgroup'
-CLI_REGISTER_COMMAND 'targetgroup list' 'TARGETGROUPS_LIST'
-CLI_REGISTER_COMMAND 'targetgroup add ?' 'TARGETGROUP_ADD \1'
-CLI_REGISTER_COMMAND 'targetgroup del ?' 'TARGETGROUP_DEL \1'
+CLI_REGISTER_COMMAND 'targetgroup list'           'TARGETGROUPS_LIST'
+CLI_REGISTER_COMMAND 'targetgroup add ?'          'TARGETGROUP_ADD \1'
+CLI_REGISTER_COMMAND 'targetgroup del ?'          'TARGETGROUP_DEL \1'
+CLI_REGISTER_COMMAND 'targetgroup ? add target ?' 'TARGETGROUP_ADD_TARGET \1 \2'
+CLI_REGISTER_COMMAND 'targetgroup ? del target ?' 'TARGETGROUP_DEL_TARGET \1 \2'
 
 CLI_REGISTER_MENU    'targetgroup ?'
 CLI_REGISTER_MENU    'targetgroup ? access'
@@ -146,9 +148,11 @@ HELP_LIST () {
 
   MSG "= Target's Group ="
   MSG_INDENT_INC
-    MESSAGE "targetgroup list - list all targets' groups"
-    MESSAGE "targetgroup add <target-groupname> - add a new target group"
-    MESSAGE "targetgroup del <target-groupname> - delete a target group"
+    MESSAGE "targetgroup list                                         - list all targets' groups"
+    MESSAGE "targetgroup add <target-groupname>                       - add a new target group"
+    MESSAGE "targetgroup del <target-groupname>                       - delete a target group"
+    MESSAGE "targetgroup <target-groupname> add target <target-name>  - add a target host to the targetgroup"
+    MESSAGE "targetgroup <target-groupname> del target <target-name>  - delete a target host from the targetgroup"
   MSG_INDENT_DEC
   BR
 
@@ -165,10 +169,10 @@ HELP_LIST () {
 
   MSG "= Targets' Group's Access ="
   MSG_INDENT_INC
-    MESSAGE "targetgroup <target-groupname> access list users - list all users who can access to the targetgroup"
-    MESSAGE "targetgroup <target-groupname> access add user <user-name> - give user acess to the targetgroup"
-    MESSAGE "targetgroup <target-groupname> access del user <user-name> - revoke user access to the targetgroup"
-    MESSAGE "targetgroup <target-groupname> access list usergroup - list all usergroup who can access to the targetgroup"
+    MESSAGE "targetgroup <target-groupname> access list users                     - list all users who can access to the targetgroup"
+    MESSAGE "targetgroup <target-groupname> access add user <user-name>           - give user acess to the targetgroup"
+    MESSAGE "targetgroup <target-groupname> access del user <user-name>           - revoke user access to the targetgroup"
+    MESSAGE "targetgroup <target-groupname> access list usergroups                - list all usergroup who can access to the targetgroup"
     MESSAGE "targetgroup <target-groupname> access add usergroup <usergroup-name> - give usergroup access to the targetgroup"
     MESSAGE "targetgroup <target-groupname> access del usergroup <usergroup-name> - revoke usergroup access to the targetgroup"
   MSG_INDENT_DEC
