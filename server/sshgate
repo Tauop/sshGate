@@ -62,6 +62,7 @@ CLI_REGISTER_COMMAND 'usergroup ? list targetgroups' 'USERGROUP_LIST_TARGETGROUP
 
 CLI_REGISTER_MENU    'target'
 CLI_REGISTER_COMMAND 'target list'        'TARGETS_LIST'
+CLI_REGISTER_COMMAND 'target add ?'       'TARGET_ADD \1'
 CLI_REGISTER_COMMAND 'target add ? key ?' 'TARGET_ADD \1 \2'
 CLI_REGISTER_COMMAND 'target del ?'       'TARGET_DEL \1'
 
@@ -130,7 +131,8 @@ HELP_LIST () {
   MSG "= Target ="
   MSG_INDENT_INC
     MESSAGE "target list                                  - list all targets"
-    MESSAGE "target add <target-name> key <sshkey-file>   - add a new target host"
+    MESSAGE "target add <target-name>                     - add a new target host, and generate a private sshkey"
+    MESSAGE "target add <target-name> key <sshkey-file>   - add a new target host, with a given private sshkey"
     MESSAGE "target del <target-name>                     - delete a target host"
     MESSAGE "target alias list                            - list all aliases of a target host"
     MESSAGE "target alias del <alias-name>                - delete an alias name"

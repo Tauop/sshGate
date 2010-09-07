@@ -75,7 +75,7 @@
 #   desc: echo-return the list of target host, separated by '\n'
 #
 # TARGET_ADD()
-#   usage: TARGET_ADD <target_host> <target_private_sshkey_file
+#   usage: TARGET_ADD <target_host> [ <target_private_sshkey_file> ]
 #   desc: add a target host to sshGate
 #   important: need to be root to be able to chown ssh priv key
 #
@@ -493,27 +493,42 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
   TARGET_ADD () {
     local target= privsshkey= target_privsshkey= target_pubsshkey=
-    [ $# -ne 2 ] && return 1;
+    [ $# -eq 0 ] && return 1;
+    [ $# -gt 2 ] && return 1;
 
-    target=$1; privsshkey=$2
+    target="$1"
     [ -d "${SSHGATE_DIR_TARGETS}/${target}" ] && return 1;
-    [ ! -r "${privsshkey}" ] && return 1;
+    if [ $# -eq 2 ]; then
+      privsshkey="$2"
+      [ ! -r "${privsshkey}" ] && return 1;
+    fi
 
     target_privsshkey="${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGET_PRIVATE_SSHKEY_FILENAME}"
     target_pubsshkey="${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGET_PUBLIC_SSHKEY_FILENAME}"
 
     mkdir -p "${SSHGATE_DIR_TARGETS}/${target}"
-    cp "${privsshkey}" "${target_privsshkey}"
 
-    chmod 400 "${target_privsshkey}"
-    chown "${SSHGATE_GATE_ACCOUNT}" "${target_privsshkey}"
+    if [ -n "${privsshkey}" ]; then
+      cp "${privsshkey}" "${target_privsshkey}"
+      chmod 400 "${target_privsshkey}"
+      chown "${SSHGATE_GATE_ACCOUNT}" "${target_privsshkey}"
 
-
-    # try to generate the public key, to check that the key doesn't have passphrase
-    ssh-keygen -y -f "${target_privsshkey}" > "${target_pubsshkey}"
-    if [ $? -ne 0 ]; then
-      rm -rf "${SSHGATE_DIR_TARGETS}/${target}"
-      return 1;
+      # try to generate the public key, to check that the key doesn't have passphrase
+      ssh-keygen -y -f "${target_privsshkey}" > "${target_pubsshkey}"
+      if [ $? -ne 0 ]; then
+        rm -rf "${SSHGATE_DIR_TARGETS}/${target}"
+        return 1;
+      fi
+    else
+      # generate a sshkey key pair without passphrase
+      ssh-keygen -t rsa -b 4096 -N '' -f "${target_privsshkey}" >/dev/null
+      if [ $? -ne 0 ]; then
+        rm -rf "${SSHGATE_DIR_TARGETS}/${target}"
+        return 1;
+      fi
+      mv "${target_privsshkey}.pub" "${target_pubsshkey}"
+      chmod 400 "${target_privsshkey}"
+      chown "${SSHGATE_GATE_ACCOUNT}" "${target_privsshkey}"
     fi
     chown "${SSHGATE_GATE_ACCOUNT}" "${target_pubsshkey}"
 
