@@ -603,7 +603,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     local target=
     [ $# -eq 0 ] && return 1;
 
-    target="$1"
+    target=$( TARGET_REAL "$1" )
     for file in $( find "${SSHGATE_DIR_TARGETS_GROUPS}"                   \
                       -name "${SSHGATE_TARGETGROUP_TARGET_LIST_FILENAME}" \
                       -exec grep -l "^${target}\$" {} \; ); do
@@ -615,7 +615,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
   TARGET_LIST_ALIASES () {
     local target= t=
-    [ $# -eq 1 ] && target="$1"
+    [ $# -eq 1 ] && target=$( TARGET_REAL "$1" )
 
     for file in $( find "${SSHGATE_DIR_TARGETS}/" -type l ); do
       t=$( readlink -f "${file}" )
@@ -627,9 +627,10 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     local target=
     [ $# -ne 2 ] && return 1;
 
-    target="$1"; alias="$2"
+    target=$(TARGET_REAL "$1"); alias="$2"
     [ ! -d "${SSHGATE_DIR_TARGETS}/${target}" ] && return 1
     [ -L "${SSHGATE_DIR_TARGETS}/${alias}" ] && return 1
+    [ -d "${SSHGATE_DIR_TARGETS}/${alias}" ] && return 1
 
     ln -s "${SSHGATE_DIR_TARGETS}/${target}" "${SSHGATE_DIR_TARGETS}/${alias}"
     return 0;
@@ -640,6 +641,8 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     [ $# -ne 1 ] && return 1;
 
     alias="$1"
+    [ ! -L "${alias}" ] && return 1;
+
     rm -f "${SSHGATE_DIR_TARGETS}/${alias}"
     return 0;
   }
@@ -720,7 +723,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
   }
 
   TARGET_ACCESS_ADD_USERGROUP () {
-    local target= usergroup= access_file=
+    local target= usergroup=
     [ $# -ne 2 ] && return 1;
 
     target="$1"; usergroup="$2"
@@ -732,7 +735,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
   }
 
   TARGET_ACCESS_DEL_USERGROUP () {
-    local target= usergroup= access_file=
+    local target= usergroup=
     [ $# -ne 2 ] && return 1
 
     target="$1"; usergroup="$2"
@@ -751,20 +754,20 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
   USER_ADD () {
     [ $# -ne 2 ] && return 1;
 
-    local user=$1 userkey=$2
+    local user="$1" userkey="$2"
 
     [ ! -r "${userkey}" ] && return 1;
     [ -z "${user}" -o "${user/ }" != "${user}" ] && return 1
 
     [ -f "${SSHGATE_DIR_USERS}/${user}" ] && return 1;
 
-    cp ${userkey} ${SSHGATE_DIR_USERS}/${user}
+    cp "${userkey}" "${SSHGATE_DIR_USERS}/${user}"
     SETUP_SSHGATE_GATE_ACCOUNT
   }
 
   USER_DEL () {
     [ $# -ne 1 ] && return 1
-    local user=$1
+    local user="$1"
 
     [ ! -f "${SSHGATE_DIR_USERS}/${user}" ] && return 1;
 
