@@ -567,8 +567,8 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     done
 
     # access through usergroup
-    for usergroup in $( cat "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USERGROUP_ACCESS_FILENAME}" ); do
-      users_list=$( cat "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" )
+    for usergroup in $( TARGET_ACCESS_LIST_USERGROUPS "${target}" ); do
+      users_list=$( USERGROUP_LIST_USERS "${usergroup}" )
       if [ -n "${users_list}" ]; then
         echo -n "${users_list}" | tr $'\n' ','
         echo " --- usergroup(${usergroup}) ---> ${target}"
@@ -587,8 +587,8 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
     # access through targetgroup's usergroup
     for targetgroup in ${targetgroup_list}; do
-      for usergroup in $( cat "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/${SSHGATE_TARGETGROUP_USERGROUP_ACCESS_FILENAME}" ); do
-        users_list=$( cat "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" )
+      for usergroup in $( TARGETGROUP_ACCESS_LIST_USERGROUPS "${targetgroup}" ); do
+        users_list=$( USERGROUP_LIST_USERS "${usergroup}" )
         if [ -n "${users_list}" ]; then
           echo -n "${users_list}" | tr $'\n' ','
           echo " --- usergroup(${usergroup}) --- targetgroup(${targetgroup}) ---> ${target}"
