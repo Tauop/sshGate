@@ -543,8 +543,12 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     local target=
     [ $# -ne 1 ] && return 1;
 
-    target="$1"
+    target=$( TARGET_REAL "$1" )
     [ ! -d "${SSHGATE_DIR_TARGETS}/${target}/" ] && return 1
+
+    for alias in $( TARGET_LIST_ALIASES "${target}" ); do
+      rm -f "${SSHGATE_DIR_TARGETS}/${alias}"
+    done
 
     rm -rf "${SSHGATE_DIR_TARGETS}/${target}"
     return 0;
