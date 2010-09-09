@@ -124,7 +124,7 @@
 #
 # TARGET_ACCESS_LIST_USERGROUPS()
 #   usage: TARGET_ACCESS_LIST_USERGROUPS <target_host>
-#   desc: list group which have access to <target_host>
+#   desc: list users' group which have access to <target_host>
 #
 # TARGET_ACCESS_ADD_USERGROUP()
 #   usage: TARGET_ACCESS_ADD_USERGROUP <target_host> <user_group>
@@ -148,8 +148,8 @@
 #
 # USER_LIST_USERGROUPS()
 #   usage: USER_LIST_USERGROUPS [ <user> ]
-#   desc: List all group, which the user is in.
-#   note: group name are separated by \n
+#   desc: List all users' group, which the user is in.
+#   note: users' group name are separated by \n
 #   note: if called without argument, try to use ${SSHKEY_USER} variable
 #
 # USER_LIST_TARGETS()
@@ -170,8 +170,8 @@
 #
 # USERGROUPS_LIST()
 #   usage: USERGROUPS_LIST
-#   desc: List all group of the sshGate
-#   note: group name are separated by '\n'
+#   desc: List all users' group of the sshGate
+#   note: users' group name are separated by '\n'
 #
 # USERGROUP_ADD()
 #   usage: USERGROUP_ADD <user_group>
@@ -179,7 +179,7 @@
 #
 # USERGROUP_DEL()
 #   usage: USERGROUP_DEL <user_group>
-#   desc: Delete a group from sshGate
+#   desc: Delete a users' group from sshGate
 #
 # USERGROUP_LIST_USERS()
 #   usage: USERGROUP_LIST_USERS <user_group>
@@ -823,6 +823,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
           TARGETGROUP_LIST_TARGETS "${targetgroup}"
         done
     ) | sort -u
+
     return 0;
   }
 
@@ -899,74 +900,75 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
   }
 
   USERGROUP_ADD () {
-    local group=
+    local usergroup=
 
     [ $# -ne 1 ] && return 1;
-    group="$1"
+    usergroup="$1"
 
-    [ -f "${SSHGATE_DIR_USERS_GROUPS}/${group}" ] && return 1
+    [ -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" ] && return 1
 
-    touch "${SSHGATE_DIR_USERS_GROUPS}/${group}"
+    touch "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}"
     return 0;
   }
 
   USERGROUP_DEL () {
-    local group=
+    local usergroup=
 
     [ $# -ne 1 ] && return 1;
-    group="$1"
+    usergroup="$1"
 
-    [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${group}" ] && return 1
-    rm -f "${SSHGATE_DIR_USERS_GROUPS}/${group}"
+    [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" ] && return 1
+    rm -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}"
 
     return 0
   }
 
   USERGROUP_LIST_USERS () {
-    local group=
+    local usergroup=
 
     [ $# -ne 1 ] && return 1;
-    group="$1"
+    usergroup="$1"
 
-    [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${group}" ] && return 1;
+    [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" ] && return 1;
 
-    cat "${SSHGATE_DIR_USERS_GROUPS}/${group}"
+    cat "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}"
     return 0;
   }
 
   USERGROUP_ADD_USER () {
-    local group= user=
+    local usergroup= user=
     [ $# -ne 2 ] && return 1;
 
-    group="$1"; user="$2";
-    [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${group}" ] && return 1;
+    usergroup="$1"; user="$2";
+    [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" ] && return 1;
     [ ! -f "${SSHGATE_DIR_USERS}/${user}" ] && return 1;
 
-    private_ACL_FILE_ADD "${user}" "${SSHGATE_DIR_USERS_GROUPS}/${group}"
+    private_ACL_FILE_ADD "${user}" "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}"
     return 0;
   }
 
   USERGROUP_DEL_USER () {
-    local group= user=
+    local usergroup= user=
     [ $# -ne 2 ] && return 1;
 
-    group="$1"; user="$2"
-    [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${group}" ] && return 1;
+    usergroup="$1"; user="$2"
+    [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" ] && return 1;
     [ ! -f "${SSHGATE_DIR_USERS}/${user}" ] && return 1;
 
-    private_ACL_FILE_DEL "${user}" "${SSHGATE_DIR_USERS_GROUPS}/${group}"
+    private_ACL_FILE_DEL "${user}" "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}"
     return 0;
   }
 
   USERGROUP_LIST_TARGETS () {
-    local group=
+    local usergroup= target=
     [ $# -ne 1 ] && return 1;
 
-    group="$1"
-    [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${group}" ] && return 1;
-    for file in $( find "${SSHGATE_DIR_TARGETS}"                       \
+    usergroup="$1"
+    [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" ] && return 1;
+
+    for file in $( find "${SSHGATE_DIR_TARGETS}"                           \
                       -name "${SSHGATE_TARGETS_USERGROUP_ACCESS_FILENAME}" \
-                      -exec grep -l "^${group}\$" {} \; ); do
+                      -exec grep -l "^${usergroup}\$" {} \; ); do
       file="${file%%/${SSHGATE_TARGETS_USERGROUP_ACCESS_FILENAME}}"
       echo "${file##*/}"
     done
@@ -993,65 +995,66 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
   }
 
   TARGETGROUP_ADD () {
-    local group=
+    local targetgroup=
 
     [ $# -ne 1 ] && return 1;
-    group="$1"
+    targetgroup="$1"
 
-    [ -d "${SSHGATE_DIR_TARGETS_GROUPS}/${group}/" ] && return 1;
+    [ -d "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/" ] && return 1;
 
-    mkdir "${SSHGATE_DIR_TARGETS_GROUPS}/${group}"
-    touch "${SSHGATE_DIR_TARGETS_GROUPS}/${group}/${SSHGATE_TARGETGROUP_TARGET_LIST_FILENAME}"
-    touch "${SSHGATE_DIR_TARGETS_GROUPS}/${group}/${SSHGATE_TARGETGROUP_USER_ACCESS_FILENAME}"
-    touch "${SSHGATE_DIR_TARGETS_GROUPS}/${group}/${SSHGATE_TARGETGROUP_USERGROUP_ACCESS_FILENAME}"
+    mkdir "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}"
+    touch "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/${SSHGATE_TARGETGROUP_TARGET_LIST_FILENAME}"
+    touch "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/${SSHGATE_TARGETGROUP_USER_ACCESS_FILENAME}"
+    touch "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/${SSHGATE_TARGETGROUP_USERGROUP_ACCESS_FILENAME}"
     return 0;
   }
 
   TARGETGROUP_DEL () {
-    local group=
+    local targetgroup=
 
     [ $# -ne 1 ] && return 1;
-    group="$1"
+    targetgroup="$1"
 
-    [ ! -d "${SSHGATE_DIR_TARGETS_GROUPS}/${group}/" ] && return 1;
-    rm -rf "${SSHGATE_DIR_TARGETS_GROUPS}/${group}"
+    [ ! -d "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/" ] && return 1;
+    rm -rf "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}"
 
     return 0;
   }
 
   TARGETGROUP_LIST_TARGETS () {
-    local group=
+    local targetgroup=
 
     [ $# -ne 1 ] && return 1;
-    group="$1"
+    targetgroup="$1"
 
-    [ ! -d "${SSHGATE_DIR_TARGETS_GROUPS}/${group}/" ] && return 1;
+    [ ! -d "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/" ] && return 1;
 
-    cat "${SSHGATE_DIR_TARGETS_GROUPS}/${group}/${SSHGATE_TARGETGROUP_TARGET_LIST_FILENAME}"
+    cat "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/${SSHGATE_TARGETGROUP_TARGET_LIST_FILENAME}"
+
     return 0;
   }
 
   TARGETGROUP_ADD_TARGET () {
-    local group= target=
+    local targetgroup= target=
     [ $# -ne 2 ] && return 1;
 
-    group="$1"; target="$2";
-    [ ! -d "${SSHGATE_DIR_TARGETS_GROUPS}/${group}/" ] && retur 1;
+    targetgroup="$1"; target=$( TARGET_REAL "$2" );
+    [ ! -d "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/" ] && retur 1;
     [ ! -d "${SSHGATE_DIR_TARGETS}/${target}/" ] && return 1;
 
-    private_ACL_FILE_ADD "${target}" "${SSHGATE_DIR_TARGETS_GROUPS}/${group}/${SSHGATE_TARGETGROUP_TARGET_LIST_FILENAME}"
+    private_ACL_FILE_ADD "${target}" "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/${SSHGATE_TARGETGROUP_TARGET_LIST_FILENAME}"
     return 0;
   }
 
   TARGETGROUP_DEL_TARGET () {
-    local group= target=
+    local targetgroup= target=
     [ $# -ne 2 ] && return 1;
 
-    group="$1"; target="$2"
-    [ ! -d "${SSHGATE_DIR_TARGETS_GROUPS}/${group}/" ] && return 1;
+    targetgroup="$1"; target=$( TARGET_REAL "$2" )
+    [ ! -d "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/" ] && return 1;
     [ ! -d "${SSHGATE_DIR_TARGETS}/${target}/" ] && return 1;
 
-    private_ACL_FILE_DEL "${target}" "${SSHGATE_DIR_TARGETS_GROUPS}/${group}/${SSHGATE_TARGETGROUP_TARGET_LIST_FILENAME}"
+    private_ACL_FILE_DEL "${target}" "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/${SSHGATE_TARGETGROUP_TARGET_LIST_FILENAME}"
     return 0;
   }
 
