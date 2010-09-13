@@ -26,10 +26,24 @@
 #   desc: if called without argument, display all functions usage list.
 #         if called with a function_name, display all information about this function
 #
+# SSHGATE_ACCOUNT_HOMEDIR()
+#   usage: SSHGATE_ACCOUNT_HOMEDIR
+#   desc: return the home directory of the SSHGATE_GATE_ACCOUNT user
+#
 # SETUP_SSHGATE_GATE_ACCOUNT()
 #   usage: SETUP_SSHGATE_GATE_ACCOUNT
 #   desc: update the authorized_key2 of the sshGate account
 #   important: need to be root to be able to update authorized_keys2 and chown files
+#
+# ADD_TARGET_TO_KNOWN_HOST()
+#   usage: ADD_TARGET_TO_KNOWN_HOST <target> [ <file> ]
+#   desc: call ssh-keyscan to the <target> and add the public host sshkey to the <file>
+#   note: if <file> is not specified, determine it with SSHGATE_ACCOUNT_HOMEDIR
+#
+# DELETE_TARGET_FROM_KNOWN_HOST()
+#   usage: DELETE_TARGET_FROM_KNOWN_HOST <target> [ <file> ]
+#   desc: delete the public host sshkey of the <target> from the known_hosts file
+#   note: if <file> is not specified, determine it with SSHGATE_ACCOUNT_HOMEDIR
 #
 # TARGET_LOG_FILE()
 #   usage: TARGET_LOG_FILE [ <target_host> ]
@@ -82,6 +96,27 @@
 # TARGET_DEL()
 #   usage: TARGET_DEL <target_host>
 #   desc: delete a target host from sshGate
+#
+# TARGET_SSH_INSTALL_KEY()
+#   usage: TARGET_SSH_INSTALL_KEY <target_host>
+#   desc: Try to install the public sshkey on the <target_host>
+#   note: you may have access to the <target_host> with the sshkey of the
+#         root account, or with the your sshkey and sshagent forwarding.
+#
+# TARGET_SSH_INSTALL_ALL_KEYS()
+#   usage: TARGET_SSH_INSTALL_ALL_KEYS
+#   desc: call TARGET_SSH_INSTALL_KEY on all targets
+#   note: you may have access to the <target_host> with the sshkey of the
+#         root account, or with the your sshkey and sshagent forwarding.
+#
+# TARGET_SSH_TEST()
+#   usage: TARGET_TEST <target_host>
+#   desc: Test to connect to the <target_host>
+#
+# TARGETS_SSH_TEST_ALL()
+#   usage: TARGETS_TEST_ALL
+#   desc: Test to connect to all target.
+#   important: this take a while to test ssh connection on all target
 #
 # TARGET_ACCESS_INFO()
 #   usage: TARGET_ACCESS_INFO <target_host>
@@ -359,10 +394,14 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     return 0;
   }
 
+  SSHGATE_ACCOUNT_HOMEDIR() {
+    cat /etc/passwd | grep "${SSHGATE_GATE_ACCOUNT}" | cut -d':' -f6
+  }
+
   SETUP_SSHGATE_GATE_ACCOUNT () {
     local home_dir= authorized_keys2= user_key= real_target=
 
-    home_dir=$( cat /etc/passwd | grep "${SSHGATE_GATE_ACCOUNT}" | cut -d':' -f6 )
+    home_dir=$( SSHGATE_ACCOUNT_HOMEDIR )
     [ -z "${home_dir}" ] && return 1;
 
     authorized_keys2="${home_dir}/.ssh/authorized_keys2"
@@ -381,15 +420,53 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
     echo -n '' > "${home_dir}/.ssh/known_hosts"
     for target in $( TARGETS_LIST ); do
-      real_target=$( TARGET_REAL "${target}" )
-      if [ "${real_target}" = "${target}" ]; then
-        ssh-keyscan -t dsa,rsa "${target}" >> "${home_dir}/.ssh/known_hosts" 2>/dev/null
-      fi
+        ADD_TARGET_TO_KNOWN_HOST "${target}" "${home_dir}/.ssh/known_hosts"
     done
-    chown "${SSHGATE_GATE_ACCOUNT}" "${home_dir}/.ssh/known_hosts"
 
     return 0;
   }
+
+  ADD_TARGET_TO_KNOWN_HOST() {
+    local target= target_ip= file=
+    [ $# -eq 0 ] && return 1;
+    [ $# -gt 2 ] && return 1;
+
+    target="$1"
+    [ $# -eq 2 ] && file="$2"
+    [ -z "${file}" ] && file="$(SSHGATE_ACCOUNT_HOMEDIR)/.ssh/known_hosts"
+
+    target_ip=$( host "${target}" | grep 'address' | head -n 1 | sed -e 's/^.* \([^ ]*\)$/\1/' )
+
+    ssh-keyscan -t dsa,rsa "${target}"    >> "${file}" 2>/dev/null
+    ssh-keyscan -H -t dsa,rsa "${target}" >> "${file}" 2>/dev/null
+
+    ssh-keyscan -t dsa,rsa "${target_ip}"    >> "${file}" 2>/dev/null
+    ssh-keyscan -H -t dsa,rsa "${target_ip}" >> "${file}" 2>/dev/null
+
+    chown "${SSHGATE_GATE_ACCOUNT}" "${file}"
+  }
+
+  DELETE_TARGET_FROM_KNOWN_HOST() {
+    local target= target_hash= file= tmp_file=
+    [ $# -eq 0 ] && return 1;
+    [ $# -gt 2 ] && return 1;
+
+    target="$1"
+    [ $# -eq 2 ] && file="$2"
+    [ -z "${file}" ] && file="$(SSHGATE_ACCOUNT_HOMEDIR)/.ssh/known_hosts"
+    tmp_file="/tmp/file.${RANDOM}"
+
+    ADD_TARGET_TO_KNOWN_HOST "${target}" "${tmp_file}"
+    target_hash=$( < "${tmp_file}" grep -v "${target}" | cut -d' ' -f 1)
+
+    grep -v "^${target}"      < "${file}"     > "${tmp_file}"
+    grep -v "^${target_hash}" < "${tmp_file}" > "${file}"
+
+    chown "${SSHGATE_GATE_ACCOUNT}" "${file}"
+
+    rm -f "${tmp_file}"
+  }
+
 
   # the target global log file
   # create the log directory if not exists
@@ -488,7 +565,12 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
   }
 
   TARGETS_LIST () {
-    ls --color=none -m "${SSHGATE_DIR_TARGETS}" | tr $'\n' ' ' | sed -e 's/, /,/g' | tr ',' $'\n'; echo
+    local res= find_opt=
+    [ $# -eq 1 ] && find_opt="-iname '$1'"
+
+    res=$( eval "find '${SSHGATE_DIR_TARGETS}' -mindepth 1 -type d ${find_opt} -printf '%P\n'" )
+    echo "${res}"
+    [ -z "${res}" ] && echo
     return 0;
   }
 
@@ -537,6 +619,9 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     touch "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USER_ACCESS_FILENAME}"
     touch "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USERGROUP_ACCESS_FILENAME}"
 
+    ADD_TARGET_TO_KNOWN_HOST "${target}"
+    TARGET_SSH_INSTALL_KEY   "${target}"
+
     return 0;
   }
 
@@ -552,7 +637,91 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     done
 
     rm -rf "${SSHGATE_DIR_TARGETS}/${target}"
+    DELETE_TARGET_FROM_KNOWN_HOST "${target}"
+
     return 0;
+  }
+
+  TARGET_SSH_INSTALL_KEY () {
+    local target= sshkey_file= known_hosts_file=
+    [ $# -eq 0 ] && return 1;
+    [ $# -gt 2 ] && return 1;
+
+    target=$( TARGET_REAL "$1" )
+    [ ! -d "${SSHGATE_DIR_TARGETS}/${target}/" ] && return 1;
+
+    sshkey_file=$( TARGET_PUBLIC_SSHKEY_FILE "${target}" )
+    [ -z "${sshkey_file}" ] && return 1;
+
+    [ $# -eq 2 ] && known_hosts_file="$2"
+    if [ -z "${known_hosts_file}" ]; then
+      known_hosts_file="$( SSHGATE_ACCOUNT_HOMEDIR )/.ssh/known_hosts"
+      cp "${known_hosts_file}" /tmp
+      known_hosts_file="/tmp/known_hosts"
+    fi
+
+    cat "${sshkey_file}" \
+      | ssh -o "ConnectTimeout 5"                          \
+            -o "UserKnownHostsFile ${known_hosts_file}"    \
+            "${SSHGATE_TARGETS_DEFAULT_USER}@${target}"    \
+            "umask 077; test -d .ssh || mkdir .ssh ; cat >> .ssh/authorized_keys"
+    return $?
+  }
+
+  TARGET_SSH_INSTALL_ALL_KEYS () {
+    echo "= Install sshkey on all targets ="
+    for target in $( TARGETS_LIST ); do
+      echo -n ".  ${target}  ... "
+      TARGET_SSH_INSTALL_KEY "${target}"
+      [ $? eq 0 ] && echo 'OK' || echo 'KO'
+    done
+  }
+
+  TARGET_SSH_TEST () {
+    local target= known_hosts_file= sshkey_file= reply=
+    [ $# -eq 0 ] && return 1;
+    [ $# -gt 2 ] && return 1;
+
+    target=$( TARGET_REAL "$1" )
+    [ $# -eq 2 ] && known_hosts_file="$2"
+
+    if [ -z "${known_hosts_file}" ]; then
+      known_hosts_file="$( SSHGATE_ACCOUNT_HOMEDIR )/.ssh/known_hosts"
+      cp "${known_hosts_file}" /tmp
+      known_hosts_file="/tmp/known_hosts"
+    fi
+
+    echo -n "-  ${target}  ... "
+    sshkey_file=$( TARGET_PRIVATE_SSHKEY_FILE "${target}" )
+    reply=$( ssh -o "ConnectTimeout 5"                       \
+                 -o "UserKnownHostsFile ${known_hosts_file}" \
+                 -o "BatchMode yes"                          \
+                 -o "IdentitiesOnly yes"                     \
+                 -i "${sshkey_file}"                         \
+                 "${SSHGATE_TARGETS_DEFAULT_USER}@${target}" "echo 'test'" 2>&1 )
+    if [ $? -eq 0 -a "${reply}" = 'test' ]; then
+      echo 'OK';
+    else
+      echo 'KO';
+      echo "     ${reply}";
+    fi
+
+    [ $# -ne 2 ] && rm -f "${known_hosts_file}"
+  }
+
+  TARGET_SSH_TEST_ALL () {
+    local known_hosts_file=
+
+    known_hosts_file="$( SSHGATE_ACCOUNT_HOMEDIR )/.ssh/known_hosts"
+    cp "${known_hosts_file}" /tmp
+    known_hosts_file="/tmp/known_hosts"
+
+    echo "= Test all targets ssh connectivity ="
+    for target in $( TARGETS_LIST ); do
+      TARGET_SSH_TEST "${target}" "${known_hosts_file}"
+    done
+
+    rm -f "${known_hosts_file}"
   }
 
   TARGET_ACCESS_INFO () {
