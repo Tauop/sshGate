@@ -172,12 +172,12 @@ HELP_LIST () {
 
   MSG "= Target's Access ="
   MSG_INDENT_INC
-    MESSAGE "target <target-name> access list users              - list all users who can access to the target host"
-    MESSAGE "target <target-name> access add user <user-name>    - give user access to a target host"
-    MESSAGE "target <target-name> access del user <user-name>    - revoke user access of target host"
-    MESSAGE "target <target-name> access list groups             - list all groups who can access to the target host"
-    MESSAGE "target <target-name> access add group <group-name>  - give group access to a target host"
-    MESSAGE "target <target-name> access del group <group-name>  - revoke group access of a target host"
+    MESSAGE "target <target-name> access list users                  - list all users who can access to the target host"
+    MESSAGE "target <target-name> access add user <user-name>        - give user access to a target host"
+    MESSAGE "target <target-name> access del user <user-name>        - revoke user access of target host"
+    MESSAGE "target <target-name> access list usergroups             - list all groups who can access to the target host"
+    MESSAGE "target <target-name> access add usergroup <group-name>  - give group access to a target host"
+    MESSAGE "target <target-name> access del usergroup <group-name>  - revoke group access of a target host"
   MSG_INDENT_DEC
   BR
 
@@ -209,5 +209,6 @@ BR
 MSG "Use 'help' command to list all avariable commands"
 BR
 
+CLI_USE_READLINE --history-file ~/.sshgate_history
 CLI_SET_PROMPT "sshGate"
 CLI_RUN
