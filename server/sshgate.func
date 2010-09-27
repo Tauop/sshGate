@@ -309,6 +309,9 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     fi
   fi
 
+  ERROR () { echo "ERROR: $*" 1>&2; }
+  BAD_ARGUMENTS () { ERROR "Bad arguments"; }
+
   # usage: private_ACL_FILE_ADD <line> <file>
   private_ACL_FILE_ADD () {
     grep "^$1\$" < "$2" >/dev/null 2>/dev/null
@@ -402,7 +405,10 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     local home_dir= authorized_keys2= user_key= real_target=
 
     home_dir=$( SSHGATE_ACCOUNT_HOMEDIR )
-    [ -z "${home_dir}" ] && return 1;
+    if [ -z "${home_dir}" ]; then
+      ERROR "Can't find home directory of ${SSHGATE_GATE_ACCOUNT} user"
+      return 1;
+    fi
 
     authorized_keys2="${home_dir}/.ssh/authorized_keys2"
 
@@ -428,8 +434,9 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
   ADD_TARGET_TO_KNOWN_HOST() {
     local target= target_ip= file=
-    [ $# -eq 0 ] && return 1;
-    [ $# -gt 2 ] && return 1;
+    if [ $# -eq 0 -o $# -gt 2 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
 
     target="$1"
     [ $# -eq 2 ] && file="$2"
@@ -448,8 +455,9 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
   DELETE_TARGET_FROM_KNOWN_HOST() {
     local target= target_hash= file= tmp_file=
-    [ $# -eq 0 ] && return 1;
-    [ $# -gt 2 ] && return 1;
+    if [ $# -eq 0 -o $# -gt 2 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
 
     target="$1"
     [ $# -eq 2 ] && file="$2"
@@ -514,8 +522,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
         echo "# public sshkey ${user}"
         cat "$f";
       else
-        echo "ERROR: unknown user $user"
-        return 1;
+        ERROR "Unknown user $user" ; return 1;
       fi
     else
       for user in $( USERS_LIST ); do
@@ -569,15 +576,16 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     [ $# -eq 1 ] && find_opt="-iname '$1'"
 
     res=$( eval "find '${SSHGATE_DIR_TARGETS}' -mindepth 1 -type d ${find_opt} -printf '%P\n'" )
-    echo "${res}"
+    echo "${res}" | sort -u
     [ -z "${res}" ] && echo
     return 0;
   }
 
   TARGET_ADD () {
     local target= privsshkey= target_privsshkey= target_pubsshkey=
-    [ $# -eq 0 ] && return 1;
-    [ $# -gt 2 ] && return 1;
+    if [ $# -eq 0 -o $# -gt 2 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
 
     target="$1"
     [ -d "${SSHGATE_DIR_TARGETS}/${target}" ] && return 1;
@@ -600,14 +608,14 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
       ssh-keygen -y -f "${target_privsshkey}" > "${target_pubsshkey}"
       if [ $? -ne 0 ]; then
         rm -rf "${SSHGATE_DIR_TARGETS}/${target}"
-        return 1;
+        ERROR "Unable to generate public ssh key." ; return 1;
       fi
     else
       # generate a sshkey key pair without passphrase
       ssh-keygen -t rsa -b 4096 -N '' -f "${target_privsshkey}" >/dev/null
       if [ $? -ne 0 ]; then
         rm -rf "${SSHGATE_DIR_TARGETS}/${target}"
-        return 1;
+        ERROR "Unable to generate ssh keys" ; return 1;
       fi
       mv "${target_privsshkey}.pub" "${target_pubsshkey}"
       chmod 400 "${target_privsshkey}"
@@ -627,7 +635,9 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
   TARGET_DEL () {
     local target=
-    [ $# -ne 1 ] && return 1;
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
 
     target=$( TARGET_REAL "$1" )
     [ ! -d "${SSHGATE_DIR_TARGETS}/${target}/" ] && return 1
@@ -644,14 +654,19 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
   TARGET_SSH_INSTALL_KEY () {
     local target= sshkey_file= known_hosts_file=
-    [ $# -eq 0 ] && return 1;
-    [ $# -gt 2 ] && return 1;
+    if [ $# -eq 0 -o $# -gt 2 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
 
     target=$( TARGET_REAL "$1" )
-    [ ! -d "${SSHGATE_DIR_TARGETS}/${target}/" ] && return 1;
+    if [ ! -d "${SSHGATE_DIR_TARGETS}/${target}/" ]; then
+      ERROR "Target host '${target}' doesn't exist" ; return 1;
+    fi
 
     sshkey_file=$( TARGET_PUBLIC_SSHKEY_FILE "${target}" )
-    [ -z "${sshkey_file}" ] && return 1;
+    if [ -z "${sshkey_file}" ]; then
+      ERROR "Unable to find private ssh key of '${target}'" ; return 1;
+    fi
 
     [ $# -eq 2 ] && known_hosts_file="$2"
     if [ -z "${known_hosts_file}" ]; then
@@ -664,8 +679,11 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
       | ssh -o "ConnectTimeout 5"                          \
             -o "UserKnownHostsFile ${known_hosts_file}"    \
             "${SSHGATE_TARGETS_DEFAULT_USER}@${target}"    \
-            "umask 077; test -d .ssh || mkdir .ssh ; cat >> .ssh/authorized_keys"
-    return $?
+            "umask 077; test -d .ssh || mkdir .ssh ; cat >> .ssh/authorized_keys" 2>/dev/null
+    if [ $? -ne 0 ]; then
+      echo "NOTICE: Public ssh key of '${target}' can't be installed on '${target}'. Install it manually"
+    fi
+    return 0
   }
 
   TARGET_SSH_INSTALL_ALL_KEYS () {
@@ -679,8 +697,9 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
   TARGET_SSH_TEST () {
     local target= known_hosts_file= sshkey_file= reply=
-    [ $# -eq 0 ] && return 1;
-    [ $# -gt 2 ] && return 1;
+    if [ $# -eq 0 -o $# -gt 2 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
 
     target=$( TARGET_REAL "$1" )
     [ $# -eq 2 ] && known_hosts_file="$2"
@@ -726,10 +745,14 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
   TARGET_ACCESS_INFO () {
     local target= targetgroup_list= users_list=
-    [ $# -ne 1 ] && return 1;
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
 
     target="$1"
-    [ ! -d "${SSHGATE_DIR_TARGETS}/${target}/" ] && return 1;
+    if [ ! -d "${SSHGATE_DIR_TARGETS}/${target}/" ]; then
+      ERROR "Target host '${target}' doesn't exist" ; return 1;
+    fi
 
     # direct access
     for user in $( cat "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USER_ACCESS_FILENAME}" ); do
@@ -771,7 +794,9 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
   TARGET_LIST_TARGETGROUPS () {
     local target=
-    [ $# -eq 0 ] && return 1;
+    if [ $# -eq 0 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
 
     target=$( TARGET_REAL "$1" )
     for file in $( find "${SSHGATE_DIR_TARGETS_GROUPS}"                   \
@@ -779,7 +804,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
                       -exec grep -l "^${target}\$" {} \; ); do
       file="${file%%/${SSHGATE_TARGETGROUP_TARGET_LIST_FILENAME}}"
       echo "${file##*/}"
-    done
+    done | sort -u
     return 0;
   }
 
@@ -790,17 +815,26 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     for file in $( find "${SSHGATE_DIR_TARGETS}/" -type l ); do
       t=$( readlink -f "${file}" )
       [ -z "${target}" -o "${t##*/}" = "${target}" ] && echo "${file##*/}"
-    done
+    done | sort -u
+    return 0;
   }
 
   TARGET_ADD_ALIAS () {
     local target=
-    [ $# -ne 2 ] && return 1;
+    if [ $# -ne 2 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
 
     target=$(TARGET_REAL "$1"); alias="$2"
-    [ ! -d "${SSHGATE_DIR_TARGETS}/${target}" ] && return 1
-    [ -L "${SSHGATE_DIR_TARGETS}/${alias}" ] && return 1
-    [ -d "${SSHGATE_DIR_TARGETS}/${alias}" ] && return 1
+    if [ ! -d "${SSHGATE_DIR_TARGETS}/${target}" ]; then
+      ERROR "Target host '${target}' doesn't exist" ; return 1
+    fi
+    if [ -L "${SSHGATE_DIR_TARGETS}/${alias}" ]; then
+      ERROR "Target alias '${alias}' already exists" ; return 1
+    fi
+    if [ -d "${SSHGATE_DIR_TARGETS}/${alias}" ]; then
+      ERROR "Target alias '${alias}' correspond to a target host name" ; return 1
+    fi
 
     ln -s "${SSHGATE_DIR_TARGETS}/${target}" "${SSHGATE_DIR_TARGETS}/${alias}"
     return 0;
@@ -808,10 +842,14 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
   TARGET_DEL_ALIAS () {
     local alias=
-    [ $# -ne 1 ] && return 1;
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
 
     alias="$1"
-    [ ! -L "${alias}" ] && return 1;
+    if [ ! -L "${alias}" ]; then
+      ERROR "Target alias '${alias}' doesn't exist" ; return 1;
+    fi
 
     rm -f "${SSHGATE_DIR_TARGETS}/${alias}"
     return 0;
@@ -832,10 +870,14 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
   TARGET_ACCESS_LIST_USERS () {
     local target= files=
-    [ $# -ne 1 ] && return 1;
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
 
     target="$1"
-    [ ! -d "${SSHGATE_DIR_TARGETS}/${target}" ] && return 1;
+    if [ ! -d "${SSHGATE_DIR_TARGETS}/${target}" ]; then
+      ERROR "Target host '${target}' doesn't exist" ; return 1;
+    fi
 
     files="${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USER_ACCESS_FILENAME}"
 
@@ -859,11 +901,17 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
   TARGET_ACCESS_ADD_USER () {
     local target= user=
-    [ $# -ne 2 ] && return 1;
+    if [ $# -ne 2 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
 
     target="$1"; user="$2";
-    [ ! -d "${SSHGATE_DIR_TARGETS}/${target}" ] && return 1;
-    [ ! -f "${SSHGATE_DIR_USERS}/${user}" ] && return 1;
+    if [ ! -d "${SSHGATE_DIR_TARGETS}/${target}" ]; then
+      ERROR "Target host '${target}' doesn't exist" ; return 1;
+    fi
+    if [ ! -f "${SSHGATE_DIR_USERS}/${user}" ]; then
+      ERROR "User '${user}' doesn't exist" ; return 1;
+    fi
 
     private_ACL_FILE_ADD "${user}" "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USER_ACCESS_FILENAME}"
     return 0;
@@ -871,11 +919,17 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
   TARGET_ACCESS_DEL_USER () {
     local target= user= access_file= random=
-    [ $# -ne 2 ] && return 1
+    if [ $# -ne 2 ]; then
+      BAD_ARGUMENTS ; return 1
+    fi
 
     target="$1"; user="$2"
-    [ ! -d "${SSHGATE_DIR_TARGETS}/${target}" ] && return 1;
-    [ ! -f "${SSHGATE_DIR_USERS}/${user}" ] && return 1;
+    if [ ! -d "${SSHGATE_DIR_TARGETS}/${target}" ]; then
+      ERROR "Target host '${target}' doesn't exist" ; return 1;
+    fi
+    if [ ! -f "${SSHGATE_DIR_USERS}/${user}" ]; then
+      ERROR "User '${user}' doesn't exist" ; return 1;
+    fi
 
     private_ACL_FILE_DEL "${user}" "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USER_ACCESS_FILENAME}"
     return 0;
@@ -883,22 +937,32 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
   TARGET_ACCESS_LIST_USERGROUPS () {
     local target=
-    [ $# -ne 1 ] && return 1;
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
 
     target="$1"
-    [ ! -d "${SSHGATE_DIR_TARGETS}/${target}" ] && return 1;
+    if [ ! -d "${SSHGATE_DIR_TARGETS}/${target}" ]; then
+      ERROR "Target host '${target}' doesn't exist" ; return 1;
+    fi
 
-    cat "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USERGROUP_ACCESS_FILENAME}"
+    cat "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USERGROUP_ACCESS_FILENAME}" | sort -u
     return 0;
   }
 
   TARGET_ACCESS_ADD_USERGROUP () {
     local target= usergroup=
-    [ $# -ne 2 ] && return 1;
+    if [ $# -ne 2 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
 
     target="$1"; usergroup="$2"
-    [ ! -d "${SSHGATE_DIR_TARGETS}/${target}" ] && return 1;
-    [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" ] && return 1;
+    if [ ! -d "${SSHGATE_DIR_TARGETS}/${target}" ]; then
+      ERROR "Target host '${target}' doesn't exist" ; return 1;
+    fi
+    if [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" ]; then
+      ERROR "User group '${usergroup}' doesn't exist" ; return 1;
+    fi
 
     private_ACL_FILE_ADD "${usergroup}" "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USERGROUP_ACCESS_FILENAME}"
     return 0;
@@ -906,40 +970,58 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
   TARGET_ACCESS_DEL_USERGROUP () {
     local target= usergroup=
-    [ $# -ne 2 ] && return 1
+    if [ $# -ne 2 ]; then
+      BAD_ARGUMENTS ; return 1
+    fi
 
     target="$1"; usergroup="$2"
-    [ ! -d "${SSHGATE_DIR_TARGETS}/${target}" ] && return 1;
-    [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" ] && return 1;
+    if [ ! -d "${SSHGATE_DIR_TARGETS}/${target}" ]; then
+      ERROR "Target  host '${target}' doesn't exist" ; return 1;
+    fi
+    if [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" ]; then
+      ERROR "User group '${usergroup}' doesn't exist" ; return 1;
+    fi
 
     private_ACL_FILE_DEL "${usergroup}" "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USERGROUP_ACCESS_FILENAME}"
     return 0;
   }
 
   USERS_LIST () {
-    ls --color=none -m "${SSHGATE_DIR_USERS}" | tr $'\n' ' ' | sed -e 's/, /,/g' | tr ',' $'\n'; echo
+    ls --color=none -m "${SSHGATE_DIR_USERS}" | tr $'\n' ' ' | sed -e 's/, /,/g' | tr ',' $'\n' | sort -u; echo
     return 0;
   }
 
   USER_ADD () {
-    [ $# -ne 2 ] && return 1;
+    if [ $# -ne 2 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
 
     local user="$1" userkey="$2"
 
-    [ ! -r "${userkey}" ] && return 1;
-    [ -z "${user}" -o "${user/ }" != "${user}" ] && return 1
+    if [ ! -r "${userkey}" ]; then
+      ERROR "Can't read user ssh key" ; return 1;
+    fi
+    if [ -z "${user}" -o "${user/ }" != "${user}" ]; then
+      ERROR "${user} is not a valid username" ; return 1
+    fi
 
-    [ -f "${SSHGATE_DIR_USERS}/${user}" ] && return 1;
+    if [ -f "${SSHGATE_DIR_USERS}/${user}" ]; then
+      ERROR "User '${user}' already exists" ; return 1;
+    fi
 
     cp "${userkey}" "${SSHGATE_DIR_USERS}/${user}"
     SETUP_SSHGATE_GATE_ACCOUNT
   }
 
   USER_DEL () {
-    [ $# -ne 1 ] && return 1
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1
+    fi
     local user="$1"
 
-    [ ! -f "${SSHGATE_DIR_USERS}/${user}" ] && return 1;
+    if [ ! -f "${SSHGATE_DIR_USERS}/${user}" ]; then
+      ERROR "User '${user}' doesn't exist"  ; return 1;
+    fi
 
 
     # delete user from groups
@@ -967,11 +1049,13 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     local user=
     [ $# -eq 0 ] && user=${SSHKEY_USER:-unknown} || user="$1"
 
-    [ ! -f "${SSHGATE_DIR_USERS}/${user}" ] && return 1;
+    if [ ! -f "${SSHGATE_DIR_USERS}/${user}" ]; then
+      ERROR "User '${user}' doesn't exist" ; return 1;
+    fi
 
     for group in $( grep -l -r "^${user}\$" "${SSHGATE_DIR_USERS_GROUPS}/" | sort -u ); do
       echo "${group##*/}"
-    done
+    done | sort -u
     return 0;
   }
 
@@ -979,7 +1063,9 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     local user=
     [ $# -eq 0 ] && user=${SSHKEY_USER:-unknown} || user="$1"
 
-    [ ! -f "${SSHGATE_DIR_USERS}/${user}" ] && return 1;
+    if [ ! -f "${SSHGATE_DIR_USERS}/${user}" ]; then
+      ERROR "User '${user}' doesn't exist" ; return 1;
+    fi
 
     ( # subshell :(
         # direct access
@@ -1008,7 +1094,9 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     local user=
     [ $# -eq 0 ] && user=${SSHKEY_USER:-unknown} || user="$1"
 
-    [ ! -f "${SSHGATE_DIR_USERS}/${user}" ] && return 1;
+    if [ ! -f "${SSHGATE_DIR_USERS}/${user}" ]; then
+      ERROR "User '${user}' doesn't exist" ; return 1;
+    fi
 
     ( # subshell :(
         for file in $( find "${SSHGATE_DIR_TARGETS_GROUPS}"                   \
@@ -1029,7 +1117,9 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     local user= targets=
     [ $# -eq 0 ] && user=${SSHKEY_USER:-unknown} || user="$1"
 
-    [ ! -f "${SSHGATE_DIR_USERS}/${user}" ] && return 1;
+    if [ ! -f "${SSHGATE_DIR_USERS}/${user}" ]; then
+      ERROR "User '${user}' doesn't exist" ; return 1;
+    fi
 
     # direct access
     for file in $( find "${SSHGATE_DIR_TARGETS}"                      \
@@ -1072,17 +1162,21 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
   }
 
   USERGROUPS_LIST () {
-    ls --color=none -m "${SSHGATE_DIR_USERS_GROUPS}" | tr $'\n' ' ' | sed -e 's/, /,/g' | tr ',' $'\n'; echo
+    ls --color=none -m "${SSHGATE_DIR_USERS_GROUPS}" | tr $'\n' ' ' | sed -e 's/, /,/g' | tr ',' $'\n' | sort -u; echo
     return 0;
   }
 
   USERGROUP_ADD () {
     local usergroup=
 
-    [ $# -ne 1 ] && return 1;
-    usergroup="$1"
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
 
-    [ -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" ] && return 1
+    usergroup="$1"
+    if [ -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" ]; then
+      ERROR "User group '${usergroup}' doesn't exist" ; return 1
+    fi
 
     touch "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}"
     return 0;
@@ -1091,10 +1185,19 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
   USERGROUP_DEL () {
     local usergroup=
 
-    [ $# -ne 1 ] && return 1;
-    usergroup="$1"
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
 
-    [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" ] && return 1
+    usergroup="$1"
+    if [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" ]; then
+      ERROR "User group '${usergroup}' doesn't exist" ; return 1
+    fi
+
+    for target in $( USERGROUP_LIST_TARGETS "${usergroup}" ); do
+      TARGET_ACCESS_DEL_USERGROUP "${target}" "${usergroup}"
+    done
+
     rm -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}"
 
     return 0
@@ -1103,22 +1206,32 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
   USERGROUP_LIST_USERS () {
     local usergroup=
 
-    [ $# -ne 1 ] && return 1;
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
     usergroup="$1"
+    if [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" ]; then
+      ERROR "User group '${usergroup}' doesn't exist" ; return 1;
+    fi
 
-    [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" ] && return 1;
-
-    cat "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}"
+    cat "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" | sort -u
     return 0;
   }
 
   USERGROUP_ADD_USER () {
     local usergroup= user=
-    [ $# -ne 2 ] && return 1;
+    if [ $# -ne 2 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
 
     usergroup="$1"; user="$2";
-    [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" ] && return 1;
-    [ ! -f "${SSHGATE_DIR_USERS}/${user}" ] && return 1;
+    if [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" ]; then
+      ERROR "User group '${usergroup}' doesn't exist" ; return 1;
+    fi
+    if [ ! -f "${SSHGATE_DIR_USERS}/${user}" ]; then
+      ERROR "User '${user}' doesn't exist" ; return 1;
+    fi
 
     private_ACL_FILE_ADD "${user}" "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}"
     return 0;
@@ -1126,11 +1239,17 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
   USERGROUP_DEL_USER () {
     local usergroup= user=
-    [ $# -ne 2 ] && return 1;
+    if [ $# -ne 2 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
 
     usergroup="$1"; user="$2"
-    [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" ] && return 1;
-    [ ! -f "${SSHGATE_DIR_USERS}/${user}" ] && return 1;
+    if [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" ]; then
+      ERROR "User group '${usergroup}' doesn't exist" ; return 1;
+    fi
+    if [ ! -f "${SSHGATE_DIR_USERS}/${user}" ]; then
+      ERROR "User '${user}' doesn't exist" ; return 1;
+    fi
 
     private_ACL_FILE_DEL "${user}" "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}"
     return 0;
@@ -1138,61 +1257,84 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
   USERGROUP_LIST_TARGETS () {
     local usergroup= target=
-    [ $# -ne 1 ] && return 1;
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
 
     usergroup="$1"
-    [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" ] && return 1;
+    if [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" ]; then
+      ERROR "User group '${usergroup}' doesn't exist" ; return 1;
+    fi
 
     for file in $( find "${SSHGATE_DIR_TARGETS}"                           \
                       -name "${SSHGATE_TARGETS_USERGROUP_ACCESS_FILENAME}" \
                       -exec grep -l "^${usergroup}\$" {} \; ); do
       file="${file%%/${SSHGATE_TARGETS_USERGROUP_ACCESS_FILENAME}}"
       echo "${file##*/}"
-    done
+    done | sort -u
     return 0;
   }
 
   USERGROUP_LIST_TARGETGROUPS () {
     local usergroup=
-    [ $# -ne 1 ] && return 1;
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
 
     usergroup="$1"
+    if [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" ]; then
+      ERROR "User group '${usergroup}' doesn't exist" ; return 1;
+    fi
+
     for file in $( find "${SSHGATE_DIR_TARGETS_GROUPS}"                        \
                       -name "${SSHGATE_TARGETGROUP_USERGROUP_ACCESS_FILENAME}" \
                       -exec grep -l "^${usergroup}\$" {} \; ); do
       file="${file%%/${SSHGATE_TARGETGROUP_USERGROUP_ACCESS_FILENAME}}"
       echo "${file##*/}"
-    done
+    done | sort -u
     return 0;
   }
 
   TARGETGROUPS_LIST () {
-    ls --color=none -m "${SSHGATE_DIR_TARGETS_GROUPS}" | tr $'\n' ' ' | sed -e 's/, /,/g' | tr ',' $'\n'; echo
+    ls --color=none -m "${SSHGATE_DIR_TARGETS_GROUPS}" | tr $'\n' ' ' | sed -e 's/, /,/g' | tr ',' $'\n' | sort -u; echo
     return 0;
   }
 
   TARGETGROUP_ADD () {
-    local targetgroup=
+    local targetgroup= res='true'
 
-    [ $# -ne 1 ] && return 1;
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
     targetgroup="$1"
+    if [ -d "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/" ]; then
+      ERROR "Target group '${targetgroup}' already exists" ; return 1;
+    fi
 
-    [ -d "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/" ] && return 1;
-
-    mkdir "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}"
-    touch "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/${SSHGATE_TARGETGROUP_TARGET_LIST_FILENAME}"
-    touch "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/${SSHGATE_TARGETGROUP_USER_ACCESS_FILENAME}"
-    touch "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/${SSHGATE_TARGETGROUP_USERGROUP_ACCESS_FILENAME}"
+    mkdir "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}" || res='false'
+    touch "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/${SSHGATE_TARGETGROUP_TARGET_LIST_FILENAME}" || res='false'
+    touch "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/${SSHGATE_TARGETGROUP_USER_ACCESS_FILENAME}" || res='false'
+    touch "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/${SSHGATE_TARGETGROUP_USERGROUP_ACCESS_FILENAME}" || res='false'
+    if [ "${res}" = 'false' ]; then
+      rm -rf "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}"
+      ERROR "Unable to create Target group '${targetgroup}'"
+      return 1;
+    fi
     return 0;
   }
 
   TARGETGROUP_DEL () {
     local targetgroup=
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
 
-    [ $# -ne 1 ] && return 1;
     targetgroup="$1"
+    if [ ! -d "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/" ]; then
+      ERROR "Target group '${targetgroup}' doesn't exist" ; return 1;
+    fi
 
-    [ ! -d "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/" ] && return 1;
     rm -rf "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}"
 
     return 0;
@@ -1200,24 +1342,33 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
   TARGETGROUP_LIST_TARGETS () {
     local targetgroup=
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
 
-    [ $# -ne 1 ] && return 1;
     targetgroup="$1"
+    if [ ! -d "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/" ]; then
+      ERROR "Target group '${targetgroup}' doesn't exist" ; return 1;
+    fi
 
-    [ ! -d "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/" ] && return 1;
-
-    cat "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/${SSHGATE_TARGETGROUP_TARGET_LIST_FILENAME}"
+    cat "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/${SSHGATE_TARGETGROUP_TARGET_LIST_FILENAME}" | sort -u
 
     return 0;
   }
 
   TARGETGROUP_ADD_TARGET () {
     local targetgroup= target=
-    [ $# -ne 2 ] && return 1;
+    if [ $# -ne 2 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
 
     targetgroup="$1"; target=$( TARGET_REAL "$2" );
-    [ ! -d "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/" ] && retur 1;
-    [ ! -d "${SSHGATE_DIR_TARGETS}/${target}/" ] && return 1;
+    if [ ! -d "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/" ]; then
+       ERROR "Target group '${targetgroup}' doesn't exist" ; return 1;
+    fi
+    if [ ! -d "${SSHGATE_DIR_TARGETS}/${target}/" ]; then
+      ERROR "Target '${target}' doesn't exist" ; return 1;
+    fi
 
     private_ACL_FILE_ADD "${target}" "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/${SSHGATE_TARGETGROUP_TARGET_LIST_FILENAME}"
     return 0;
@@ -1225,11 +1376,17 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
   TARGETGROUP_DEL_TARGET () {
     local targetgroup= target=
-    [ $# -ne 2 ] && return 1;
+    if [ $# -ne 2 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
 
     targetgroup="$1"; target=$( TARGET_REAL "$2" )
-    [ ! -d "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/" ] && return 1;
-    [ ! -d "${SSHGATE_DIR_TARGETS}/${target}/" ] && return 1;
+    if [ ! -d "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/" ]; then
+      ERROR "Target group '${targetgroup}' doesn't exist" ; return 1;
+    fi
+    if [ ! -d "${SSHGATE_DIR_TARGETS}/${target}/" ]; then
+      ERROR "Target '${target}' doesn't exist" ; return 1;
+    fi
 
     private_ACL_FILE_DEL "${target}" "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/${SSHGATE_TARGETGROUP_TARGET_LIST_FILENAME}"
     return 0;
@@ -1237,10 +1394,14 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
   TARGETGROUP_ACCESS_LIST_USERS () {
     local targetgroup= files=
-    [ $# -ne 1 ] && return 1;
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
 
     targetgroup="$1"
-    [ ! -d "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/" ] && return 1;
+    if [ ! -d "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/" ]; then
+      ERROR "Target group '${targetgroup}' doesn't exist" ; return 1;
+    fi
 
     files="${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/${SSHGATE_TARGETGROUP_USER_ACCESS_FILENAME}"
 
@@ -1254,11 +1415,17 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
   TARGETGROUP_ACCESS_ADD_USER () {
     local targetgroup= user=
-    [ $# -ne 2 ] && return 1;
+    if [ $# -ne 2 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
 
     targetgroup="$1"; user="$2"
-    [ ! -d "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}" ] && return 1;
-    [ ! -f "${SSHGATE_DIR_USERS}/${user}" ] && return 1;
+    if [ ! -d "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}" ]; then
+      ERROR "Target group '${targetgroup}' doesn't exist" ; return 1;
+    fi
+    if [ ! -f "${SSHGATE_DIR_USERS}/${user}" ]; then
+      ERROR "User '${user}' doesn't exist" ; return 1;
+    fi
 
     private_ACL_FILE_ADD "${user}" "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/${SSHGATE_TARGETGROUP_USER_ACCESS_FILENAME}"
     return 0;
@@ -1266,11 +1433,17 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
   TARGETGROUP_ACCESS_DEL_USER () {
     local targetgroup= user=
-    [ $# -ne 2 ] && return 1;
+    if [ $# -ne 2 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
 
     targetgroup="$1"; user="$2"
-    [ ! -d "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}" ] && return 1;
-    [ ! -f "${SSHGATE_DIR_USERS}/${user}" ] && return 1;
+    if [ ! -d "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}" ]; then
+      ERROR "Target group '${targetgroup}' doesn't exist" ; return 1;
+    fi
+    if [ ! -f "${SSHGATE_DIR_USERS}/${user}" ]; then
+      ERROR "User '${user}' doesn't exist" ; return 1;
+    fi
 
     private_ACL_FILE_DEL "${user}" "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/${SSHGATE_TARGETGROUP_USER_ACCESS_FILENAME}"
     return 0;
@@ -1278,22 +1451,32 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
   TARGETGROUP_ACCESS_LIST_USERGROUPS () {
     local targetgroup=
-    [ $# -ne 1 ] && return 1;
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
 
     targetgroup="$1"
-    [ ! -d "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/" ] && return 1;
+    if [ ! -d "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/" ]; then
+      ERROR "Target group '${targetgroup}' doesn't exist" ; return 1;
+    fi
 
-    cat "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/${SSHGATE_TARGETGROUP_USERGROUP_ACCESS_FILENAME}"
+    cat "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/${SSHGATE_TARGETGROUP_USERGROUP_ACCESS_FILENAME}" | sort -u
     return 0;
   }
 
   TARGETGROUP_ACCESS_ADD_USERGROUP () {
     local targetgroup= usergroup=
-    [ $# -ne 2 ] && return 1;
+    if [ $# -ne 2 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
 
     targetgroup="$1"; usergroup="$2"
-    [ ! -d "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/" ] && return 1;
-    [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" ] && return 1;
+    if [ ! -d "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/" ]; then
+      ERROR "Target group '${targetgroup}' doesn't exist" ; return 1;
+    fi
+    if [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" ]; then
+      ERROR "User group '${usergroup}' doesn't exist"; return 1;
+    fi
 
     private_ACL_FILE_ADD "${usergroup}" "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/${SSHGATE_TARGETGROUP_USERGROUP_ACCESS_FILENAME}"
     return 0;
@@ -1301,11 +1484,17 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
   TARGETGROUP_ACCESS_DEL_USERGROUP () {
     local targetgroup= usergroup=
-    [ $# -ne 2 ] && return 1;
+    if [ $# -ne 2 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
 
     targetgroup="$1"; usergroup="$2"
-    [ ! -d "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/" ] && return 1;
-    [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" ] && return 1;
+    if [ ! -d "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/" ]; then
+      ERROR "Target group '${targetgroup}' doesn't exist" ; return 1;
+    fi
+    if [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" ]; then
+      ERROR "User group '${usergroup}' doesn't exist"; return 1;
+    fi
 
     private_ACL_FILE_DEL "${usergroup}" "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/${SSHGATE_TARGETGROUP_USERGROUP_ACCESS_FILENAME}"
     return 0;
