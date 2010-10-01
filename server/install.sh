@@ -83,6 +83,7 @@ DOTHIS 'Installing sshGate'
   MK "${SSHGATE_DIR_USERS_GROUPS}"
   MK "${SSHGATE_DIR_TARGETS_GROUPS}"
   MK "${SSHGATE_DIR_LOG}"
+  MK "${SSHGATE_DIR_ARCHIVE}"
 
   grep "${SSHGATE_GATE_ACCOUNT}" /etc/passwd >/dev/null 2>/dev/null
   if [ $? -ne 0 ]; then
@@ -129,13 +130,19 @@ DOTHIS 'Update sshGate installation'
   sed_repl="${sed_repl} s|^\( *\)# %% __LIB_CLI__ %%.*$|\1. ${SSHGATE_DIR_BIN}/lib/cli.lib.sh|;"
   sed_repl="${sed_repl} s|^\( *\)# %% __LIB_MAIL__ %%.*$|\1. ${SSHGATE_DIR_BIN}/lib/mail.lib.sh|;"
 
-  sed -i -e "${sed_repl}" ${SSHGATE_DIR_BIN}/sshgate
-  sed -i -e "${sed_repl}" ${SSHGATE_DIR_BIN}/sshgate.func
-  sed -i -e "${sed_repl}" ${SSHGATE_DIR_BIN}/sshgate.sh
+  sed -i -e "${sed_repl}" "${SSHGATE_DIR_BIN}/sshgate"
+  sed -i -e "${sed_repl}" "${SSHGATE_DIR_BIN}/sshgate.func"
+  sed -i -e "${sed_repl}" "${SSHGATE_DIR_BIN}/sshgate.sh"
+  sed -i -e "${sed_repl}" "${SSHGATE_DIR_BIN}/archive-log.sh"
 
   rm -f ${SSHGATE_DIR_BIN}/install.sh # ;-p
 OK
 BR
+
+DOTHIS 'Install archive cron'
+  mv "${SSHGATE_DIR_BIN}/archive-log.sh" /etc/cron.weekly/
+  chmod +x /etc/cron.weekly/archive-log.sh
+OK
 
 NOTICE "You may add ${SSHGATE_DIR_BIN} in your PATH variable"
 BR
