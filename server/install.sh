@@ -50,6 +50,24 @@ ASK SSHGATE_TARGETS_DEFAULT_USER \
     "${SSHGATE_TARGETS_DEFAULT_USER}"
 CONF_SAVE SSHGATE_TARGETS_DEFAULT_USER
 
+ASK --yesno SSHGATE_MAIL_SEND \
+    "Activate mail notification system ?" \
+    "Y"
+[ "${SSHGATE_MAIL_SEND}" = 'N' ] && SSHGATE_MAIL_SEND='false'
+if [ "${SSHGATE_MAIL_SEND}" = 'Y' ]; then
+  SSHGATE_MAIL_SEND='true'
+  ASK SSHGATE_MAIL_TO \
+      "Who will receive mail notification (comma separated mails) ?" \
+      "${SSHGATE_MAIL_TO}"
+  [ -z "${SSHGATE_MAIL_TO}" ] && SSHGATE_MAIl_SEND='false'
+else
+  SSHGATE_MAIL_SEND='false'
+fi
+CONF_SAVE SSHGATE_MAIL_SEND
+CONF_SAVE SSHGATE_MAIL_TO
+
+
+
 DOTHIS 'Reload configuration'
   # reset loaded configuration and reload it
   __SSHGATE_CONF__=
@@ -59,6 +77,7 @@ OK
 DOTHIS 'Installing sshGate'
   MK () { [ ! -d "$1/" ] && mkdir -p "$1"; }
   MK "${SSHGATE_DIR}"
+  MK "${SSHGATE_DIR_CONF}"
   MK "${SSHGATE_DIR_BIN}"
   MK "${SSHGATE_DIR_USERS}"
   MK "${SSHGATE_DIR_TARGETS}"
@@ -76,12 +95,24 @@ DOTHIS 'Installing sshGate'
     chown "${SSHGATE_GATE_ACCOUNT}" "${home_dir}"
   fi
 
+  # install stuff
   cp $( find . -maxdepth 1 -type f ) "${SSHGATE_DIR_BIN}"
+  mv "${SSHGATE_DIR_BIN}/sshgate.conf" "${SSHGATE_DIR_CONF}"
   [ -d ./lib/ ] && cp -r ./lib/ "${SSHGATE_DIR_BIN}"
 
+  # generate targets default sshkey
+  ssh-keygen -t rsa -b 4096 -N '' -f "${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}" >/dev/null
+  mv "${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}.pub" "${SSHGATE_TARGET_DEFAULT_PUBLIC_SSHKEY_FILE}"
+  chmod 400 "${SSHGATE_TARGET_DEFAULT_PUBLIC_SSHKEY_FILE}"
+  chown "${SSHGATE_GATE_ACCOUNT}" "${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}"
+  chown "${SSHGATE_GATE_ACCOUNT}" "${SSHGATE_TARGET_DEFAULT_PUBLIC_SSHKEY_FILE}"
+
+
+  # permissions on files
   chown "${SSHGATE_GATE_ACCOUNT}" "${SSHGATE_DIR_LOG}"
-  chmod -R a+x "${SSHGATE_DIR}"
+  find "${SSHGATE_DIR}" -type d -exec chmod -R a+x {} \;
   find "${SSHGATE_DIR_BIN}" -type f -exec chmod a+r {} \;
+  chmod a+x "${SSHGATE_DIR_BIN}/sshgate"
 
   # sshkeys must be in 400
   find "${SSHGATE_DIR_USERS}" -type f -exec chmod 400 {} \;
@@ -91,7 +122,7 @@ OK
 DOTHIS 'Update sshGate installation'
   # update files and replace patterns
   sed_repl=
-  sed_repl="${sed_repl} s|^\( *\)# %% __SSHGATE_CONF__ %%.*$|\1. ${SSHGATE_DIR_BIN}/sshgate.conf|;"
+  sed_repl="${sed_repl} s|^\( *\)# %% __SSHGATE_CONF__ %%.*$|\1. ${SSHGATE_DIR_CONF}/sshgate.conf|;"
   sed_repl="${sed_repl} s|^\( *\)# %% __SSHGATE_FUNC__ %%.*$|\1. ${SSHGATE_DIR_BIN}/sshgate.func|;"
   sed_repl="${sed_repl} s|^\( *\)# %% __LIB_MESSAGE__ %%.*$|\1. ${SSHGATE_DIR_BIN}/lib/message.lib.sh|;"
   sed_repl="${sed_repl} s|^\( *\)# %% __LIB_ASK__ %%.*$|\1. ${SSHGATE_DIR_BIN}/lib/ask.lib.sh|;"
