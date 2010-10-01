@@ -228,6 +228,8 @@
 if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
   __SSHGATE_FUNC__='Loaded'
 
+  # %% __LIB_MAIL__ %% <-- WARNING: don't remove. used by install.sh
+
   # Try to source sshgate.conf
   # %% __SSHGATE_CONF__ %% <-- WARNING: don't remove. used by install.sh
   if [ -z "${__SSHGATE_CONF__:-}" ]; then
@@ -238,6 +240,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
       exit 1;
     fi
   fi
+
 
   ERROR () { echo "ERROR: $*" 1>&2; }
   BAD_ARGUMENTS () { ERROR "Bad arguments"; }
@@ -254,6 +257,11 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     random="${RANDOM}"
     grep -v "^$1\$" < "$2" > "/tmp/file.${random}"
     mv "/tmp/file.${random}" "$2"
+  }
+
+  # usage: private_MAIL_APPEND <message>
+  private_MAIL_APPEND () {
+    [ "${__LIB_MAIL__:-}" = 'Loaded' -a "${SSHGATE_MAIL_SEND:-}" = 'true' ] && MAIL_APPEND "$*"
   }
 
   HELP () {
@@ -560,6 +568,8 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     ADD_TARGET_TO_KNOWN_HOST "${target}"
     TARGET_SSH_INSTALL_KEY   "${target}"
 
+    private_MAIL_APPEND "Target ${target} added"
+
     return 0;
   }
 
@@ -578,6 +588,8 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
     rm -rf "${SSHGATE_DIR_TARGETS}/${target}"
     DELETE_TARGET_FROM_KNOWN_HOST "${target}"
+
+    private_MAIL_APPEND "Target ${target} removed"
 
     return 0;
   }
@@ -798,6 +810,9 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     fi
 
     private_ACL_FILE_ADD "${user}" "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USER_ACCESS_FILENAME}"
+
+    private_MAIL_APPEND "User ${user} access to Target ${target} granted"
+
     return 0;
   }
 
@@ -816,6 +831,9 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     fi
 
     private_ACL_FILE_DEL "${user}" "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USER_ACCESS_FILENAME}"
+
+    private_MAIL_APPEND "User ${user} access to Target ${target} revoked"
+
     return 0;
   }
 
@@ -849,6 +867,9 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     fi
 
     private_ACL_FILE_ADD "${usergroup}" "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USERGROUP_ACCESS_FILENAME}"
+
+    private_MAIL_APPEND "User Group ${usergroup} access to Target ${target} granted"
+
     return 0;
   }
 
@@ -867,6 +888,9 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     fi
 
     private_ACL_FILE_DEL "${usergroup}" "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USERGROUP_ACCESS_FILENAME}"
+
+    private_MAIL_APPEND "User Group ${usergroup} access to Target ${target} revoked"
+
     return 0;
   }
 
@@ -895,6 +919,8 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
     cp "${userkey}" "${SSHGATE_DIR_USERS}/${user}"
     SETUP_SSHGATE_GATE_ACCOUNT
+
+    private_MAIL_APPEND "User ${user} added"
   }
 
   USER_DEL () {
@@ -921,6 +947,9 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     rm -f "${SSHGATE_DIR_USERS}/${user}"
 
     SETUP_SSHGATE_GATE_ACCOUNT
+
+    private_MAIL_APPEND "User ${user} removed"
+
     return 0
   }
 
@@ -1010,6 +1039,9 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     fi
 
     touch "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}"
+
+    private_MAIL_APPEND "User Group ${usergroup} added"
+
     return 0;
   }
 
@@ -1030,6 +1062,8 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     done
 
     rm -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}"
+
+    private_MAIL_APPEND "User Group ${usergroup} removed"
 
     return 0
   }
@@ -1065,6 +1099,9 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     fi
 
     private_ACL_FILE_ADD "${user}" "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}"
+
+    private_MAIL_APPEND "User ${user} added to User Group ${usergroup}"
+
     return 0;
   }
 
@@ -1083,6 +1120,9 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     fi
 
     private_ACL_FILE_DEL "${user}" "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}"
+
+    private_MAIL_APPEND "User ${user} removed from User Group ${usergroup}"
+
     return 0;
   }
 

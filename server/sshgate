@@ -21,12 +21,14 @@
 
 # %% __LIB_MESSAGE__ %% <-- WARNING: don't remove. used by install.sh
 # %% __LIB_ASK__ %% <-- WARNING: don't remove. used by install.sh
+# %% __LIB_MAIL__ %% <-- WARNING: don't remove. used by install.sh
 # %% __LIB_CLI__ %% <-- WARNING: don't remove. used by install.sh
 # %% __SSHGATE_CONF__ %% <-- WARNING: don't remove. used by install.sh
 # %% __SSHGATE_FUNC__ %% <-- WARNING: don't remove. used by install.sh
 
 [ -z "${__LIB_MESSAGE__}"  -a -r ./lib/message.lib.sh ] && . ./lib/message.lib.sh
 [ -z "${__LIB_ASK__}"      -a -r ./lib/ask.lib.sh     ] && . ./lib/ask.lib.sh
+[ -z "${__LIB_MAIL__}"     -a -r ./lib/mail.lib.sh    ] && . ./lib/mail.lib.sh
 [ -z "${__LIB_CLI__}"      -a -r ./lib/cli.lib.sh     ] && . ./lib/cli.lib.sh
 [ -z "${__SSHGATE_CONF__}" -a -r ./sshgate.conf       ] && . ./sshgate.conf
 [ -z "${__SSHGATE_FUNC__}" -a -r ./sshgate.func       ] && . ./sshgate.func
@@ -169,4 +171,11 @@ BR
 
 CLI_USE_READLINE --history-file ~/.sshgate_history
 CLI_SET_PROMPT "sshGate"
+
+[ ${SSHGATE_MAIL_SEND:-} = 'true' ] && MAIL_CREATE ${SSHGATE_MAIL_TMP_FILE}
+
 CLI_RUN
+
+[ ${SSHGATE_MAIL_SEND:-} = 'true' ] \
+  && MAIL_SEND "${SSHGATE_MAIL_SUBJECT}" "${SSHGATE_MAIL_TO}"
+[ $? -eq 2 ] && NOTICE "No modification noticed. Repport e-mail will not be sent"
