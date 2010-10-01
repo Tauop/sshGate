@@ -1146,24 +1146,4 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     return 0;
   }
 
-  USERGROUP_LIST_TARGETGROUPS () {
-    local usergroup=
-    if [ $# -ne 1 ]; then
-      BAD_ARGUMENTS ; return 1;
-    fi
-
-    usergroup="$1"
-    if [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" ]; then
-      ERROR "User group '${usergroup}' doesn't exist" ; return 1;
-    fi
-
-    for file in $( find "${SSHGATE_DIR_TARGETS_GROUPS}"                        \
-                      -name "${SSHGATE_TARGETGROUP_USERGROUP_ACCESS_FILENAME}" \
-                      -exec grep -l "^${usergroup}\$" {} \; ); do
-      file="${file%%/${SSHGATE_TARGETGROUP_USERGROUP_ACCESS_FILENAME}}"
-      echo "${file##*/}"
-    done | sort -u
-    return 0;
-  }
-
 fi # __SSHGATE_FUNC__
