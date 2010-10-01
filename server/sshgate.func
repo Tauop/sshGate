@@ -298,6 +298,8 @@
 if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
   __SSHGATE_FUNC__='Loaded'
 
+  # %% __LIB_MAIL__ %% <-- WARNING: don't remove. used by install.sh
+
   # Try to source sshgate.conf
   # %% __SSHGATE_CONF__ %% <-- WARNING: don't remove. used by install.sh
   if [ -z "${__SSHGATE_CONF__:-}" ]; then
@@ -308,6 +310,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
       exit 1;
     fi
   fi
+
 
   ERROR () { echo "ERROR: $*" 1>&2; }
   BAD_ARGUMENTS () { ERROR "Bad arguments"; }
@@ -328,7 +331,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
   # usage: private_MAIL_APPEND <message>
   private_MAIL_APPEND () {
-    [ ${SSHGATE_MAIL_SEND:-} = 'true' ] && MAIL_APPEND "$@"
+    [ "${__LIB_MAIL__:-}" = 'Loaded' -a "${SSHGATE_MAIL_SEND:-}" = 'true' ] && MAIL_APPEND "$*"
   }
 
   HELP () {

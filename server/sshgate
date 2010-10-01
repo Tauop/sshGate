@@ -21,6 +21,7 @@
 
 # %% __LIB_MESSAGE__ %% <-- WARNING: don't remove. used by install.sh
 # %% __LIB_ASK__ %% <-- WARNING: don't remove. used by install.sh
+# %% __LIB_MAIL__ %% <-- WARNING: don't remove. used by install.sh
 # %% __LIB_CLI__ %% <-- WARNING: don't remove. used by install.sh
 # %% __SSHGATE_CONF__ %% <-- WARNING: don't remove. used by install.sh
 # %% __SSHGATE_FUNC__ %% <-- WARNING: don't remove. used by install.sh
