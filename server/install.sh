@@ -67,7 +67,6 @@ CONF_SAVE SSHGATE_MAIL_SEND
 CONF_SAVE SSHGATE_MAIL_TO
 
 
-
 DOTHIS 'Reload configuration'
   # reset loaded configuration and reload it
   __SSHGATE_CONF__=
@@ -101,12 +100,10 @@ DOTHIS 'Installing sshGate'
   [ -d ./lib/ ] && cp -r ./lib/ "${SSHGATE_DIR_BIN}"
 
   # generate targets default sshkey
-  ssh-keygen -t rsa -b 4096 -N '' -f "${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}" >/dev/null
-  mv "${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}.pub" "${SSHGATE_TARGET_DEFAULT_PUBLIC_SSHKEY_FILE}"
-  chmod 400 "${SSHGATE_TARGET_DEFAULT_PUBLIC_SSHKEY_FILE}"
-  chown "${SSHGATE_GATE_ACCOUNT}" "${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}"
-  chown "${SSHGATE_GATE_ACCOUNT}" "${SSHGATE_TARGET_DEFAULT_PUBLIC_SSHKEY_FILE}"
-
+  if [ ! -f "${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}" ]; then
+    ssh-keygen -t rsa -b 4096 -N '' -f "${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}" >/dev/null
+    mv "${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}.pub" "${SSHGATE_TARGET_DEFAULT_PUBLIC_SSHKEY_FILE}"
+  fi
 
   # permissions on files
   chown "${SSHGATE_GATE_ACCOUNT}" "${SSHGATE_DIR_LOG}"
@@ -117,6 +114,9 @@ DOTHIS 'Installing sshGate'
   # sshkeys must be in 400
   find "${SSHGATE_DIR_USERS}" -type f -exec chmod 400 {} \;
   find "${SSHGATE_DIR_TARGETS}" -name "${SSHGATE_TARGET_PRIVATE_SSHKEY_FILENAME}" -exec chmod 400 {} \;
+  chmod 400 "${SSHGATE_TARGET_DEFAULT_PUBLIC_SSHKEY_FILE}"
+  chown "${SSHGATE_GATE_ACCOUNT}" "${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}"
+  chown "${SSHGATE_GATE_ACCOUNT}" "${SSHGATE_TARGET_DEFAULT_PUBLIC_SSHKEY_FILE}"
 OK
 
 DOTHIS 'Update sshGate installation'
