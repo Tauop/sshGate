@@ -172,7 +172,7 @@ BR
 CLI_USE_READLINE --history-file ~/.sshgate_history
 CLI_SET_PROMPT "sshGate"
 
-[ ${SSHGATE_MAIL_SEND:-} = 'true' ] && MAIL_CREATE ${SSHGATE_MAIL_TMP_FILE}
+[ ${SSHGATE_MAIL_SEND:-} = 'true' ] && MAIL_CREATE
 
 CLI_RUN
 
