@@ -21,6 +21,7 @@
 SSH_CLIENT_DIR=~/.ssh
 SSH_CLIENT_CONFIG=~/.ssh/config
 SSHGATE_GATE_ACCOUNT='sshgate'
+SSHGATE_GATE_HOST='gate.par.lng'
 
 # include ask.lib.sh from ScriptHelper project (http://github.com/Tauop/ScriptHelper)
 . ./lib/message.lib.sh
@@ -37,9 +38,9 @@ sshgate_user=
 sshgate_host=
 sshgate_sshkey=
 
-ASK sshgate_host    "What is the sshgGate hostname or IP address?"
+ASK sshgate_host    "What is the sshgGate hostname or IP address ? [${SSHGATE_GATE_HOST}]"              "${SSHGATE_GATE_HOST}"
 ASK sshgate_user    "What is the username to use when connecting to sshGate? [${SSHGATE_GATE_ACCOUNT}]" "${SSHGATE_GATE_ACCOUNT}"
-ASK sshgate_sshkey  "What is the SSH private key file to use for sshGate? [${SSH_CLIENT_DIR}/id_rsa]" "${SSH_CLIENT_DIR}/id_rsa"
+ASK sshgate_sshkey  "What is the SSH private key file to use for sshGate? [${SSH_CLIENT_DIR}/id_rsa]"   "${SSH_CLIENT_DIR}/id_rsa"
 
 [ ! -d ${SSH_CLIENT_DIR} ] && mkdir -p ${SSH_CLIENT_DIR}
 
@@ -47,10 +48,19 @@ ssh_config="
 Host sshgate
   User ${sshgate_user}
   IdentityFile ${sshgate_sshkey}
-  HostName ${sshgate_host}
-  ControlMaster auto
-  ControlPath /tmp/%r@%h:%p"
+  HostName ${sshgate_host}"
 
+# on enlève la conf sshgate de la conf client
+sed -n -i -e '
+/^Host sshgate/ {
+  s/^..*$//;
+  :loop
+  n; s/^..*$//
+  t loop;
+}
+/^.*$/p ' ${SSH_CLIENT_CONFIG}
+
+# on ajoute la conf sshgate de la conf client
 echo                 >> ${SSH_CLIENT_CONFIG}
 echo "${ssh_config}" >> ${SSH_CLIENT_CONFIG}
 echo                 >> ${SSH_CLIENT_CONFIG}
