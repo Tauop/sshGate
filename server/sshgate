@@ -82,6 +82,7 @@ CLI_REGISTER_COMMAND 'target ? del alias ?'     'TARGET_DEL_ALIAS \2'
 CLI_REGISTER_COMMAND 'target ? list aliases'    'TARGET_LIST_ALIASES \1'
 CLI_REGISTER_COMMAND 'target ? ssh test'        'TARGET_SSH_TEST \1'
 CLI_REGISTER_COMMAND 'target ? ssh install key' 'TARGET_SSH_INSTALL_KEY \1'
+CLI_REGISTER_COMMAND 'target ? ssh use default' 'TARGET_SSH_USE_DEFAULT_KEY \1'
 
 CLI_REGISTER_MENU    'target ? access'
 CLI_REGISTER_COMMAND 'target ? access info'             'TARGET_ACCESS_INFO \1'
@@ -94,7 +95,8 @@ CLI_REGISTER_COMMAND 'target ? access del usergroup ?'  'TARGET_ACCESS_DEL_USERG
 
 CLI_REGISTER_KCOMMAND 'help' 'HELP_LIST'
 
-CLI_REGISTER_COMMAND 'save' 'SETUP_SSHGATE_GATE_ACCOUNT'
+CLI_REGISTER_COMMAND 'build authorized_keys' 'BUILD_AUTHORIZED_KEYS'
+CLI_REGISTER_COMMAND 'build known_hosts'     'BUILD_KNOWN_HOSTS'
 
 HELP_LIST () {
   MSG_INDENT_INC
@@ -154,9 +156,10 @@ HELP_LIST () {
 
   MSG "= Misc ="
   MSG_INDENT_INC
-    MESSAGE "save             - forge re-write of sshgate account ./ssh/authorized_keys2 file"
-    MESSAGE "quit             - exit the current CLI context menu, or exit the CLI"
-    MESSAGE "exit             - exit the CLI"
+    MESSAGE "build authorized_keys - force re-write of sshgate account ./ssh/authorized_keys file"
+    MESSAGE "build known_hosts     - force re-write of sshgate account ./ssh/knonwn_hosts file"
+    MESSAGE "quit                  - exit the current CLI context menu, or exit the CLI"
+    MESSAGE "exit                  - exit the CLI"
   MSG_INDENT_DEC
   BR
 

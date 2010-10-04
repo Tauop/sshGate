@@ -30,10 +30,15 @@
 #   usage: SSHGATE_ACCOUNT_HOMEDIR
 #   desc: return the home directory of the SSHGATE_GATE_ACCOUNT user
 #
-# SETUP_SSHGATE_GATE_ACCOUNT()
-#   usage: SETUP_SSHGATE_GATE_ACCOUNT
+# BUILD_AUTHORIZED_KEYS()
+#   usage: BUILD_AUTHORIZED_KEYS
 #   desc: update the authorized_key2 of the sshGate account
 #   important: need to be root to be able to update authorized_keys2 and chown files
+#
+# BUILD_KNOWN_HOSTS()
+#   usage: BUILD_KNOWN_HOSTS
+#   desc: update the known_hosts file
+#   important: need to be root
 #
 # ADD_TARGET_TO_KNOWN_HOST()
 #   usage: ADD_TARGET_TO_KNOWN_HOST <target> [ <file> ]
@@ -97,15 +102,21 @@
 #   usage: TARGET_DEL <target_host>
 #   desc: delete a target host from sshGate
 #
-# TARGET_SSH_INSTALL_KEY()
-#   usage: TARGET_SSH_INSTALL_KEY <target_host>
-#   desc: Try to install the public sshkey on the <target_host>
+# TARGET_SSH_USE_DEFAULT_KEY()
+#   usage: TARGET_SSH_USE_DEFAULT_KEY <target_host>
+#   desc: set ssh default key for a host
 #   note: you may have access to the <target_host> with the sshkey of the
 #         root account, or with the your sshkey and sshagent forwarding.
 #
 # TARGET_SSH_INSTALL_ALL_KEYS()
 #   usage: TARGET_SSH_INSTALL_ALL_KEYS
 #   desc: call TARGET_SSH_INSTALL_KEY on all targets
+#   note: you may have access to the <target_host> with the sshkey of the
+#         root account, or with the your sshkey and sshagent forwarding.
+#
+# TARGET_SSH_INSTALL_KEY()
+#   usage: TARGET_SSH_INSTALL_KEY <target_host>
+#   desc: Try to install the public sshkey on the <target_host>
 #   note: you may have access to the <target_host> with the sshkey of the
 #         root account, or with the your sshkey and sshagent forwarding.
 #
@@ -228,8 +239,6 @@
 if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
   __SSHGATE_FUNC__='Loaded'
 
-  # %% __LIB_MAIL__ %% <-- WARNING: don't remove. used by install.sh
-
   # Try to source sshgate.conf
   # %% __SSHGATE_CONF__ %% <-- WARNING: don't remove. used by install.sh
   if [ -z "${__SSHGATE_CONF__:-}" ]; then
@@ -339,7 +348,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     cat /etc/passwd | grep "${SSHGATE_GATE_ACCOUNT}" | cut -d':' -f6
   }
 
-  SETUP_SSHGATE_GATE_ACCOUNT () {
+  BUILD_AUTHORIZED_KEYS () {
     local home_dir= authorized_keys2= user_key= real_target=
 
     home_dir=$( SSHGATE_ACCOUNT_HOMEDIR )
@@ -361,10 +370,21 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     done
 
     chown "${SSHGATE_GATE_ACCOUNT}" "${authorized_keys2}"
+    return 0;
+  }
+
+  BUILD_KNOWN_HOSTS () {
+    local home_dir=
+
+    home_dir=$( SSHGATE_ACCOUNT_HOMEDIR )
+    if [ -z "${home_dir}" ]; then
+      ERROR "Can't find home directory of ${SSHGATE_GATE_ACCOUNT} user"
+      return 1;
+    fi
 
     echo -n '' > "${home_dir}/.ssh/known_hosts"
     for target in $( TARGETS_LIST ); do
-        ADD_TARGET_TO_KNOWN_HOST "${target}" "${home_dir}/.ssh/known_hosts"
+      ADD_TARGET_TO_KNOWN_HOST "${target}" "${home_dir}/.ssh/known_hosts"
     done
 
     return 0;
@@ -585,6 +605,26 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     DELETE_TARGET_FROM_KNOWN_HOST "${target}"
 
     private_MAIL_APPEND "Target ${target} removed"
+
+    return 0;
+  }
+
+  TARGET_SSH_USE_DEFAULT_KEY () {
+    local target=
+    if [ $# -eq 0 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
+    target=$( TARGET_REAL "$1" )
+    if [ ! -d "${SSHGATE_DIR_TARGETS}/${target}/" ]; then
+      ERROR "Target host '${target}' doesn't exist" ; return 1;
+    fi
+
+    sshkey_file=$( TARGET_PUBLIC_SSHKEY_FILE "${target}" )
+    [ "${sshkey_file}" != "${SSHGATE_TARGET_DEFAULT_PUBLIC_SSHKEY_FILE}" ] && rm -f "${sshkey_file}"
+
+    sshkey_file=$( TARGET_PRIVATE_SSHKEY_FILE "${target}" )
+    [ "${sshkey_file}" != "${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}" ] && rm -f "${sshkey_file}"
 
     return 0;
   }
@@ -913,9 +953,10 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     fi
 
     cp "${userkey}" "${SSHGATE_DIR_USERS}/${user}"
-    SETUP_SSHGATE_GATE_ACCOUNT
-
     private_MAIL_APPEND "User ${user} added"
+
+    BUILD_AUTHORIZED_KEYS
+    return 0
   }
 
   USER_DEL () {
@@ -940,11 +981,9 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     done
 
     rm -f "${SSHGATE_DIR_USERS}/${user}"
-
-    SETUP_SSHGATE_GATE_ACCOUNT
-
     private_MAIL_APPEND "User ${user} removed"
 
+    BUILD_AUTHORIZED_KEYS
     return 0
   }
 
