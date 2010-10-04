@@ -109,6 +109,11 @@ TARGET_USER=${SSHGATE_TARGETS_DEFAULT_USER}
 TARGET_HOST=$( TARGET_REAL "${TARGET_HOST}" )
 GLOG_FILE=$( TARGET_LOG_FILE )
 
+if [ -z "${GLOG_FILE}" ]; then
+  echo "ERROR: Unknown host ${TARGET_HOST}."
+  exit 1;
+fi
+
 TARGET_SSHKEY=$( TARGET_PRIVATE_SSHKEY_FILE )
 if [ -z "${TARGET_SSHKEY}" -o ! -r "${TARGET_SSHKEY:-}" ]; then
   echo "ERROR: can't read target host ssh key. Please contact the sshGate administrator"

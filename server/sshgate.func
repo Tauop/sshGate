@@ -442,9 +442,13 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     target=$( TARGET_REAL "${target}" )
 
     dir="${SSHGATE_DIR_LOG}/${target}"
-    [ ! -d "${dir}/" ] && mkdir -p "${dir}"
+    if [ ! -d "${dir}/" ]; then
+      echo ''; return 1;
+    fi
+
     touch "${dir}/global.log"
     echo "${dir}/global.log"
+    return 0;
   }
 
   # the user session log file
