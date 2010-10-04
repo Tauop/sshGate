@@ -464,7 +464,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
       [ $# -lt 2 ] && user=${SSHKEY_USER:-unknown} || user="$2"
     fi
     target=$( TARGET_REAL "${target}" )
-    if [ -z "${target}"]; then
+    if [ -z "${target}" ]; then
       echo ''; return 1;
     fi
 
