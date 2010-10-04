@@ -20,16 +20,18 @@
 
 # %% __SSHGATE_CONF__ %% <-- WARNING: don't remove. used by install.sh
 
-find_opt=
-find_opt=" -name '$( date +%Y%m%d --date '-14 day' )' "
-for d in `seq 13 -1 7`; do
-  find_opt=" -o -name '$( date +%Y%m%d --date '-$d day' )' "
-done
+archive="${SSHGATE_DIR_ARCHIVE}/$( date +%Y%m --date '-1 month' )_log.tar"
+tmp_file="/tmp/files.${RANDOM}"
 
-files=$( eval "find '${SSHGATE_DIR_LOG}' ${find_opt} " )
-archive="${SSHGATE_DIR_ARCHIVE}/$( date +%Y%m%d --date '-14 day' )-$( date +%Y%m%d --date '-$d day' )_log.tar.gz"
+find "${SSHGATE_DIR_LOG}" -name "$( date +%Y%m --date '-1 month' )*" >  "${tmp_file}"
+find "${SSHGATE_DIR_LOG}" -name 'global.log'                         >> "${tmp_file}"
 
-tar zcvf "${archive}" ${files} >/dev/null
-echo "rm -f ${files}"
+tar cf "${archive}" "${SSHGATE_DIR_LOG}/sshgate.log"
+cat "${tmp_file}" | xargs tar rf "${archive}"
+gzip "${archive}"
 
-return 0;
+cat "${tmp_file}" | xargs rm -f
+rm -f "${SSHGATE_DIR_LOG}/sshgate.log"
+rm -f "${tmp_file}"
+
+exit 0;
