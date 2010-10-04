@@ -51,7 +51,7 @@ ASK SSHGATE_TARGETS_DEFAULT_USER \
 CONF_SAVE SSHGATE_TARGETS_DEFAULT_USER
 
 ASK --yesno SSHGATE_MAIL_SEND \
-    "Activate mail notification system ?" \
+    "Activate mail notification system [Yes] ?" \
     "Y"
 [ "${SSHGATE_MAIL_SEND}" = 'N' ] && SSHGATE_MAIL_SEND='false'
 if [ "${SSHGATE_MAIL_SEND}" = 'Y' ]; then
@@ -67,6 +67,8 @@ CONF_SAVE SSHGATE_MAIL_SEND
 CONF_SAVE SSHGATE_MAIL_TO
 
 
+BR
+BR
 DOTHIS 'Reload configuration'
   # reset loaded configuration and reload it
   __SSHGATE_CONF__=
@@ -115,6 +117,8 @@ DOTHIS 'Installing sshGate'
   # sshkeys must be in 400
   find "${SSHGATE_DIR_USERS}" -type f -exec chmod 400 {} \;
   find "${SSHGATE_DIR_TARGETS}" -name "${SSHGATE_TARGET_PRIVATE_SSHKEY_FILENAME}" -exec chmod 400 {} \;
+
+  chmod 400 "${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}"
   chmod 400 "${SSHGATE_TARGET_DEFAULT_PUBLIC_SSHKEY_FILE}"
   chown "${SSHGATE_GATE_ACCOUNT}" "${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}"
   chown "${SSHGATE_GATE_ACCOUNT}" "${SSHGATE_TARGET_DEFAULT_PUBLIC_SSHKEY_FILE}"
@@ -137,12 +141,12 @@ DOTHIS 'Update sshGate installation'
 
   rm -f ${SSHGATE_DIR_BIN}/install.sh # ;-p
 OK
-BR
 
 DOTHIS 'Install archive cron'
   mv "${SSHGATE_DIR_BIN}/archive-log.sh" /etc/cron.weekly/
   chmod +x /etc/cron.weekly/archive-log.sh
 OK
+BR
 
 NOTICE "You may add ${SSHGATE_DIR_BIN} in your PATH variable"
 BR
