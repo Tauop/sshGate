@@ -441,10 +441,12 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     [ $# -eq 0 ] && target=${TARGET_HOST:-unknown} || target="$1"
     target=$( TARGET_REAL "${target}" )
 
-    dir="${SSHGATE_DIR_LOG}/${target}"
-    if [ ! -d "${dir}/" ]; then
+    if [ -z "${target}" ]; then
       echo ''; return 1;
     fi
+
+    dir="${SSHGATE_DIR_LOG}/${target}"
+    [ ! -d "${dir}/" ] && mkdir -p "${dir}/"
 
     touch "${dir}/global.log"
     echo "${dir}/global.log"
@@ -462,9 +464,14 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
       [ $# -lt 2 ] && user=${SSHKEY_USER:-unknown} || user="$2"
     fi
     target=$( TARGET_REAL "${target}" )
+    if [ -z "${target}"]; then
+      echo ''; return 1;
+    fi
+
     f="${SSHGATE_DIR_LOG}/${target}/$(date +%Y%m%d%H%M%S).${user}.$$"
     touch "$f"
     echo "$f"
+    return 0;
   }
 
   USER_SSHKEY_FILE () {
@@ -599,7 +606,9 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     fi
 
     target=$( TARGET_REAL "$1" )
-    [ ! -d "${SSHGATE_DIR_TARGETS}/${target}/" ] && return 1
+    if [ -z "${target}" ]; then
+      ERROR "Target host '${target}' doesn't exist"; return 1
+    fi
 
     for alias in $( TARGET_LIST_ALIASES "${target}" ); do
       rm -f "${SSHGATE_DIR_TARGETS}/${alias}"
@@ -620,7 +629,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     fi
 
     target=$( TARGET_REAL "$1" )
-    if [ ! -d "${SSHGATE_DIR_TARGETS}/${target}/" ]; then
+    if [ -z "${target}" ]; then
       ERROR "Target host '${target}' doesn't exist" ; return 1;
     fi
 
@@ -640,7 +649,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     fi
 
     target=$( TARGET_REAL "$1" )
-    if [ ! -d "${SSHGATE_DIR_TARGETS}/${target}/" ]; then
+    if [ -z "${target}" ]; then
       ERROR "Target host '${target}' doesn't exist" ; return 1;
     fi
 
@@ -683,6 +692,9 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     fi
 
     target=$( TARGET_REAL "$1" )
+    if [ -z "${target}" ]; then
+      ERROR "Target host '${target}' doesn't exist" ; return 1;
+    fi
     [ $# -eq 2 ] && known_hosts_file="$2"
 
     if [ -z "${known_hosts_file}" ]; then
@@ -756,6 +768,10 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     local target= t=
     [ $# -eq 1 ] && target=$( TARGET_REAL "$1" )
 
+    if [ -z "${target}" ]; then
+      ERROR "Target host '${target}' doesn't exist" ; return 1;
+    fi
+
     for file in $( find "${SSHGATE_DIR_TARGETS}/" -type l ); do
       t=$( readlink -f "${file}" )
       [ -z "${target}" -o "${t##*/}" = "${target}" ] && echo "${file##*/}"
@@ -770,7 +786,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     fi
 
     target=$(TARGET_REAL "$1"); alias="$2"
-    if [ ! -d "${SSHGATE_DIR_TARGETS}/${target}" ]; then
+    if [ -z "${target}" ]; then
       ERROR "Target host '${target}' doesn't exist" ; return 1
     fi
     if [ -L "${SSHGATE_DIR_TARGETS}/${alias}" ]; then
@@ -807,7 +823,12 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
       target=$( readlink -f "${SSHGATE_DIR_TARGETS}/${target}" )
       echo "${target##*/}"
     else
-      echo "${target}"
+      if [ -d "${SSHGATE_DIR_TARGETS}/${target}" ]; then
+        echo "${target}"
+      else
+        echo ''
+        return 1;
+      fi
     fi
     return 0;
   }
