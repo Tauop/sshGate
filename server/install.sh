@@ -143,8 +143,8 @@ DOTHIS 'Update sshGate installation'
 OK
 
 DOTHIS 'Install archive cron'
-  mv "${SSHGATE_DIR_BIN}/archive-log.sh" /etc/cron.weekly/
-  chmod +x /etc/cron.weekly/archive-log.sh
+  mv "${SSHGATE_DIR_BIN}/archive-log.sh" /etc/cron.monthly/
+  chmod +x /etc/cron.monthly/archive-log.sh
 OK
 BR
 
