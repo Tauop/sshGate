@@ -84,24 +84,30 @@ else
 fi
 
 # public commands ------------------------------------------------------------
-if [ "${do_ssh}" = 'true' -a "${TARGET_HOST}" = 'cmd' ]; then
-  # inpired from ScriptHelper/cli.lib.sh
-  BUILD_SED_CODE () {
-    local sed_cmd=
-    for word in $( echo "$1" | tr ' ' $'\n' ); do
-      [ "${word}" = '?' ] && word="\([^ ]*\)"
-      sed_cmd="${sed_cmd} *${word}"
-    done
-    echo -n "s/^${sed_cmd} *$/$2/p; t;"
-  }
-  code=
-  code="${code} $(BUILD_SED_CODE 'cmd list targets'   'USER_LIST_TARGETS')"
-  code="${code} $(BUILD_SED_CODE 'cmd list targets ?' 'USER_LIST_TARGETS \1')"
-  code="${code} $(BUILD_SED_CODE 'cmd sshkey all'     'DISPLAY_USER_SSHKEY_FILE all')"
-  code="${code} $(BUILD_SED_CODE 'cmd sshkey ?'       'DISPLAY_USER_SSHKEY_FILE \1')"
-  code="${code} a echo 'ERROR: unknown command' "
-  eval $(echo "${SSH_ORIGINAL_COMMAND}" | sed -n -e "$code" )
-  exit 0;
+if [ "${SSHGATE_ALLOW_REMOTE_COMMAND}" = 'Y' -a "${do_ssh}" = 'true' ]; then
+  if [ "${TARGET_HOST}" = 'cmd' -o "${TARGET_HOST}" = 'cli' ]; then
+    # inpired from ScriptHelper/cli.lib.sh
+    # we don't want sshgate.sh to be dependant on ScriptHelper
+    BUILD_SED_CODE () {
+      local sed_cmd=
+      for word in $( echo "$1" | tr ' ' $'\n' ); do
+        [ "${word}" = '?' ] && word="\([^ ]*\)"
+        sed_cmd="${sed_cmd} *${word}"
+      done
+      echo -n "s|^${sed_cmd} *$|$2|p; t;"
+    }
+    code=
+    code="${code} $(BUILD_SED_CODE 'cmd list targets'   'USER_LIST_TARGETS')"
+    code="${code} $(BUILD_SED_CODE 'cmd list targets ?' 'USER_LIST_TARGETS \1')"
+    code="${code} $(BUILD_SED_CODE 'cmd sshkey all'     'DISPLAY_USER_SSHKEY_FILE all')"
+    code="${code} $(BUILD_SED_CODE 'cmd sshkey ?'       'DISPLAY_USER_SSHKEY_FILE \1')"
+    if [ "${SSHGATE_USE_REMOTE_ADMIN_CLI}" = 'Y' -a "$( USER_IS_ADMIN "${SSHKEY_USER}" )" = 'true' ]; then
+      code="${code} $(BUILD_SED_CODE 'cli' "sudo ${SSHGATE_DIR_BIN}/sshgate -u '${SSHKEY_USER}'")"
+    fi
+    code="${code} a echo 'ERROR: unknown command' "
+    eval $(echo "${SSH_ORIGINAL_COMMAND}" | sed -n -e "$code" )
+    exit 0;
+  fi
 fi
 
 # Determine information for connecting to the host ---------------------------

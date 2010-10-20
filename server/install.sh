@@ -57,7 +57,7 @@ ASK --yesno SSHGATE_MAIL_SEND \
 if [ "${SSHGATE_MAIL_SEND}" = 'Y' ]; then
   SSHGATE_MAIL_SEND='true'
   ASK SSHGATE_MAIL_TO \
-      "Who will receive mail notification (comma separated mails) ?" \
+      "Who will receive mail notification (comma separated mails) [${SSHGATE_MAIL_TO}] ?" \
       "${SSHGATE_MAIL_TO}"
   [ -z "${SSHGATE_MAIL_TO}" ] && SSHGATE_MAIl_SEND='false'
 else
@@ -66,6 +66,21 @@ fi
 CONF_SAVE SSHGATE_MAIL_SEND
 CONF_SAVE SSHGATE_MAIL_TO
 
+ASK --yesno SSHGATE_ALLOW_REMOTE_COMMAND \
+    "Allow remote command [${SSHGATE_ALLOW_REMOTE_COMMAND}] ? " \
+    "${SSHGATE_ALLOW_REMOTE_COMMAND}"
+
+sudo_no_passwd=''
+if [ "${SSHGATE_ALLOW_REMOTE_COMMAND}" = 'Y' ]; then
+  ASK --yesno SSHGATE_USE_REMOTE_ADMIN_CLI \
+      "Allow remote administration CLI [${SSHGATE_USE_REMOTE_ADMIN_CLI}] ? " \
+      "${SSHGATE_USE_REMOTE_ADMIN_CLI}"
+  if [ "${SSHGATE_USE_REMOTE_ADMIN_CLI}" = 'Y' ]; then
+    ASK --yesno sudo_no_passwd "Configure sudo with NOPASSWD to launch remote admin CLI [No] ?" 'N'
+  fi
+fi
+CONF_SAVE SSHGATE_ALLOW_REMOTE_COMMAND
+CONF_SAVE SSHGATE_USE_REMOTE_ADMIN_CLI
 
 BR
 BR
@@ -76,6 +91,7 @@ DOTHIS 'Reload configuration'
 OK
 
 DOTHIS 'Installing sshGate'
+  # create directories
   MK () { [ ! -d "$1/" ] && mkdir -p "$1"; }
   MK "${SSHGATE_DIR}"
   MK "${SSHGATE_DIR_CONF}"
@@ -83,7 +99,6 @@ DOTHIS 'Installing sshGate'
   MK "${SSHGATE_DIR_USERS}"
   MK "${SSHGATE_DIR_TARGETS}"
   MK "${SSHGATE_DIR_USERS_GROUPS}"
-  MK "${SSHGATE_DIR_TARGETS_GROUPS}"
   MK "${SSHGATE_DIR_LOG}"
   MK "${SSHGATE_DIR_ARCHIVE}"
 
@@ -102,16 +117,22 @@ DOTHIS 'Installing sshGate'
   mv "${SSHGATE_DIR_BIN}/sshgate.conf" "${SSHGATE_DIR_CONF}"
   [ -d ./lib/ ] && cp -r ./lib/ "${SSHGATE_DIR_BIN}"
 
+OK
+
+DOTHIS 'Generate default sshkey pair'
   # generate targets default sshkey
   if [ ! -f "${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}" ]; then
     ssh-keygen -t rsa -b 4096 -N '' -f "${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}" >/dev/null
     mv "${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}.pub" "${SSHGATE_TARGET_DEFAULT_PUBLIC_SSHKEY_FILE}"
   fi
+OK
 
+DOTHIS 'Setup files permissions'
   # permissions on files
   chown "${SSHGATE_GATE_ACCOUNT}" "${SSHGATE_DIR_LOG}"
   find "${SSHGATE_DIR}" -type d -exec chmod -R a+x {} \;
   find "${SSHGATE_DIR_BIN}" -type f -exec chmod a+r {} \;
+  chown root "${SSHGATE_DIR_BIN}/sshgate"
   chmod a+x "${SSHGATE_DIR_BIN}/sshgate"
 
   # sshkeys must be in 400
@@ -146,6 +167,19 @@ DOTHIS 'Install archive cron'
   mv "${SSHGATE_DIR_BIN}/archive-log.sh" /etc/cron.monthly/
   chmod +x /etc/cron.monthly/archive-log.sh
 OK
+
+if [ "${SSHGATE_USE_REMOTE_ADMIN_CLI}" = 'Y' ]; then
+  DOTHIS 'configure /etc/sudoers'
+    file="/tmp/sudoers.${RANDOM}"
+    [ "${sudo_no_passwd}" = 'Y' ] && sudo_no_passwd='NOPASSWD:' || sudo_no_passwd=''
+    grep -v "^${SSHGATE_GATE_ACCOUNT} " < /etc/sudoers > "${file}"
+    mv "${file}" /etc/sudoers
+    echo "${SSHGATE_GATE_ACCOUNT} ALL=(root) ${sudo_no_passwd}${SSHGATE_DIR_BIN}/sshgate" >> /etc/sudoers
+    chmod 0440 /etc/sudoers
+    rm -f "${file}"
+  OK
+fi
+
 BR
 
 NOTICE "You may add ${SSHGATE_DIR_BIN} in your PATH variable"

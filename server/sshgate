@@ -33,6 +33,21 @@
 [ -z "${__SSHGATE_CONF__}" -a -r ./sshgate.conf       ] && . ./sshgate.conf
 [ -z "${__SSHGATE_FUNC__}" -a -r ./sshgate.func       ] && . ./sshgate.func
 
+SSHKEY_USER=
+while true ; do
+  [ $# -eq 0 ] && break;
+  case $1 in
+    -u ) shift; SSHKEY_USER="$1"; shift ;;
+    *  ) shift ;; # ignore
+  esac
+done
+
+if [ -z "${SSHKEY_USER}" ]; then
+  echo "ERROR: you have to specify a username to use sshgate CLI"
+  echo "usage: $0 -u <username>"
+  exit 1
+fi
+
 # don't want to add exec.lib.sh in dependencies :/
 user_id=`id -u`
 [ "${user_id}" != "0" ] \
@@ -180,5 +195,5 @@ CLI_SET_PROMPT "sshGate"
 CLI_RUN
 
 [ ${SSHGATE_MAIL_SEND:-} = 'true' ] \
-  && MAIL_SEND "${SSHGATE_MAIL_SUBJECT}" "${SSHGATE_MAIL_TO}"
+  && MAIL_SEND "${SSHGATE_MAIL_SUBJECT} (${SSHKEY_USER})" "${SSHGATE_MAIL_TO}"
 [ $? -eq 2 ] && NOTICE "No modification noticed. Repport e-mail will not be sent"
