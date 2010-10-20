@@ -520,20 +520,21 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
   # check wether a user ($1) has access to a target host ($2)
   HAS_ACCESS() {
-    local user= target= target_list=
+    local user= target=
 
     if [ $# -eq 0 ]; then
-      user=${SSHKEY_USER:-unknown}
-      target=${TARGET_HOST:-unknown}
+      user="${SSHKEY_USER:-}"
+      target="${TARGET_HOST:-}"
     else
       user="$1"
-      [ $# -lt 2 ] && target=${TARGET_HOST:-unknown} || target="$2"
+      [ $# -lt 2 ] && target="${TARGET_HOST:-}" || target="$2"
     fi
 
-    target_list=$( USER_LIST_TARGETS "${user}" )
-    target_list=$( for target in ${target_list}; do echo "${target}"; TARGET_LIST_ALIASES "${target}"; done )
+    if [ -z "${user}" -o -z "${target}" ]; then
+      echo 'false'; return 1;
+    fi
 
-    echo "${target_list}" | grep "^${target}\$" >/dev/null 2>/dev/null
+    TARGET_ACCESS_LIST_USERS "${target}" | grep "^${user}$" >/dev/null
     if [ $? -eq 0 ]; then
       echo 'true'; return 0;
     fi
