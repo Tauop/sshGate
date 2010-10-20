@@ -438,7 +438,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
   # create the log directory if not exists
   TARGET_LOG_FILE () {
     local target= dir=
-    [ $# -eq 0 ] && target=${TARGET_HOST:-unknown} || target="$1"
+    [ $# -eq 0 ] && target="${TARGET_HOST:-}" || target="$1"
     target=$( TARGET_REAL "${target}" )
 
     if [ -z "${target}" ]; then
@@ -457,14 +457,14 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
   TARGET_SESSION_LOG_FILE () {
     local user= target= f=
     if [ $# -eq 0 ]; then
-      target=${TARGET_HOST:-unknown}
-      user=${SSHKEY_USER:-unknown}
+      target="${TARGET_HOST:-}"
+      user="${SSHKEY_USER:-}"
     else
       target="$1"
-      [ $# -lt 2 ] && user=${SSHKEY_USER:-unknown} || user="$2"
+      [ $# -lt 2 ] && user="${SSHKEY_USER:-}" || user="$2"
     fi
     target=$( TARGET_REAL "${target}" )
-    if [ -z "${target}" ]; then
+    if [ -z "${target}" -o -z "${user}" ]; then
       echo ''; return 1;
     fi
 
@@ -476,15 +476,15 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
   USER_SSHKEY_FILE () {
     local user= f=
-    [ $# -eq 0 ] && user=${SSHKEY_USER:-unknown} || user="$1"
+    [ $# -eq 0 ] && user="${SSHKEY_USER:-}" || user="$1"
     f="${SSHGATE_DIR_USERS}/${user}"
-    [ ! -r "$f" ] && f=''
+    [ ! -r "$f" -o -z "${user}" ] && f=''
     echo "$f"
   }
 
   DISPLAY_USER_SSHKEY_FILE () {
     local user= f=
-    [ $# -eq 0 ] && user=${SSHKEY_USER:-all} || user="$1"
+    [ $# -eq 0 ] && user="${SSHKEY_USER:-all}" || user="$1"
     if [ "${user}" != 'all' ]; then
       f=$( USER_SSHKEY_FILE "${user}" )
       if [ -n "$f" ]; then
@@ -504,17 +504,17 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
   TARGET_PRIVATE_SSHKEY_FILE () {
     local target= f=
-    [ $# -eq 0 ] && target=${TARGET_HOST:-unknown} || target=$1
+    [ $# -eq 0 ] && target="${TARGET_HOST:-}" || target="$1"
     f="${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGET_PRIVATE_SSHKEY_FILENAME}"
-    [ ! -r "$f" ] && f="${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}"
+    [ ! -r "$f" -o -z "${target}" ] && f="${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}"
     echo "$f"
   }
 
   TARGET_PUBLIC_SSHKEY_FILE () {
     local target= f=
-    [ $# -eq 0 ] && target=${TARGET_HOST:-unknown} || target=$1
+    [ $# -eq 0 ] && target="${TARGET_HOST:-}" || target="$1"
     f="${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGET_PUBLIC_SSHKEY_FILENAME}"
-    [ ! -r "$f" ] && f="${SSHGATE_TARGET_DEFAULT_PUBLIC_SSHKEY_FILE}"
+    [ ! -r "$f" -o -z "${target}" ] && f="${SSHGATE_TARGET_DEFAULT_PUBLIC_SSHKEY_FILE}"
     echo "$f"
   }
 
@@ -546,7 +546,6 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
     res=$( eval "find '${SSHGATE_DIR_TARGETS}' -mindepth 1 -type d ${find_opt} -printf '%P\n'" )
     echo "${res}" | sort -u
-    [ -z "${res}" ] && echo
     return 0;
   }
 
@@ -557,10 +556,19 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     fi
 
     target="$1"
-    [ -d "${SSHGATE_DIR_TARGETS}/${target}" ] && return 1;
+    if [ -z "${target}" ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
+    if [    -d "${SSHGATE_DIR_TARGETS}/${target}" \
+         -o -L "${SSHGATE_DIR_TARGETS}/${target}" ]; then
+      ERROR "Target or Alias '${target}' already exist"; return 1;
+    fi
     if [ $# -eq 2 ]; then
       privsshkey="$2"
-      [ ! -r "${privsshkey}" ] && return 1;
+      if [ ! -r "${privsshkey}" -o -z "${privsshkey}" ]; then
+        ERROR "Can't read '${privsshkey}'"; return 1;
+      fi
     fi
 
     target_privsshkey="${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGET_PRIVATE_SSHKEY_FILENAME}"
@@ -742,8 +750,8 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
       BAD_ARGUMENTS ; return 1;
     fi
 
-    target="$1"
-    if [ ! -d "${SSHGATE_DIR_TARGETS}/${target}/" ]; then
+    target=$( TARGET_REAL "$1" )
+    if [ -z "${target}" ]; then
       ERROR "Target host '${target}' doesn't exist" ; return 1;
     fi
 
@@ -789,6 +797,9 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     if [ -z "${target}" ]; then
       ERROR "Target host '${target}' doesn't exist" ; return 1
     fi
+    if [ -z "${alias}" ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
     if [ -L "${SSHGATE_DIR_TARGETS}/${alias}" ]; then
       ERROR "Target alias '${alias}' already exists" ; return 1
     fi
@@ -807,6 +818,9 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     fi
 
     alias="$1"
+    if [ -z "${alias}" ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
     if [ ! -L "${alias}" ]; then
       ERROR "Target alias '${alias}' doesn't exist" ; return 1;
     fi
@@ -817,7 +831,11 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
   TARGET_REAL () {
     local target=
-    [ $# -ne 1 ] && target="${TARGET_HOST:-unknown}" || target="$1"
+    [ $# -ne 1 ] && target="${TARGET_HOST:-}" || target="$1"
+
+    if [ -z "${target}" ]; then
+      echo ''; return 1;
+    fi
 
     if [ -L "${SSHGATE_DIR_TARGETS}/${target}" ]; then
       target=$( readlink -f "${SSHGATE_DIR_TARGETS}/${target}" )
@@ -839,8 +857,8 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
       BAD_ARGUMENTS ; return 1;
     fi
 
-    target="$1"
-    if [ ! -d "${SSHGATE_DIR_TARGETS}/${target}" ]; then
+    target=$( TARGET_REAL "$1" )
+    if [ -z "${target}" ]; then
       ERROR "Target host '${target}' doesn't exist" ; return 1;
     fi
 
@@ -861,8 +879,11 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
       BAD_ARGUMENTS ; return 1;
     fi
 
-    target="$1"; user="$2";
-    if [ ! -d "${SSHGATE_DIR_TARGETS}/${target}" ]; then
+    target=$( TARGET_REAL "$1"); user="$2";
+    if [ -z "${user}" ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+    if [ -z "${target}" ]; then
       ERROR "Target host '${target}' doesn't exist" ; return 1;
     fi
     if [ ! -f "${SSHGATE_DIR_USERS}/${user}" ]; then
@@ -882,8 +903,11 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
       BAD_ARGUMENTS ; return 1
     fi
 
-    target="$1"; user="$2"
-    if [ ! -d "${SSHGATE_DIR_TARGETS}/${target}" ]; then
+    target=$( TARGET_REAL "$1" ); user="$2"
+    if [ -z "${user}" ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+    if [ -z "${target}" ]; then
       ERROR "Target host '${target}' doesn't exist" ; return 1;
     fi
     if [ ! -f "${SSHGATE_DIR_USERS}/${user}" ]; then
@@ -903,8 +927,8 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
       BAD_ARGUMENTS ; return 1;
     fi
 
-    target="$1"
-    if [ ! -d "${SSHGATE_DIR_TARGETS}/${target}" ]; then
+    target=$( TARGET_REAL "$1" )
+    if [ -z "${target}" ]; then
       ERROR "Target host '${target}' doesn't exist" ; return 1;
     fi
 
@@ -918,8 +942,11 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
       BAD_ARGUMENTS ; return 1;
     fi
 
-    target="$1"; usergroup="$2"
-    if [ ! -d "${SSHGATE_DIR_TARGETS}/${target}" ]; then
+    target=$( TARGET_REAL "$1" ); usergroup="$2"
+    if [ -z "${usergroup}" ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+    if [ -z "${target}" ]; then
       ERROR "Target host '${target}' doesn't exist" ; return 1;
     fi
     if [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" ]; then
@@ -939,8 +966,11 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
       BAD_ARGUMENTS ; return 1
     fi
 
-    target="$1"; usergroup="$2"
-    if [ ! -d "${SSHGATE_DIR_TARGETS}/${target}" ]; then
+    target=$( TARGET_REAL "$1" ); usergroup="$2"
+    if [ -z "${usergroup}" ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+    if [ -z "${target}" ]; then
       ERROR "Target  host '${target}' doesn't exist" ; return 1;
     fi
     if [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" ]; then
@@ -965,7 +995,9 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     fi
 
     local user="$1" userkey="$2"
-
+    if [ -z "${user}" -o -z "${userkey}" ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
     if [ ! -r "${userkey}" ]; then
       ERROR "Can't read user ssh key" ; return 1;
     fi
@@ -988,9 +1020,9 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     if [ $# -ne 1 ]; then
       BAD_ARGUMENTS ; return 1
     fi
-    local user="$1"
 
-    if [ ! -f "${SSHGATE_DIR_USERS}/${user}" ]; then
+    local user="$1"
+    if [ ! -f "${SSHGATE_DIR_USERS}/${user}" -o -z "${user}" ]; then
       ERROR "User '${user}' doesn't exist"  ; return 1;
     fi
 
@@ -1014,9 +1046,9 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
   USER_LIST_USERGROUPS () {
     local user=
-    [ $# -eq 0 ] && user=${SSHKEY_USER:-unknown} || user="$1"
+    [ $# -eq 0 ] && user="${SSHKEY_USER:-}" || user="$1"
 
-    if [ ! -f "${SSHGATE_DIR_USERS}/${user}" ]; then
+    if [ ! -f "${SSHGATE_DIR_USERS}/${user}" -o -z "${user}" ]; then
       ERROR "User '${user}' doesn't exist" ; return 1;
     fi
 
@@ -1028,9 +1060,9 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
   USER_LIST_TARGETS () {
     local user=
-    [ $# -eq 0 ] && user=${SSHKEY_USER:-unknown} || user="$1"
+    [ $# -eq 0 ] && user="${SSHKEY_USER:-}" || user="$1"
 
-    if [ ! -f "${SSHGATE_DIR_USERS}/${user}" ]; then
+    if [ ! -f "${SSHGATE_DIR_USERS}/${user}" -o -z "${user}" ]; then
       ERROR "User '${user}' doesn't exist" ; return 1;
     fi
 
@@ -1054,9 +1086,9 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
   USER_ACCESS_INFO () {
     local user= targets=
-    [ $# -eq 0 ] && user=${SSHKEY_USER:-unknown} || user="$1"
+    [ $# -eq 0 ] && user="${SSHKEY_USER:-}" || user="$1"
 
-    if [ ! -f "${SSHGATE_DIR_USERS}/${user}" ]; then
+    if [ ! -f "${SSHGATE_DIR_USERS}/${user}" -o -z "${user}" ]; then
       ERROR "User '${user}' doesn't exist" ; return 1;
     fi
 
@@ -1093,8 +1125,11 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     fi
 
     usergroup="$1"
+    if [ -z "${usergroup}" ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
     if [ -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" ]; then
-      ERROR "User group '${usergroup}' doesn't exist" ; return 1
+      ERROR "User group '${usergroup}' already exists" ; return 1
     fi
 
     touch "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}"
@@ -1112,7 +1147,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     fi
 
     usergroup="$1"
-    if [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" ]; then
+    if [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" -o -z "${usergroup}" ]; then
       ERROR "User group '${usergroup}' doesn't exist" ; return 1
     fi
 
@@ -1135,7 +1170,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     fi
 
     usergroup="$1"
-    if [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" ]; then
+    if [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" -o -z "${usergroup}" ]; then
       ERROR "User group '${usergroup}' doesn't exist" ; return 1;
     fi
 
@@ -1150,10 +1185,10 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     fi
 
     usergroup="$1"; user="$2";
-    if [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" ]; then
+    if [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" -o -z "${usergroup}" ]; then
       ERROR "User group '${usergroup}' doesn't exist" ; return 1;
     fi
-    if [ ! -f "${SSHGATE_DIR_USERS}/${user}" ]; then
+    if [ ! -f "${SSHGATE_DIR_USERS}/${user}" -o -z "${user}" ]; then
       ERROR "User '${user}' doesn't exist" ; return 1;
     fi
 
@@ -1171,10 +1206,10 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     fi
 
     usergroup="$1"; user="$2"
-    if [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" ]; then
+    if [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" -o -z "${usergroup}" ]; then
       ERROR "User group '${usergroup}' doesn't exist" ; return 1;
     fi
-    if [ ! -f "${SSHGATE_DIR_USERS}/${user}" ]; then
+    if [ ! -f "${SSHGATE_DIR_USERS}/${user}" -o -z "${user}" ]; then
       ERROR "User '${user}' doesn't exist" ; return 1;
     fi
 
@@ -1192,7 +1227,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     fi
 
     usergroup="$1"
-    if [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" ]; then
+    if [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" -o -z "${usergroup}" ]; then
       ERROR "User group '${usergroup}' doesn't exist" ; return 1;
     fi
 
