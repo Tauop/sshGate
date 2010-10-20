@@ -990,6 +990,17 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     return 0;
   }
 
+  USER_IS_ADMIN () {
+    local user=
+    [ $# -eq 0 ] && user="${SSHKEY_USER:-}" || user="$1"
+    if [ -z "${user}" ]; then
+      echo 'false'; return 1;
+    fi
+    USER_LIST_USERGROUPS "${user}" | grep 'SSHGATE_ADMIN' >/dev/null
+    [ $? -eq 0 ] && echo 'true' || echo 'false'
+    return 0;
+  }
+
   USER_ADD () {
     if [ $# -ne 2 ]; then
       BAD_ARGUMENTS ; return 1;
