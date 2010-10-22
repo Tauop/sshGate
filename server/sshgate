@@ -91,6 +91,7 @@ CLI_REGISTER_COMMAND 'target ssh test all'        'TARGET_SSH_TEST_ALL'
 CLI_REGISTER_COMMAND 'target ssh install key all' 'TARGET_SSH_INSTALL_ALL_KEYS'
 
 CLI_REGISTER_MENU    'target ?'
+CLI_REGISTER_COMMAND 'target ? rename ?'        'TARGET_RENAME \1 \2'
 CLI_REGISTER_COMMAND 'target ? realname'        'TARGET_REAL \1'
 CLI_REGISTER_COMMAND 'target ? add alias ?'     'TARGET_ADD_ALIAS \1 \2'
 CLI_REGISTER_COMMAND 'target ? del alias ?'     'TARGET_DEL_ALIAS \2'

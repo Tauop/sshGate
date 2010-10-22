@@ -102,6 +102,10 @@
 #   usage: TARGET_DEL <target_host>
 #   desc: delete a target host from sshGate
 #
+# TARGET_RENAME()
+#   usage: TARGET_RENAME <target_host> <new_name>
+#   desc: rename a target host and create an alias with the old target name
+#
 # TARGET_SSH_USE_DEFAULT_KEY()
 #   usage: TARGET_SSH_USE_DEFAULT_KEY <target_host>
 #   desc: set ssh default key for a host
@@ -627,6 +631,32 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     DELETE_TARGET_FROM_KNOWN_HOST "${target}"
 
     private_MAIL_APPEND "Target ${target} removed"
+
+    return 0;
+  }
+
+  TARGET_RENAME () {
+    local target= new_name= new_target=
+    if [ $# -ne 2 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+    target=$( TARGET_REAL "$1" ); new_name="$2"; new_target=$( TARGET_REAL "${new_name}" )
+    if [ -z "${target}" ]; then
+      ERROR "Target host '${target}' doesn't exist"; return 1;
+    fi
+    if [ "${target}" != "$1" ]; then
+      ERROR "Target name '$1' is an alias of '${target}'"; return 1;
+    fi
+    if [ -n "${target}" ]; then
+      ERROR "Target name '${new_name}' already used"; return 1;
+    fi
+
+    mv "${SSHGATE_DIR_TARGETS}/${target}" "${SSHGATE_DIR_TARGETS}/${new_name}"
+    mv "${SSHGATE_DIR_LOG}/${target}" "${SSHGATE_DIR_LOG}/${new_name}"
+    echo "Target renamed : ${target} -> ${new_name}"
+
+    TARGET_ADD_ALIAS "${new_name}" "${target}"
+    echo "Target alias '${target}' created"
 
     return 0;
   }
