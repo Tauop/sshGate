@@ -18,10 +18,4 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-if [ $# -ne 1 ]; then
-  echo "ERROR: bad arguments"
-  echo "usage: $0 <target_host>"
-  exit 1
-fi
-
-ssh -t sshgate "$1"
+ssh -t sshgate $@
