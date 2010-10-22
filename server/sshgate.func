@@ -647,7 +647,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     if [ "${target}" != "$1" ]; then
       ERROR "Target name '$1' is an alias of '${target}'"; return 1;
     fi
-    if [ -n "${target}" ]; then
+    if [ -n "${new_target}" ]; then
       ERROR "Target name '${new_name}' already used"; return 1;
     fi
 
