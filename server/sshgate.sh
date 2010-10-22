@@ -17,6 +17,21 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
+# ----------------------------------------------------------------------------
+# VARIABLES used
+# - SSH_ORIGINAL_COMMAND : variable given by sshd, which contain the original
+#                          ssh command.
+# - SSHKEY_USER : the login of the connected user
+# - SFTP_SERVER : contant which containt the path to the sftp-server binary
+# - TARGET_HOST : target  host of the sshg call
+# - TARGET_HOST_COMMAND : ssh command which will be exec on the ${TARGET_HOST}
+# - TARGET_USER : login to use when connecting to the ${TARGET_HOST}
+# - TARGET_SSHKEY : ${TARGET_HOST} private ssh key
+# - ORIGINAL_TARGET_HOST : copy of TARGET_HOST used by error messages
+# - GLOG_FILE : Global ${TARGET_HOST} log file
+# - SLOG_FILE : Session log file (one per session/user/host)
+# - SSHGATE_LOG_FILE : Global sshGate log file
+# ----------------------------------------------------------------------------
 
 if [ $# -ne 1 ]; then
   echo "your SSH KEY is not well configured. Please contact the sshGate administrator."
@@ -24,29 +39,11 @@ if [ $# -ne 1 ]; then
 fi
 
 # GLOBAL configuration -------------------------------------------------------
-SSHKEY_USER=$1
+SSHKEY_USER="$1"
 SFTP_SERVER=/usr/libexec/openssh/sftp-server
 
 # %% __SSHGATE_CONF__ %% <-- WARNING: don't remove. used by install.sh
-if [ -z "${__SSHGATE_CONF__}" ]; then
-  [ -r "${0%/*}/sshgate.conf" ] && . ${0%/*}/sshgate.conf
-  [ -r "`pwd`/sshgate.conf"   ] && . `pwd`/sshgate.conf
-  if [ -z "${__SSHGATE_CONF__:-}" ]; then
-    echo "ERROR: Unable to load sshgate.conf"
-    exit 1;
-  fi
-fi
-
 # %% __SSHGATE_FUNC__ %% <-- WARNING: don't remove. used by install.sh
-if [ -z "${__SSHGATE_FUNC__}" ]; then
-  [ -r "${0%/*}/sshgate.func" ] && . ${0%/*}/sshgate.func
-  [ -r "`pwd`/sshgate.func"   ] && . `pwd`/sshgate.func
-  if [ -z "${__SSHGATE_FUNC__:-}" ]; then
-    echo "ERROR: Unable to load sshgate.func"
-    exit 1;
-  fi
-fi
-
 
 # one little function
 LOG () { local file=$1; shift; echo "$(date +'[%D %T]') $*" >> ${file}; }
@@ -78,8 +75,9 @@ if [ "${SSH_ORIGINAL_COMMAND}" != "${SSH_ORIGINAL_COMMAND#${SFTP_SERVER} }" \
     SSH_ORIGINAL_COMMAND="${SSH_ORIGINAL_COMMAND} ${TARGET_SCP_DIR}"
   fi
 else
-  # SSH_ORIGINAL_COMMAND contain the name of the target host
+  # SSH_ORIGINAL_COMMAND starts with the name of the target host
   TARGET_HOST=${SSH_ORIGINAL_COMMAND%% *}
+  TARGET_HOST_COMMAND=${SSH_ORIGINAL_COMMAND##${TARGET_HOST} }
   do_ssh='true'
 fi
 
@@ -104,7 +102,7 @@ if [ "${SSHGATE_ALLOW_REMOTE_COMMAND}" = 'Y' -a "${do_ssh}" = 'true' ]; then
     if [ "${SSHGATE_USE_REMOTE_ADMIN_CLI}" = 'Y' -a "$( USER_IS_ADMIN "${SSHKEY_USER}" )" = 'true' ]; then
       code="${code} $(BUILD_SED_CODE 'cli' "sudo ${SSHGATE_DIR_BIN}/sshgate -u '${SSHKEY_USER}'")"
     fi
-    code="${code} a echo 'ERROR: unknown command' "
+    code="${code} a \ echo 'ERROR: unknown command' "
     eval $(echo "${SSH_ORIGINAL_COMMAND}" | sed -n -e "$code" )
     exit 0;
   fi
@@ -112,11 +110,12 @@ fi
 
 # Determine information for connecting to the host ---------------------------
 TARGET_USER=${SSHGATE_TARGETS_DEFAULT_USER}
+ORIGINAL_TARGET_HOST="${TARGET_HOST}"
 TARGET_HOST=$( TARGET_REAL "${TARGET_HOST}" )
 GLOG_FILE=$( TARGET_LOG_FILE )
 
-if [ -z "${GLOG_FILE}" ]; then
-  echo "ERROR: Unknown host ${TARGET_HOST}."
+if [ -z "${TARGET_HOST}" ]; then
+  echo "ERROR: Unknown host ${ORIGINAL_TARGET_HOST}."
   exit 1;
 fi
 
@@ -128,7 +127,7 @@ fi
 
 # check ACL ------------------------------------------------------------------
 if [ $( HAS_ACCESS ) = 'false' ]; then
-  echo "ERROR: The ${TARGET_HOST} doesn't exist or you don't have access to it"
+  echo "ERROR: The ${ORIGINAL_TARGET_HOST} doesn't exist or you don't have access to it"
   exit 1
 fi
 
@@ -137,14 +136,14 @@ LOG ${GLOG_FILE} "New session $$. Connection from ${SSH_CONNECTION%% *} with SSH
 if [ "${do_ssh:-}" = 'true' ]; then
   SLOG_FILE=$( TARGET_SESSION_LOG_FILE )
   LOG ${GLOG_FILE} "Creating session log file ${SLOG_FILE}"
-  LOG ${SSHGATE_LOG_FILE} "[SSSH] ${SSHKEY_USER} -> ${TARGET_USER}@${TARGET_HOST}"
+  LOG ${SSHGATE_LOG_FILE} "[SSSH] ${SSHKEY_USER} -> ${TARGET_USER}@${TARGET_HOST} ${TARGET_HOST_COMMAND}"
 
-  ssh -i ${TARGET_SSHKEY} ${TARGET_USER}@${TARGET_HOST} | tee ${SLOG_FILE}
+  ssh -i ${TARGET_SSHKEY} ${TARGET_USER}@${TARGET_HOST} "${TARGET_HOST_COMMAND}" | tee ${SLOG_FILE}
   LOG ${GLOG_FILE} "Session $$ ended. logfile = ${SLOG_FILE}"
 else
   LOG ${SSHGATE_LOG_FILE} "[SCP] ${SSHKEY_USER} -> ${TARGET_USER}@${TARGET_HOST} ${SSH_ORIGINAL_COMMAND}"
 
-  ssh -i ${TARGET_SSHKEY} ${TARGET_USER}@${TARGET_HOST} ${SSH_ORIGINAL_COMMAND}
+  ssh -i ${TARGET_SSHKEY} ${TARGET_USER}@${TARGET_HOST} "${SSH_ORIGINAL_COMMAND}"
   LOG ${GLOG_FILE} "Transfert $$ completed."
 fi
 
