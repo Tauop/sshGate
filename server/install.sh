@@ -130,7 +130,7 @@ OK
 DOTHIS 'Setup files permissions'
   # permissions on files
   chown "${SSHGATE_GATE_ACCOUNT}" "${SSHGATE_DIR_LOG}"
-  find "${SSHGATE_DIR}" -type d -exec chmod -R a+x {} \;
+  find "${SSHGATE_DIR}" -type d -exec chmod a+x {} \;
   find "${SSHGATE_DIR_BIN}" -type f -exec chmod a+r {} \;
   chown root "${SSHGATE_DIR_BIN}/sshgate"
   chmod a+x "${SSHGATE_DIR_BIN}/sshgate"
