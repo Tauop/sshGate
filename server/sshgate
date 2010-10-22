@@ -187,7 +187,8 @@ BR
 MSG "Use 'help' command to list all avariable commands"
 BR
 
-CLI_USE_READLINE --history-file ~/.sshgate_history
+# use --force when CLI is called from remote
+CLI_USE_READLINE --force --history-file ~/.sshgate_history
 CLI_SET_PROMPT "sshGate"
 
 [ ${SSHGATE_MAIL_SEND:-} = 'true' ] && MAIL_CREATE
