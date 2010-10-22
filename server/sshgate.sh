@@ -109,17 +109,24 @@ if [ "${SSHGATE_ALLOW_REMOTE_COMMAND}" = 'Y' -a "${do_ssh}" = 'true' ]; then
   fi
 fi
 
+# If user don't specify a target host, ask for the target host ---------------
+
+if [ -z "${TARGET_HOST}" ]; then
+  echo "NOTICE: No target host given"
+  read -p "Target host ? " TARGET_HOST
+  TARGET_HOST=${TARGET_HOST%% *}
+fi
+
 # Determine information for connecting to the host ---------------------------
-TARGET_USER=${SSHGATE_TARGETS_DEFAULT_USER}
 ORIGINAL_TARGET_HOST="${TARGET_HOST}"
 TARGET_HOST=$( TARGET_REAL "${TARGET_HOST}" )
-GLOG_FILE=$( TARGET_LOG_FILE )
-
 if [ -z "${TARGET_HOST}" ]; then
   echo "ERROR: Unknown host ${ORIGINAL_TARGET_HOST}."
   exit 1;
 fi
 
+TARGET_USER=${SSHGATE_TARGETS_DEFAULT_USER}
+GLOG_FILE=$( TARGET_LOG_FILE )
 TARGET_SSHKEY=$( TARGET_PRIVATE_SSHKEY_FILE )
 if [ -z "${TARGET_SSHKEY}" -o ! -r "${TARGET_SSHKEY:-}" ]; then
   echo "ERROR: can't read target host ssh key. Please contact the sshGate administrator"
