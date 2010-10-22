@@ -389,6 +389,9 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     echo -n '' > "${home_dir}/.ssh/known_hosts"
     for target in $( TARGETS_LIST ); do
       ADD_TARGET_TO_KNOWN_HOST "${target}" "${home_dir}/.ssh/known_hosts"
+      for alias in $( TARGET_LIST_ALIASES "${target}" ); do
+        ADD_TARGET_TO_KNOWN_HOST "${alias}" "${home_dir}/.ssh/known_hosts"
+      done
     done
 
     return 0;
@@ -657,6 +660,9 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
     TARGET_ADD_ALIAS "${new_name}" "${target}"
     echo "Target alias '${target}' created"
+
+    ADD_TARGET_TO_KNOWN_HOST "${new_name}"
+    private_MAIL_APPEND "Target ${target} renamed to ${new_name}"
 
     return 0;
   }
