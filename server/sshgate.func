@@ -579,6 +579,12 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
       fi
     fi
 
+    # check that the host exists (DNS/IP)
+    ping -c 1 "${target}" >/dev/null 2>/dev/null
+    if [ $? -ne 0 ]; then
+      ERROR "Unable to ping ${target} !"; return 1;
+    fi
+
     target_privsshkey="${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGET_PRIVATE_SSHKEY_FILENAME}"
     target_pubsshkey="${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGET_PUBLIC_SSHKEY_FILENAME}"
 
