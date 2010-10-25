@@ -388,9 +388,13 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
     echo -n '' > "${home_dir}/.ssh/known_hosts"
     for target in $( TARGETS_LIST ); do
+      echo -n "- ${target} ... "
       ADD_TARGET_TO_KNOWN_HOST "${target}" "${home_dir}/.ssh/known_hosts"
+      echo 'OK'
       for alias in $( TARGET_LIST_ALIASES "${target}" ); do
+        echo -n "  . ${alias} ... "
         ADD_TARGET_TO_KNOWN_HOST "${alias}" "${home_dir}/.ssh/known_hosts"
+        echo -n 'OK'
       done
     done
 
