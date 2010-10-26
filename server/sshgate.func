@@ -106,6 +106,16 @@
 #   usage: TARGET_RENAME <target_host> <new_name>
 #   desc: rename a target host and create an alias with the old target name
 #
+# TARGET_SET_CONF()
+#   usage: TARGET_SET_CONF [ <target> ] <variable>
+#   desc: Set a variable/value pair into the target configuration file
+#   note: if <target> is not given, try to use ${TARGET_HOST}
+#
+# TARGET_GET_CONF()
+#   usage: TARGET_GET_CONF [ <target> ] <variable>
+#   desc: Get the <variable> value from the <target> configuration file
+#   note: if <target> is not given, try to use ${TARGET_HOST}
+#
 # TARGET_SSH_USE_DEFAULT_KEY()
 #   usage: TARGET_SSH_USE_DEFAULT_KEY <target_host>
 #   desc: set ssh default key for a host
@@ -685,6 +695,57 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     ADD_TARGET_TO_KNOWN_HOST "${new_name}"
     private_MAIL_APPEND "Target ${target} renamed to ${new_name}"
 
+    return 0;
+  }
+
+  TARGET_SET_CONF() {
+    local target="${TARGET_HOST:-}" var= file=
+    if [ $# -lt 1 -o $# -gt 2 ]; then
+      BAD_ARGUMENTS; return 1;
+    fi
+
+    if [ $# -eq 2 ]; then
+      target="$1"; shift;
+    fi
+    var="$1"
+    target=$( TARGET_REAL "${target}" )
+
+    if [ -z "${target}" ]; then
+      ERROR "Target host '${target}' doesn't exist" ; return 1;
+    fi
+    if [ -z "${var}" ]; then
+      BAD_ARGUMENTS; return 1;
+    fi
+
+    file="${SSHGATE_DIR_TARGETS}/${target}/properties"
+    [ ! -f "${file}" ] && touch "${file}"
+    CONF_SAVE --conf-file "${file}" "${var}"
+    return 0;
+  }
+
+  TARGET_GET_CONF() {
+    local target="${TARGET_HOST:-}" var= file=
+    if [ $# -lt 1 -o $# -gt 2 ]; then
+      BAD_ARGUMENTS; return 1;
+    fi
+
+    if [ $# -eq 2 ]; then
+      target="$1"; shift;
+    fi
+    var="$1"
+    target=$( TARGET_REAL "${target}" )
+
+    if [ -z "${target}" ]; then
+      ERROR "Target host '${target}' doesn't exist" ; return 1;
+    fi
+    if [ -z "${var}" ]; then
+      BAD_ARGUMENTS; return 1;
+    fi
+
+    file="${SSHGATE_DIR_TARGETS}/${target}/properties"
+    if [ -f "${file}" ]; then
+      CONF_GET --conf-file "${file}" "${var}"
+    fi
     return 0;
   }
 
