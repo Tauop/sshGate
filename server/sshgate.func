@@ -224,6 +224,10 @@
 #   note: target host name are separated by '\n'.
 #   note: if called without argument, try to use ${SSHKEY_USER} variable
 #
+# USER_ACCESS_NOTIFY()
+#   usage: USER_ACCESS_NOTIFY <user>
+#   desc: Send a mail to the user to notify him about its access
+#
 # USER_ACCESS_INFO()
 #   usage: USER_ACCESS_INFO <user>
 #   desc: List all user access, and how those access are granted
@@ -1278,6 +1282,37 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     done
 
     return 0;
+  }
+
+  USER_ACCESS_NOTIFY () {
+    local user= user_mail= mail_file= old_mail_file= aliases=
+
+    [ $# -eq 0 ] && user="${SSHKEY_USER:-}" || user="$1"
+
+    user_mail=$( USER_GET_CONF "${user}" MAIL )
+    if [ -z "${user_mail}"]; then
+      ERROR "No e-mail was setup for user '${user}'"; return 1;
+    fi
+
+    old_mail_file=$( MAIL_GET_FILE )
+    MAIL_CREATE
+
+    MAIL_APPEND "Hi,"
+    MAIL_APPEND ''
+    MAIL_APPEND "Here is the list of servers you have access to through sshGate :"
+    for target in $( USER_LIST_TARGETS "${user}" ); do
+      MAIL_APPEND " - ${target}"
+      aliases=
+      aliases=$( TARGET_LIST_ALIASES "${target}" )
+      if [ "${aliases}" != '' ]; then
+        aliases=$( echo "${aliases}" | tr $'\n' ',' )
+        MAIL_APPEND "     alias: {aliases}"
+      fi
+    done
+    MAIL_SEND "Your sshGate access" "${user_mail}"
+
+    MAIL_SET_FILE "${old_mail_file}"
+    return 0
   }
 
   USERGROUPS_LIST () {
