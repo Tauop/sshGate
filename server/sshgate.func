@@ -264,7 +264,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     fi
   fi
 
-  # %% __CONF_LIB__ %% <-- WARNING: don't remove. used by install.sh
+  # %% __LIB_CONF__ %% <-- WARNING: don't remove. used by install.sh
 
   ERROR () { echo "ERROR: $*" 1>&2; }
   BAD_ARGUMENTS () { ERROR "Bad arguments"; }

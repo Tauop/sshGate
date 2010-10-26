@@ -154,6 +154,7 @@ DOTHIS 'Update sshGate installation'
   sed_repl="${sed_repl} s|^\( *\)# %% __LIB_ASK__ %%.*$|\1. ${SSHGATE_DIR_BIN}/lib/ask.lib.sh|;"
   sed_repl="${sed_repl} s|^\( *\)# %% __LIB_CLI__ %%.*$|\1. ${SSHGATE_DIR_BIN}/lib/cli.lib.sh|;"
   sed_repl="${sed_repl} s|^\( *\)# %% __LIB_MAIL__ %%.*$|\1. ${SSHGATE_DIR_BIN}/lib/mail.lib.sh|;"
+  sed_repl="${sed_repl} s|^\( *\)# %% __LIB_CONF__ %%.*$|\1. ${SSHGATE_DIR_BIN}/lib/conf.lib.sh|;"
 
   sed -i -e "${sed_repl}" "${SSHGATE_DIR_BIN}/sshgate"
   sed -i -e "${sed_repl}" "${SSHGATE_DIR_BIN}/sshgate.func"
