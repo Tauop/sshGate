@@ -45,10 +45,10 @@ ASK SSHGATE_GATE_ACCOUNT \
     "${SSHGATE_GATE_ACCOUNT}"
 CONF_SAVE SSHGATE_GATE_ACCOUNT
 
-ASK SSHGATE_TARGETS_DEFAULT_USER \
-    "What the default user account to use when connecting to target host [${SSHGATE_TARGETS_DEFAULT_USER}] ? " \
-    "${SSHGATE_TARGETS_DEFAULT_USER}"
-CONF_SAVE SSHGATE_TARGETS_DEFAULT_USER
+ASK SSHGATE_TARGETS_DEFAULT_SSH_LOGIN \
+    "What the default user account to use when connecting to target host [${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}] ? " \
+    "${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}"
+CONF_SAVE SSHGATE_TARGETS_DEFAULT_SSH_LOGIN
 
 ASK --yesno SSHGATE_MAIL_SEND \
     "Activate mail notification system [Yes] ?" \

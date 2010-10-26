@@ -734,7 +734,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     cat "${sshkey_file}" \
       | ssh -o "ConnectTimeout 5"                          \
             -o "UserKnownHostsFile ${known_hosts_file}"    \
-            "${SSHGATE_TARGETS_DEFAULT_USER}@${target}"    \
+            "${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}@${target}"    \
             "umask 077; test -d .ssh || mkdir .ssh ; cat >> .ssh/authorized_keys" 2>/dev/null
     if [ $? -ne 0 ]; then
       echo "NOTICE: Public ssh key of '${target}' can't be installed on '${target}'. Install it manually"
@@ -776,7 +776,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
                  -o "BatchMode yes"                          \
                  -o "IdentitiesOnly yes"                     \
                  -i "${sshkey_file}"                         \
-                 "${SSHGATE_TARGETS_DEFAULT_USER}@${target}" "echo 'test'" 2>&1 )
+                 "${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}@${target}" "echo 'test'" 2>&1 )
     if [ $? -eq 0 -a "${reply}" = 'test' ]; then
       echo 'OK';
     else
