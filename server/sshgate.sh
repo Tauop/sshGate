@@ -100,7 +100,7 @@ if [ "${SSHGATE_ALLOW_REMOTE_COMMAND}" = 'Y' -a "${do_ssh}" = 'true' ]; then
     code="${code} $(BUILD_SED_CODE 'cmd list targets ?' 'USER_LIST_TARGETS \1')"
     code="${code} $(BUILD_SED_CODE 'cmd sshkey all'     'DISPLAY_USER_SSHKEY_FILE all')"
     code="${code} $(BUILD_SED_CODE 'cmd sshkey ?'       'DISPLAY_USER_SSHKEY_FILE \1')"
-    if [ "${SSHGATE_USE_REMOTE_ADMIN_CLI}" = 'Y' -a "$( USER_IS_ADMIN "${SSHKEY_USER}" )" = 'true' ]; then
+    if [ "${SSHGATE_USE_REMOTE_ADMIN_CLI}" = 'Y' -a "$( USER_GET_CONF "${SSHKEY_USER}" IS_ADMIN )" = 'true' ]; then
       code="${code} $(BUILD_SED_CODE 'cli' "sudo ${SSHGATE_DIR_BIN}/sshgate -u '${SSHKEY_USER}'")"
     fi
     code="${code} a \ echo 'ERROR: unknown command' "

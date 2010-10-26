@@ -192,6 +192,16 @@
 #   usage: USER_DEL <user>
 #   desc: delete a user from the sshGate users list
 #
+# USER_SET_CONF()
+#   usage: USER_SET_CONF [ <user> ] <variable>
+#   desc: set a variable/value pair into the user configuration
+#   note: if <user> is not given, try to use ${SSHKEY_USER}
+#
+# USER_GET_CONF()
+#   usage: USER_GET_CONF [ <user> ] <variable>
+#   desc: get a variable value from the user configuration
+#   note: if <user> is not given, try to use ${SSHKEY_USER}
+#
 # USER_LIST_USERGROUPS()
 #   usage: USER_LIST_USERGROUPS [ <user> ]
 #   desc: List all users' group, which the user is in.
@@ -254,6 +264,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     fi
   fi
 
+  # %% __CONF_LIB__ %% <-- WARNING: don't remove. used by install.sh
 
   ERROR () { echo "ERROR: $*" 1>&2; }
   BAD_ARGUMENTS () { ERROR "Bad arguments"; }
@@ -545,6 +556,10 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
       echo 'false'; return 1;
     fi
 
+    if [ $( USER_GET_CONF "${user}" IS_ADMIN ) = 'true' -o $( USER_GET_CONF "${user}" IS_RESTRICTED ) = 'false' ]; then
+      echo 'true'; return 0;
+    fi
+
     TARGET_ACCESS_LIST_USERS "${target}" | grep "^${user}$" >/dev/null
     if [ $? -eq 0 ]; then
       echo 'true'; return 0;
@@ -612,10 +627,6 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     # create empty access files
     touch "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USER_ACCESS_FILENAME}"
     touch "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USERGROUP_ACCESS_FILENAME}"
-
-    # all targets are added to SSHGATE_ADMIN users group
-    [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/SSHGATE_ADMIN" ] && USERGROUP_ADD "SSHGATE_ADMIN"
-    TARGET_ACCESS_ADD_USERGROUP "${target}" "SSHGATE_ADMIN"
 
     ADD_TARGET_TO_KNOWN_HOST "${target}"
     TARGET_SSH_INSTALL_KEY   "${target}"
@@ -1036,17 +1047,6 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     return 0;
   }
 
-  USER_IS_ADMIN () {
-    local user=
-    [ $# -eq 0 ] && user="${SSHKEY_USER:-}" || user="$1"
-    if [ -z "${user}" ]; then
-      echo 'false'; return 1;
-    fi
-    USER_LIST_USERGROUPS "${user}" | grep 'SSHGATE_ADMIN' >/dev/null
-    [ $? -eq 0 ] && echo 'true' || echo 'false'
-    return 0;
-  }
-
   USER_ADD () {
     if [ $# -ne 2 ]; then
       BAD_ARGUMENTS ; return 1;
@@ -1099,6 +1099,55 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     private_MAIL_APPEND "User ${user} removed"
 
     BUILD_AUTHORIZED_KEYS
+    return 0
+  }
+
+  USER_SET_CONF () {
+    local user="${SSHKEY_USER:-}" var= file=
+    if [ $# -lt 1 -o $# -gt 2 ]; then
+      BAD_ARGUMENTS; return 1;
+    fi
+
+    if [ $# -eq 2 ]; then
+      user="$1"; shift;
+    fi
+    var="$1"
+
+    if [ -z "${var}" ]; then
+      BAD_ARGUMENTS; return 1;
+    fi
+    if [ ! -f "${SSHGATE_DIR_USERS}/${user}" -o -z "${user}" ]; then
+      ERROR "User '${user}' doesn't exist"; return 1;
+    fi
+
+    file="${SSHGATE_DIR_USERS}/${user}.properties"
+    [ ! -f "${file}" ] && touch "${file}"
+    CONF_SAVE --conf-file "${file}" "${var}"
+    return 0;
+  }
+
+  USER_GET_CONF () {
+    local user="${SSHKEY_USER:-}" var= file=
+    if [ $# -lt 1 -o $# -gt 2 ]; then
+      BAD_ARGUMENTS; return 1;
+    fi
+
+    if [ $# -eq 2 ]; then
+      user="$1"; shift
+    fi
+    var="$1"
+
+    if [ -z "${var}" ]; then
+      BAD_ARGUMENTS; return 1;
+    fi
+    if [ ! -f "${SSHGATE_DIR_USERS}/${user}" -o -z "${user}" ]; then
+      ERROR "User '${user}' doesn't exist"; return 1;
+    fi
+
+    file="${SSHGATE_DIR_USERS}/${user}.properties"
+    if [ -f "${file}" ]; then
+      CONF_GET --conf-file "${file}" "${var}"
+    fi
     return 0
   }
 
