@@ -116,6 +116,18 @@
 #   desc: Get the <variable> value from the <target> configuration file
 #   note: if <target> is not given, try to use ${TARGET_HOST}
 #
+# TARGET_GET_SSH_OPTIONS()
+#   usage: TARGET_GET_SSH_OPTIONS [ <target> ]
+#   desc: get ssh option for ssh processing to a target host
+#   note: use private_TARGET_COMPUTE_OPTIONS() function
+#   note: if <target> is not given, try to use ${TARGET_HOST}
+#
+# TARGET_GET_SCP_OPTIONS()
+#   usage: TARGET_GET_SCP_OPTIONS [ <target> ]
+#   desc: get ssh option for scp processing to a target host
+#   note: use private_TARGET_COMPUTE_OPTIONS() function
+#   note: if <target> is not given, try to use ${TARGET_HOST}
+#
 # TARGET_SSH_USE_DEFAULT_KEY()
 #   usage: TARGET_SSH_USE_DEFAULT_KEY <target_host>
 #   desc: set ssh default key for a host
@@ -203,9 +215,8 @@
 #   desc: delete a user from the sshGate users list
 #
 # USER_SET_CONF()
-#   usage: USER_SET_CONF [ <user> ] <variable>
+#   usage: USER_SET_CONF <user> <variable> [ <value> ]
 #   desc: set a variable/value pair into the user configuration
-#   note: if <user> is not given, try to use ${SSHKEY_USER}
 #
 # USER_GET_CONF()
 #   usage: USER_GET_CONF [ <user> ] <variable>
@@ -278,6 +289,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     fi
   fi
 
+  # %% __LIB_MESSAGE__ %% <-- WARNING: don't remove. used by install.sh
   # %% __LIB_CONF__ %% <-- WARNING: don't remove. used by install.sh
 
   ERROR () { echo "ERROR: $*" 1>&2; }
@@ -554,23 +566,28 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     echo "$f"
   }
 
-  # check wether a user ($1) has access to a target host ($2)
   HAS_ACCESS() {
-    local user= target=
+    local user= target= login= is_admin= is_restricted=
 
     if [ $# -eq 0 ]; then
       user="${SSHKEY_USER:-}"
       target="${TARGET_HOST:-}"
+      login="${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}"
     else
       user="$1"
       [ $# -lt 2 ] && target="${TARGET_HOST:-}" || target="$2"
+      [ $# -lt 3 ] && login="${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}" || login="$3"
     fi
 
+    target=$( TARGET_REAL "${target}" )
     if [ -z "${user}" -o -z "${target}" ]; then
       echo 'false'; return 1;
     fi
 
-    if [ $( USER_GET_CONF "${user}" IS_ADMIN ) = 'true' -o $( USER_GET_CONF "${user}" IS_RESTRICTED ) = 'false' ]; then
+    is_admin=$( USER_GET_CONF "${user}" IS_ADMIN )
+    is_restricted=$( USER_GET_CONF "${user}" IS_RESTRICTED )
+
+    if [ "${is_admin}"  = 'true' -o "${is_restricted}" = 'false' ]; then
       echo 'true'; return 0;
     fi
 
@@ -751,6 +768,51 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
       CONF_GET --conf-file "${file}" "${var}"
     fi
     return 0;
+  }
+
+  private_TARGET_COMPUTE_OPTIONS() {
+    local target="${TARGET_HOST:-}" ssh_options= opt= var= is_flag=
+
+    target=$( TARGET_REAL "$1" )
+    if [ -z "${target}" ]; then
+      ERROR "Target host '${target}' doesn't exist" ; return 1;
+    fi
+    shift;
+
+    # option_pair syntax : <ssh option>:<sshGate target conf variable>:<is flag option>
+    for option_pair in $@; do
+      opt=$(     echo "${option_pair}" | cut -d':' -f1 )
+      var=$(     echo "${option_pair}" | cut -d':' -f2 )
+      is_flag=$( echo "${option_pair}" | cut -d':' -f3 )
+
+      var=$( TARGET_GET_CONF "${target}" "${var}" )
+      [ -n "${var}" ] && continue
+
+      if [ "${is_flag}" = 'true' ]; then
+        [ "${var}" = 'true' ] && ssh_options="${ssh_options} ${opt}"
+      else
+        [ -n "${var}" ] && ssh_options="${ssh_options} ${opt} ${var}"
+      fi
+    done
+
+    echo "${ssh_options}"
+    return 0;
+
+  }
+
+  TARGET_GET_SSH_OPTIONS() {
+    local target=
+    [ $# -eq 1 ] && target="$1"
+    private_TARGET_COMPUTE_OPTIONS "${target}"    \
+                                  '-p:SSH_PORT'   \
+                                  '-X:SSH_ENABLE_X11:true'
+  }
+
+  TARGET_GET_SCP_OPTIONS() {
+    local target=
+    [ $# -eq 1 ] && target="$1"
+    private_TARGET_COMPUTE_OPTIONS "${target}" \
+                                  '-p:SCP_PORT'
   }
 
   TARGET_SSH_USE_DEFAULT_KEY () {

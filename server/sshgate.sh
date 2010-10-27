@@ -25,7 +25,7 @@
 # - SFTP_SERVER : contant which containt the path to the sftp-server binary
 # - TARGET_HOST : target  host of the sshg call
 # - TARGET_HOST_COMMAND : ssh command which will be exec on the ${TARGET_HOST}
-# - TARGET_USER : login to use when connecting to the ${TARGET_HOST}
+# - TARGET_LOGIN : login to use when connecting to the ${TARGET_HOST}
 # - TARGET_SSHKEY : ${TARGET_HOST} private ssh key
 # - ORIGINAL_TARGET_HOST : copy of TARGET_HOST used by error messages
 # - GLOG_FILE : Global ${TARGET_HOST} log file
@@ -46,7 +46,7 @@ SFTP_SERVER=/usr/libexec/openssh/sftp-server
 # %% __SSHGATE_FUNC__ %% <-- WARNING: don't remove. used by install.sh
 
 # one little function
-LOG () { local file=$1; shift; echo "$(date +'[%D %T]') $*" >> ${file}; }
+mLOG () { local file=$1; shift; echo "$(date +'[%D %T]') $*" >> ${file}; }
 
 if [ -z ${SSHKEY_USER:-} ]; then
   echo "your SSH key is not well configured. Please, contact the sshGate administrator."
@@ -95,12 +95,13 @@ if [ "${SSHGATE_ALLOW_REMOTE_COMMAND}" = 'Y' -a "${do_ssh}" = 'true' ]; then
       done
       echo -n "s|^${sed_cmd} *$|$2|p; t;"
     }
+    is_admin=$( USER_GET_CONF "${SSHKEY_USER}" IS_ADMIN )
     code=
     code="${code} $(BUILD_SED_CODE 'cmd list targets'   'USER_LIST_TARGETS')"
     code="${code} $(BUILD_SED_CODE 'cmd list targets ?' 'USER_LIST_TARGETS \1')"
     code="${code} $(BUILD_SED_CODE 'cmd sshkey all'     'DISPLAY_USER_SSHKEY_FILE all')"
     code="${code} $(BUILD_SED_CODE 'cmd sshkey ?'       'DISPLAY_USER_SSHKEY_FILE \1')"
-    if [ "${SSHGATE_USE_REMOTE_ADMIN_CLI}" = 'Y' -a "$( USER_GET_CONF "${SSHKEY_USER}" IS_ADMIN )" = 'true' ]; then
+    if [ "${SSHGATE_USE_REMOTE_ADMIN_CLI}" = 'Y' -a "${is_admin}" = 'true' ]; then
       code="${code} $(BUILD_SED_CODE 'cli' "sudo ${SSHGATE_DIR_BIN}/sshgate -u '${SSHKEY_USER}'")"
     fi
     code="${code} a \ echo 'ERROR: unknown command' "
@@ -118,6 +119,14 @@ if [ -z "${TARGET_HOST}" ]; then
 fi
 
 # Determine information for connecting to the host ---------------------------
+TARGET_LOGIN="${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}"
+
+echo "${TARGET_HOST}" | grep '@' >/dev/null 2>/dev/null
+if [ $? -eq 0 ]; then
+  TARGET_LOGIN="${TARGET_HOST%@*}"
+  TARGET_HOST="${TARGET_HOST#${TARGET_LOGIN}@}"
+fi
+
 ORIGINAL_TARGET_HOST="${TARGET_HOST}"
 TARGET_HOST=$( TARGET_REAL "${TARGET_HOST}" )
 if [ -z "${TARGET_HOST}" ]; then
@@ -125,34 +134,36 @@ if [ -z "${TARGET_HOST}" ]; then
   exit 1;
 fi
 
-TARGET_USER=${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}
-GLOG_FILE=$( TARGET_LOG_FILE )
-TARGET_SSHKEY=$( TARGET_PRIVATE_SSHKEY_FILE )
+GLOG_FILE=$( TARGET_LOG_FILE "${TARGET_HOST}" )
+TARGET_SSHKEY=$( TARGET_PRIVATE_SSHKEY_FILE "${TARGET_HOST}" )
 if [ -z "${TARGET_SSHKEY}" -o ! -r "${TARGET_SSHKEY:-}" ]; then
   echo "ERROR: can't read target host ssh key. Please contact the sshGate administrator"
   exit 1
 fi
 
 # check ACL ------------------------------------------------------------------
-if [ $( HAS_ACCESS ) = 'false' ]; then
-  echo "ERROR: The ${ORIGINAL_TARGET_HOST} doesn't exist or you don't have access to it"
+if [ $( HAS_ACCESS "${SSHKEY_USER}" "${TARGET_HOST}" "${TARGET_LOGIN}" ) = 'false' ]; then
+  echo "ERROR: The '${ORIGINAL_TARGET_HOST}' doesn't exist or you don't have access to it (or with login '${TARGET_LOGIN}')"
   exit 1
 fi
 
 # Do the stuff ;-) -----------------------------------------------------------
-LOG ${GLOG_FILE} "New session $$. Connection from ${SSH_CONNECTION%% *} with SSH_ORIGINAL_COMMAND = ${SSH_ORIGINAL_COMMAND:-}"
+mLOG ${GLOG_FILE} "New session $$. Connection from ${SSH_CONNECTION%% *} with SSH_ORIGINAL_COMMAND = ${SSH_ORIGINAL_COMMAND:-}"
+
 if [ "${do_ssh:-}" = 'true' ]; then
-  SLOG_FILE=$( TARGET_SESSION_LOG_FILE )
-  LOG ${GLOG_FILE} "Creating session log file ${SLOG_FILE}"
-  LOG ${SSHGATE_LOG_FILE} "[SSSH] ${SSHKEY_USER} -> ${TARGET_USER}@${TARGET_HOST} ${TARGET_HOST_COMMAND}"
+  SLOG_FILE=$( TARGET_SESSION_LOG_FILE "${TARGET_HOST}" )
+  mLOG ${GLOG_FILE} "Creating session log file ${SLOG_FILE}"
+  mLOG ${SSHGATE_LOG_FILE} "[SSSH] ${SSHKEY_USER} -> ${TARGET_LOGIN}@${TARGET_HOST} ${TARGET_HOST_COMMAND}"
 
-  ssh -i ${TARGET_SSHKEY} ${TARGET_USER}@${TARGET_HOST} "${TARGET_HOST_COMMAND}" | tee ${SLOG_FILE}
-  LOG ${GLOG_FILE} "Session $$ ended. logfile = ${SLOG_FILE}"
+  TARGET_SSH_OPTIONS=$( TARGET_GET_SSH_OPTIONS "${TARGET_HOST}" )
+  ssh -i ${TARGET_SSHKEY} ${TARGET_SSH_OPTIONS} ${TARGET_LOGIN}@${TARGET_HOST} "${TARGET_HOST_COMMAND}" | tee ${SLOG_FILE}
+  mLOG ${GLOG_FILE} "Session $$ ended. logfile = ${SLOG_FILE}"
 else
-  LOG ${SSHGATE_LOG_FILE} "[SCP] ${SSHKEY_USER} -> ${TARGET_USER}@${TARGET_HOST} ${SSH_ORIGINAL_COMMAND}"
+  mLOG ${SSHGATE_LOG_FILE} "[SCP] ${SSHKEY_USER} -> ${TARGET_LOGIN}@${TARGET_HOST} ${SSH_ORIGINAL_COMMAND}"
 
-  ssh -i ${TARGET_SSHKEY} ${TARGET_USER}@${TARGET_HOST} "${SSH_ORIGINAL_COMMAND}"
-  LOG ${GLOG_FILE} "Transfert $$ completed."
+  TARGET_SCP_OPTIONS=$( TARGET_GET_SCP_OPTIONS "${TARGET_HOST}" )
+  ssh -i ${TARGET_SSHKEY} ${TARGET_SCP_OPTIONS} ${TARGET_LOGIN}@${TARGET_HOST} "${SSH_ORIGINAL_COMMAND}"
+  mLOG ${GLOG_FILE} "Transfert $$ completed."
 fi
 
 exit ${RETURN_VALUE}
