@@ -106,10 +106,14 @@
 #   usage: TARGET_RENAME <target_host> <new_name>
 #   desc: rename a target host and create an alias with the old target name
 #
-# TARGET_SET_CONF()
-#   usage: TARGET_SET_CONF [ <target> ] <variable>
-#   desc: Set a variable/value pair into the target configuration file
+# TARGET_DISPLAY_CONF()
+#   usage: TARGET_DISPLAY_CONF [ <target> ]
+#   desc: display the configuration file of the <target>
 #   note: if <target> is not given, try to use ${TARGET_HOST}
+#
+# TARGET_SET_CONF()
+#   usage: TARGET_SET_CONF <target> <variable> [ <value> ]
+#   desc: Set a variable/value pair into the target configuration file
 #
 # TARGET_GET_CONF()
 #   usage: TARGET_GET_CONF [ <target> ] <variable>
@@ -126,6 +130,21 @@
 #   usage: TARGET_GET_SCP_OPTIONS [ <target> ]
 #   desc: get ssh option for scp processing to a target host
 #   note: use private_TARGET_COMPUTE_OPTIONS() function
+#   note: if <target> is not given, try to use ${TARGET_HOST}
+#
+# TARGET_LIST_SSH_LOGINS()
+#  usage: TARGET_LIST_SSH_LOGINS [ <target> ]
+#  desc: return ssh login list of a target host
+#  note: if <target> is not given, try to use ${TARGET_HOST}
+#
+# TARGET_ADD_SSH_LOGIN()
+#   usage: TARGET_ADD_SSH_LOGIN [ <target> ] <login>
+#   desc: add a remote ssh login for the target
+#   note: if <target> is not given, try to use ${TARGET_HOST}
+#
+# TARGET_DEL_SSH_LOGIN()
+#   usage: TARGET_DEL_SSH_LOGIN [ <target> ] <login>
+#   desc: remove a remote ssh login for the target
 #   note: if <target> is not given, try to use ${TARGET_HOST}
 #
 # TARGET_SSH_USE_DEFAULT_KEY()
@@ -213,6 +232,11 @@
 # USER_DEL()
 #   usage: USER_DEL <user>
 #   desc: delete a user from the sshGate users list
+#
+# USER_DISPLAY_CONF()
+#   usage: USER_DISPLAY_CONF [ <user> ]
+#   desc: display <user> configuration file
+#   note: if <user> is not given, try to use ${SSHKEY_USER}
 #
 # USER_SET_CONF()
 #   usage: USER_SET_CONF <user> <variable> [ <value> ]
@@ -719,28 +743,48 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     return 0;
   }
 
-  TARGET_SET_CONF() {
-    local target="${TARGET_HOST:-}" var= file=
-    if [ $# -lt 1 -o $# -gt 2 ]; then
+  TARGET_DISPLAY_CONF() {
+    local target="${TARGET_HOST:-}" file=
+    if [ $# -gt 1 ]; then
       BAD_ARGUMENTS; return 1;
     fi
 
-    if [ $# -eq 2 ]; then
-      target="$1"; shift;
-    fi
-    var="$1"
+    [ $# -eq 1 ] && target="$1"
     target=$( TARGET_REAL "${target}" )
-
     if [ -z "${target}" ]; then
       ERROR "Target host '${target}' doesn't exist" ; return 1;
     fi
-    if [ -z "${var}" ]; then
+
+    file="${SSHGATE_DIR_TARGETS}/${target}/properties"
+    if [ ! -f "${file}" ]; then
+      NOTICE "Target host '${target}' has no configuration file"
+    else
+      cat "${file}"
+    fi
+    return 0
+  }
+
+  TARGET_SET_CONF() {
+    local target= var= value= file=
+    if [ $# -lt 2 -o $# -gt 3 ]; then
       BAD_ARGUMENTS; return 1;
+    fi
+
+    target="$1"; var="$2"
+    [ $# -eq 3 ] && value="$3"
+
+    if [ -z "${target}" -o -z "${var}" ]; then
+      BAD_ARGUMENTS; return 1;
+    fi
+
+    target=$( TARGET_REAL "${target}" )
+    if [ -z "${target}" ]; then
+      ERROR "Target host '${target}' doesn't exist" ; return 1;
     fi
 
     file="${SSHGATE_DIR_TARGETS}/${target}/properties"
     [ ! -f "${file}" ] && touch "${file}"
-    CONF_SAVE --conf-file "${file}" "${var}"
+    CONF_SAVE --conf-file "${file}" "${var}" "${value}"
     return 0;
   }
 
@@ -813,6 +857,62 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     [ $# -eq 1 ] && target="$1"
     private_TARGET_COMPUTE_OPTIONS "${target}" \
                                   '-p:SCP_PORT'
+  }
+
+  TARGET_SSH_LIST_LOGINS() {
+    local target="${TARGET_HOST:-}" file=
+    [ $? -eq 1 ] && target="$1"
+
+    target=$( TARGET_REAL "${target}" )
+    if [ -z "${target}" ]; then
+      ERROR "Target host '${target}' doesn't exist" ; return 1;
+    fi
+
+    file="${SSHGATE_DIR_TARGETS}/${target}/ssh_logins.list"
+    ( [ -f "${file}" ] && cat "${file}";
+      echo "${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}"; ) | sort -u
+    return 0;
+  }
+
+  TARGET_SSH_ADD_LOGIN() {
+    local target="${TARGET_HOST:-}" file= login=
+    if [ $? -eq 2 ]; then
+      target="$1"; shift;
+    fi
+    login="$1"
+
+    [ "${login}" = "${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}" ] && return 0;
+
+    target=$( TARGET_REAL "${target}" )
+    if [ -z "${target}" ]; then
+      ERROR "Target host '${target}' doesn't exist" ; return 1;
+    fi
+
+    file="${SSHGATE_DIR_TARGETS}/${target}/ssh_logins.list"
+    [ ! -e "${file}" ] && touch "${file}"
+    echo "${login}" >> "${file}"
+    return 0;
+  }
+
+  TARGET_SSH_DEL_LOGIN() {
+    local target="${TARGET_HOST:-}" login= file= tmp_file=
+    if [ $? -eq 2 ]; then
+      target="$1"; shift;
+    fi
+    login="$2"
+    [ "${login}" = "${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}" ] && return 0;
+
+    target=$( TARGET_REAL "${target}" )
+    if [ -z "${target}" ]; then
+      ERROR "Target host '${target}' doesn't exist" ; return 1;
+    fi
+
+    file="${SSHGATE_DIR_TARGETS}/${target}/ssh_logins.list"
+    tmp_file="/tmp/file.${RANDOM}"
+    [ ! -e "${file}" ] && return 0;
+    grep -v  "^${login}$" < "${file}" > "${tmp_file}"
+    mv "${tmp_file}" "${file}"
+    return 0;
   }
 
   TARGET_SSH_USE_DEFAULT_KEY () {
@@ -1229,18 +1329,36 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     return 0
   }
 
+  USER_DISPLAY_CONF () {
+    local user="${SSHKEY_USER:-}" file=
+    if [ $# -gt 1 ]; then
+      BAD_ARGUMENTS; return 1;
+    fi
+    [ $# -eq 1 ] && user="$1"
+
+    if [ ! -f "${SSHGATE_DIR_USERS}/${user}" -o -z "${user}" ]; then
+      ERROR "User '${user}' doesn't exist"; return 1;
+    fi
+
+    file="${SSHGATE_DIR_USERS}/${user}.properties"
+    if [ ! -f "${file}" ]; then
+      NOTICE "User '${user}' has no configuration file"
+    else
+      cat "${file}"
+    fi
+    return 0
+  }
+
   USER_SET_CONF () {
-    local user="${SSHKEY_USER:-}" var= file=
-    if [ $# -lt 1 -o $# -gt 2 ]; then
+    local user= var= value= file=
+    if [ $# -lt 2 -o $# -gt 3 ]; then
       BAD_ARGUMENTS; return 1;
     fi
 
-    if [ $# -eq 2 ]; then
-      user="$1"; shift;
-    fi
-    var="$1"
+    user="$1"; var="$2"
+    [ $? -eq 3 ] && value="$3"
 
-    if [ -z "${var}" ]; then
+    if [ -z "${user}" -o -z "${var}" ]; then
       BAD_ARGUMENTS; return 1;
     fi
     if [ ! -f "${SSHGATE_DIR_USERS}/${user}" -o -z "${user}" ]; then
@@ -1249,7 +1367,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
     file="${SSHGATE_DIR_USERS}/${user}.properties"
     [ ! -f "${file}" ] && touch "${file}"
-    CONF_SAVE --conf-file "${file}" "${var}"
+    CONF_SAVE --conf-file "${file}" "${var}" "${value}"
     return 0;
   }
 

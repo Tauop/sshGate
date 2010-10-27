@@ -25,6 +25,7 @@
 # %% __LIB_CLI__ %% <-- WARNING: don't remove. used by install.sh
 # %% __SSHGATE_CONF__ %% <-- WARNING: don't remove. used by install.sh
 # %% __SSHGATE_FUNC__ %% <-- WARNING: don't remove. used by install.sh
+# %% __CLI_HELP_SH__ %% <-- WARNING: don't remove. used by install.sh
 
 [ -z "${__LIB_MESSAGE__}"  -a -r ./lib/message.lib.sh ] && . ./lib/message.lib.sh
 [ -z "${__LIB_ASK__}"      -a -r ./lib/ask.lib.sh     ] && . ./lib/ask.lib.sh
@@ -59,10 +60,14 @@ CLI_REGISTER_COMMAND 'user add ? key ?'    'USER_ADD \1 \2'
 CLI_REGISTER_COMMAND 'user del ?'          'USER_DEL \1'
 
 CLI_REGISTER_MENU    'user ?'
+CLI_REGISTER_COMMAND 'user ? display conf'       'USER_DISPLAY_CONF \1'
+CLI_REGISTER_COMMAND 'user ? set conf ? ?'       'USER_SET_CONF \1 \2 \3'
+CLI_REGISTER_COMMAND 'user ? get conf ?'         'USER_GET_CONF \1 \2'
 CLI_REGISTER_COMMAND 'user ? list targets'       'USER_LIST_TARGETS \1'
 CLI_REGISTER_COMMAND 'user ? list usergroups'    'USER_LIST_USERGROUPS \1'
 CLI_REGISTER_COMMAND 'user ? has access ?'       'HAS_ACCESS \1 \2'
 CLI_REGISTER_COMMAND 'user ? access info'        'USER_ACCESS_INFO \1'
+CLI_REGISTER_COMMAND 'user ? access notify'      'USER_ACCESS_NOTIFY \1'
 
 CLI_REGISTER_MENU    'usergroup'
 CLI_REGISTER_COMMAND 'usergroup list'  'USERGROUPS_LIST'
@@ -96,9 +101,19 @@ CLI_REGISTER_COMMAND 'target ? realname'        'TARGET_REAL \1'
 CLI_REGISTER_COMMAND 'target ? add alias ?'     'TARGET_ADD_ALIAS \1 \2'
 CLI_REGISTER_COMMAND 'target ? del alias ?'     'TARGET_DEL_ALIAS \2'
 CLI_REGISTER_COMMAND 'target ? list aliases'    'TARGET_LIST_ALIASES \1'
-CLI_REGISTER_COMMAND 'target ? ssh test'        'TARGET_SSH_TEST \1'
-CLI_REGISTER_COMMAND 'target ? ssh install key' 'TARGET_SSH_INSTALL_KEY \1'
-CLI_REGISTER_COMMAND 'target ? ssh use default' 'TARGET_SSH_USE_DEFAULT_KEY \1'
+
+CLI_REGISTER_COMMAND 'target ? display conf'     'TARGET_DISPLAY_CONF \1'
+CLI_REGISTER_COMMAND 'target ? set conf ? ?'     'TARGET_SET_CONF \1 \2 \3'
+CLI_REGISTER_COMMAND 'target ? get conf ?'       'TARGET_GET_CONF \1 \2'
+
+CLI_REGISTER_COMMAND 'target ? ssh test'         'TARGET_SSH_TEST \1'
+CLI_REGISTER_COMMAND 'target ? ssh install key'  'TARGET_SSH_INSTALL_KEY \1'
+CLI_REGISTER_COMMAND 'target ? ssh use default'  'TARGET_SSH_USE_DEFAULT_KEY \1'
+CLI_REGISTER_COMMAND 'target ? ssh list logins'  'TARGET_SSH_LIST_LOGINS \1'
+CLI_REGISTER_COMMAND 'target ? ssh add login ?'  'TARGET_SSH_ADD_LOGIN \1 \2'
+CLI_REGISTER_COMMAND 'target ? ssh del login ?'  'TARGET_SSH_DEL_LOGIN \1 \2'
+CLI_REGISTER_COMMAND 'target ? ssh list options' 'TARGET_GET_SSH_OPTIONS \1'
+CLI_REGISTER_COMMAND 'target ? scp list options' 'TARGET_GET_SCP_OPTIONS \1'
 
 CLI_REGISTER_MENU    'target ? access'
 CLI_REGISTER_COMMAND 'target ? access info'             'TARGET_ACCESS_INFO \1'
@@ -109,78 +124,14 @@ CLI_REGISTER_COMMAND 'target ? access list usergroups'  'TARGET_ACCESS_LIST_USER
 CLI_REGISTER_COMMAND 'target ? access add usergroup ?'  'TARGET_ACCESS_ADD_USERGROUP \1 \2'
 CLI_REGISTER_COMMAND 'target ? access del usergroup ?'  'TARGET_ACCESS_DEL_USERGROUP \1 \2'
 
-CLI_REGISTER_KCOMMAND 'help' 'HELP_LIST'
+CLI_REGISTER_KCOMMAND 'help'   'SHOW_HELP'
+CLI_REGISTER_KCOMMAND 'help ?' 'SHOW_HELP \1'
+CLI_REGISTER_KCOMMAND 'help ? ?' 'SHOW_HELP \1 \2'
+
 
 CLI_REGISTER_COMMAND 'build authorized_keys' 'BUILD_AUTHORIZED_KEYS'
 CLI_REGISTER_COMMAND 'build known_hosts'     'BUILD_KNOWN_HOSTS'
 
-HELP_LIST () {
-  MSG_INDENT_INC
-  MSG "= Users ="
-  MSG_INDENT_INC
-    MESSAGE "user list                                 - List all users"
-    MESSAGE "user add <username> key <sshkey-file>     - add a new user"
-    MESSAGE "user del <username>                       - delete a user"
-    MESSAGE "user <username> list groups               - list group of user"
-    MESSAGE "user <username> list targets              - list targets hosts of user"
-    MESSAGE "user <username> has access <target-name>  - tell if a user has access to a target host"
-    MESSAGE "user <username> access info               - list all target user has access to, and how"
-  MSG_INDENT_DEC
-  BR
-
-  MSG "= User's Group ="
-  MSG_INDENT_INC
-    MESSAGE "usergroup list                              - list all users groups"
-    MESSAGE "usergroup add <group-name>                  - create a users group"
-    MESSAGE "usergroup del <group-name>                  - delete a users group"
-    MESSAGE "usergroup <group-name> list [users]         - list users of a group"
-    MESSAGE "usergroup <group-name> add user <username>  - add an user into a group"
-    MESSAGE "usergroup <group-name> del user <username>  - delete an user from a group"
-  MSG_INDENT_DEC
-  BR
-
-  MSG "= Target ="
-  MSG_INDENT_INC
-    MESSAGE "target list [<pattern>]                      - list all targets, whose name match <pattern> if given"
-    MESSAGE "target add <target-name>                     - add a new target host, and generate a private sshkey"
-    MESSAGE "target add <target-name> key <sshkey-file>   - add a new target host, with a given private sshkey"
-    MESSAGE "target del <target-name>                     - delete a target host"
-    MESSAGE "target alias list                            - list all aliases of a target host"
-    MESSAGE "target alias del <alias-name>                - delete an alias name"
-    MESSAGE "target ssh test all                          - test to ssh connectivity for all targets"
-    MESSAGE "target ssh install all keys                  - install public sshkey on all targets"
-    MESSAGE "target <target-name> realname                - print the real name of a target host"
-    MESSAGE "target <target-name> add alias <alias-name>  - add an alias of target hostname"
-    MESSAGE "target <target-name> del alias <alias-name>  - delete an alias of the target"
-    MESSAGE "target <target-name> list aliases            - list aliases of the target host"
-    MESSAGE "target <target-name> access info             - list all user who has access to target, and how"
-    MESSAGE "target <target-name> ssh test                - test ssh connectivity for the target host"
-    MESSAGE "target <target-name> ssh install key          - install sshkey on the target host"
-  MSG_INDENT_DEC
-  BR
-
-  MSG "= Target's Access ="
-  MSG_INDENT_INC
-    MESSAGE "target <target-name> access list users                  - list all users who can access to the target host"
-    MESSAGE "target <target-name> access add user <user-name>        - give user access to a target host"
-    MESSAGE "target <target-name> access del user <user-name>        - revoke user access of target host"
-    MESSAGE "target <target-name> access list usergroups             - list all groups who can access to the target host"
-    MESSAGE "target <target-name> access add usergroup <group-name>  - give group access to a target host"
-    MESSAGE "target <target-name> access del usergroup <group-name>  - revoke group access of a target host"
-  MSG_INDENT_DEC
-  BR
-
-  MSG "= Misc ="
-  MSG_INDENT_INC
-    MESSAGE "build authorized_keys - force re-write of sshgate account ./ssh/authorized_keys file"
-    MESSAGE "build known_hosts     - force re-write of sshgate account ./ssh/knonwn_hosts file"
-    MESSAGE "quit                  - exit the current CLI context menu, or exit the CLI"
-    MESSAGE "exit                  - exit the CLI"
-  MSG_INDENT_DEC
-  BR
-
-  MSG_INDENT_DEC
-}
 
 MSG "sshGate administration Interface"
 MSG "By Patrick Guiran <pguiran@linagora.com>"
