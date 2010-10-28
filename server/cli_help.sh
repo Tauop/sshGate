@@ -131,6 +131,7 @@ private_SHOW_HELP_ALL () {
     private_SHOW_HELP_TARGET_ACCESS
     BR
     MSG "= Misc ="
+    private_SHOW_HELP_MISC
     BR
   MSG_INDENT_DEC
   return 0
@@ -142,21 +143,25 @@ SHOW_HELP () {
       MESSAGE "Help has severals sections. To have list of command of a section, use help <section> command."
       BR
       MESSAGE "  all         - Show all commands"
-      MESSAGE "  users       - Users related commands."
-      MESSAGE "  user groups - Users' groups related commands"
-      MESSAGE "  targets     - Targets related commands"
+      MESSAGE "  user        - Users related commands"
+      MESSAGE "  user conf   - User configuration variable"
+      MESSAGE "  usergroup   - Users' groups related commands"
+      MESSAGE "  target      - Targets related commands"
+      MESSAGE "  target conf - Target configuration variable"
       MESSAGE "  access      - Targets' access related commands"
+      MESSAGE "  misc        - Misc commands"
     MSG_INDENT_DEC
   else
     case "$*" in
-      "all"          ) private_SHOW_HELP_ALL           ;;
-      "users"        ) private_SHOW_HELP_USERS         ;;
-      "users conf"   ) private_SHOW_HELP_USER_CONF     ;;
-      "user groups"  ) private_SHOW_HELP_USERGROUPS    ;;
-      "targets"      ) private_SHOW_HELP_TARGETS       ;;
-      "targets conf" ) private_SHOW_HELP_TARGET_CONF   ;;
-      "access"       ) private_SHOW_HELP_TARGET_ACCESS ;;
-      *              ) ERROR "Unknown help section."   ;;
+      "all"         ) private_SHOW_HELP_ALL           ;;
+      "user"        ) private_SHOW_HELP_USERS         ;;
+      "user conf"   ) private_SHOW_HELP_USER_CONF     ;;
+      "usergroup"   ) private_SHOW_HELP_USERGROUPS    ;;
+      "target"      ) private_SHOW_HELP_TARGETS       ;;
+      "target conf" ) private_SHOW_HELP_TARGET_CONF   ;;
+      "access"      ) private_SHOW_HELP_TARGET_ACCESS ;;
+      "misc"        ) private_SHOW_HELP_MISC          ;;
+      *             ) ERROR "Unknown help section."   ;;
     esac
   fi
   return 0
