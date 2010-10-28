@@ -135,6 +135,9 @@ DOTHIS 'Setup files permissions'
   chown root "${SSHGATE_DIR_BIN}/sshgate"
   chmod a+x "${SSHGATE_DIR_BIN}/sshgate"
 
+  # users properties file has to be readable for all unix users
+  find "${SSHGATE_DIR_USERS}" -type f -name "*.properties" -exec chmod a+r {} \;
+
   # sshkeys must be in 400
   find "${SSHGATE_DIR_USERS}" -type f -exec chmod 400 {} \;
   find "${SSHGATE_DIR_TARGETS}" -name "${SSHGATE_TARGET_PRIVATE_SSHKEY_FILENAME}" -exec chmod 400 {} \;

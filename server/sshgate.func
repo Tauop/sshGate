@@ -785,6 +785,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     file="${SSHGATE_DIR_TARGETS}/${target}/properties"
     [ ! -f "${file}" ] && touch "${file}"
     CONF_SAVE --conf-file "${file}" "${var}" "${value}"
+    chmod a+r "${file}"
     return 0;
   }
 
@@ -1270,7 +1271,8 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
   }
 
   USERS_LIST () {
-    ls --color=none -m "${SSHGATE_DIR_USERS}" | tr $'\n' ' ' | sed -e 's/, /,/g' | tr ',' $'\n' | sort -u; echo
+    ls --color=none -m "${SSHGATE_DIR_USERS}" | tr $'\n' ' ' \
+        | sed -e 's/, /,/g' | tr ',' $'\n' | grep -v '.properties$' | sort -u; echo
     return 0;
   }
 
@@ -1356,7 +1358,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     fi
 
     user="$1"; var="$2"
-    [ $? -eq 3 ] && value="$3"
+    [ $# -eq 3 ] && value="$3"
 
     if [ -z "${user}" -o -z "${var}" ]; then
       BAD_ARGUMENTS; return 1;
@@ -1368,6 +1370,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     file="${SSHGATE_DIR_USERS}/${user}.properties"
     [ ! -f "${file}" ] && touch "${file}"
     CONF_SAVE --conf-file "${file}" "${var}" "${value}"
+    chmod a+r "${file}"
     return 0;
   }
 
@@ -1392,6 +1395,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     file="${SSHGATE_DIR_USERS}/${user}.properties"
     if [ -f "${file}" ]; then
       CONF_GET --conf-file "${file}" "${var}"
+      echo "${!var}"
     fi
     return 0
   }
@@ -1411,33 +1415,37 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
   }
 
   USER_LIST_TARGETS () {
-    local user=
+    local user= is_restricted=
     [ $# -eq 0 ] && user="${SSHKEY_USER:-}" || user="$1"
 
     if [ ! -f "${SSHGATE_DIR_USERS}/${user}" -o -z "${user}" ]; then
       ERROR "User '${user}' doesn't exist" ; return 1;
     fi
 
-    ( # subshell :(
-        # direct access
-        for file in $( find "${SSHGATE_DIR_TARGETS}"                      \
-                          -name "${SSHGATE_TARGETS_USER_ACCESS_FILENAME}" \
-                          -exec grep -l "^${user}\$" {} \; ); do
-          file="${file%%/${SSHGATE_TARGETS_USER_ACCESS_FILENAME}}"
-          echo "${file##*/}"
-        done
+    is_restricted=$( USER_GET_CONF "${user}" IS_RESTRICTED )
+    if [ "${is_restricted}" = 'false' ]; then
+      TARGETS_LIST
+    else
+      ( # subshell :(
+          # direct access
+          for file in $( find "${SSHGATE_DIR_TARGETS}"                      \
+                            -name "${SSHGATE_TARGETS_USER_ACCESS_FILENAME}" \
+                            -exec grep -l "^${user}\$" {} \; ); do
+            file="${file%%/${SSHGATE_TARGETS_USER_ACCESS_FILENAME}}"
+            echo "${file##*/}"
+          done
 
-        # access through usergroup
-        for usergroup in $( USER_LIST_USERGROUPS "${user}" ); do
-          USERGROUP_LIST_TARGETS "${usergroup}"
-        done
-    ) | sort -u
-
+          # access through usergroup
+          for usergroup in $( USER_LIST_USERGROUPS "${user}" ); do
+            USERGROUP_LIST_TARGETS "${usergroup}"
+          done
+      ) | sort -u
+    fi
     return 0;
   }
 
   USER_ACCESS_INFO () {
-    local user= targets=
+    local user= targets= is_restricted=
     [ $# -eq 0 ] && user="${SSHKEY_USER:-}" || user="$1"
 
     if [ ! -f "${SSHGATE_DIR_USERS}/${user}" -o -z "${user}" ]; then
@@ -1461,6 +1469,10 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
       fi
     done
 
+    is_restricted=$( USER_GET_CONF "${user}" IS_RESTRICTED )
+    if [ "${is_restricted}" = 'false' ]; then
+      "User has access to whole target host, as its configuration IS_RESTRICTED variable is set to 'false'.";
+    fi
     return 0;
   }
 
@@ -1470,7 +1482,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     [ $# -eq 0 ] && user="${SSHKEY_USER:-}" || user="$1"
 
     user_mail=$( USER_GET_CONF "${user}" MAIL )
-    if [ -z "${user_mail}"]; then
+    if [ -z "${user_mail}" ]; then
       ERROR "No e-mail was setup for user '${user}'"; return 1;
     fi
 
@@ -1486,7 +1498,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
       aliases=$( TARGET_LIST_ALIASES "${target}" )
       if [ "${aliases}" != '' ]; then
         aliases=$( echo "${aliases}" | tr $'\n' ',' )
-        MAIL_APPEND "     alias: {aliases}"
+        MAIL_APPEND "     alias: ${aliases}"
       fi
     done
     MAIL_SEND "Your sshGate access" "${user_mail}"
