@@ -47,9 +47,6 @@ To build tarball package(s), use the build.sh script (specify a version number)
   ./build.sh client # build the client
   ./build.sh server # build the server
 
-To install built package(s), just untar .tar.gz, go to the created directory and run install.sh.
-You just have to reply to asked question so that the sshGate component can be installed.
-
 To install built package(s), use the following steps.
   tar xfz <package>.tar.gz
   cd <package>
