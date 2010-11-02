@@ -1,9 +1,9 @@
 == Welcome to sshGate
 
-sshGate is a tool which help to configure openssh server in order to have
-a ssh proxy. sshGate use the double ssh method, to be able to connect to
-a target host. In fact, sshGate has private sshkey of target hosts, make
-ACL checks and can log what users do on target host.
+sshGate is a tool which helps to configure an OpenSSH server in order to have
+a SSH proxy. sshGate uses the double SSH method to be able to connect to
+a target host. In fact, sshGate has private ssh-keys of target hosts, makes
+ACL checks and can log what users do on a given target host.
 
                         /-------> target host N
                        /-------->     . . .
@@ -16,36 +16,42 @@ sshGate is under GPLv2 license.
 
 == Description of content
 
-build.sh : use to build sshGate-server and/or sshGate-client .tar.gz package(s)
+build.sh : used to build sshGate-server and/or sshGate-client .tar.gz package(s).
 
-lib/ : sshGate project make some use of ScriptHelper project.
-       for more information : http://github.com/Tauop/ScriptHelper
+lib/ : sshGate project makes some use of ScriptHelper project
+       (for more information : http://github.com/Tauop/ScriptHelper).
 
-server/ : server source
-  - install.sh : help to install sshGate-server.
+server/ : server sources
+  - install.sh : helps to install sshGate-server.
   - sshgate.conf : configuration file
-  - sshgate.func : main code of sshGate admin. used by 'sshgate' CLI
-  - sshgate : CLI for administration of sshGate.
-  - sshgate.sh : script which will be used on user connection (ACL, ...)
+  - sshgate.func : main code of sshGate admin (used by 'sshgate' CLI).
+  - sshgate : CLI for sshGate administration.
+  - sshgate.sh : script that will be used on user connection (ACL, ...)
 
-client/ : client source
-  - config-sshgate.sh : help user to configure the ssh client
-  - sshg : script to make ssh through the sshGate-server
-  - scpg : script to make scp through the sshGate-server
+client/ : client sources
+  - config-sshgate.sh : helps user to configure the ssh client
+  - sshg : script to make SSH through the sshGate-server
+  - scpg : script to make SCP through the sshGate-server
 
 == Build & Install ==
 
-First of all, clone the git repository of the project and go to the project directory:
+First of all, clone the project's Git repository and go to the project directory :
   git clone git://github.com/Tauop/sshGate.git
   cd sshGate
 
-Then, init and update git submodule (to download ScriptHelper)
+Then, init and update Git submodule (to download ScriptHelper)
   git submodule init && git submodule update
 
-To build tarball package, use the build.sh script (specify a number for the version)
+To build tarball package(s), use the build.sh script (specify a version number)
   ./build.sh        # build server and client
   ./build.sh client # build the client
   ./build.sh server # build the server
 
-To install built package, just untar .tar.gz, go to the created directory and run install.sh.
+To install built package(s), just untar .tar.gz, go to the created directory and run install.sh.
 You just have to reply to asked question so that the sshGate component can be installed.
+
+To install built package(s), use the following steps.
+  tar xfz <package>.tar.gz
+  cd <package>
+  ./install.sh
+  # Reply to the questions in order to install each components.
