@@ -32,3 +32,20 @@ client/ : client source
   - config-sshgate.sh : help user to configure the ssh client
   - sshg : script to make ssh through the sshGate-server
   - scpg : script to make scp through the sshGate-server
+
+== Build & Install ==
+
+First of all, clone the git repository of the project and go to the project directory:
+  git clone git://github.com/Tauop/sshGate.git
+  cd sshGate
+
+Then, init and update git submodule (to download ScriptHelper)
+  git submodule init && git submodule update
+
+To build tarball package, use the build.sh script (specify a number for the version)
+  ./build.sh        # build server and client
+  ./build.sh client # build the client
+  ./build.sh server # build the server
+
+To install built package, just untar .tar.gz, go to the created directory and run install.sh.
+You just have to reply to asked question so that the sshGate component can be installed.
