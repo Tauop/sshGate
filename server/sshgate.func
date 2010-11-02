@@ -785,7 +785,10 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     file="${SSHGATE_DIR_TARGETS}/${target}/properties"
     [ ! -f "${file}" ] && touch "${file}"
     CONF_SAVE --conf-file "${file}" "${var}" "${value}"
-    chmod a+r "${file}"
+    chmod a+r "${file}" # ensure file permissions
+
+    private_MAIL_APPEND "Target '${target}' configuration: ${var} = ${value}"
+
     return 0;
   }
 
@@ -999,11 +1002,13 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
     echo -n "-  ${target}  ... "
     sshkey_file=$( TARGET_PRIVATE_SSHKEY_FILE "${target}" )
+    ssh_options=$( TARGET_GET_SSH_OPTIONS "${target}" )
     reply=$( ssh -o "ConnectTimeout 5"                       \
                  -o "UserKnownHostsFile ${known_hosts_file}" \
                  -o "BatchMode yes"                          \
                  -o "IdentitiesOnly yes"                     \
                  -i "${sshkey_file}"                         \
+                 "${ssh_options}"                            \
                  "${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}@${target}" "echo 'test'" 2>&1 )
     if [ $? -eq 0 -a "${reply}" = 'test' ]; then
       echo 'OK';
@@ -1370,7 +1375,10 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     file="${SSHGATE_DIR_USERS}/${user}.properties"
     [ ! -f "${file}" ] && touch "${file}"
     CONF_SAVE --conf-file "${file}" "${var}" "${value}"
-    chmod a+r "${file}"
+    chmod a+r "${file}" # ensure dans file permissions are good
+
+    private_MAIL_APPEND "User '${user}' configuration: ${var} = ${value}"
+
     return 0;
   }
 
