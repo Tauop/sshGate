@@ -1479,7 +1479,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
     is_restricted=$( USER_GET_CONF "${user}" IS_RESTRICTED )
     if [ "${is_restricted}" = 'false' ]; then
-      "User has access to whole target host, as its configuration IS_RESTRICTED variable is set to 'false'.";
+      echo "User has access to whole target host, as its configuration IS_RESTRICTED variable is set to 'false'.";
     fi
     return 0;
   }
