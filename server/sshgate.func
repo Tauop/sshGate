@@ -1008,7 +1008,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
                  -o "BatchMode yes"                          \
                  -o "IdentitiesOnly yes"                     \
                  -i "${sshkey_file}"                         \
-                 "${ssh_options}"                            \
+                 ${ssh_options}                              \
                  "${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}@${target}" "echo 'test'" 2>&1 )
     if [ $? -eq 0 -a "${reply}" = 'test' ]; then
       echo 'OK';
