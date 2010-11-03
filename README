@@ -29,7 +29,7 @@ server/ : server sources
   - sshgate.sh : script that will be used on user connection (ACL, ...)
 
 client/ : client sources
-  - config-sshgate.sh : helps user to configure the ssh client
+  - install.sh : helps user to configure the ssh client
   - sshg : script to make SSH through the sshGate-server
   - scpg : script to make SCP through the sshGate-server
 
@@ -52,3 +52,5 @@ To install built package(s), use the following steps.
   cd <package>
   ./install.sh
   # Reply to the questions in order to install each components.
+
+For more information, read the wiki on http://github.com/Tauop/sshGate/wiki
