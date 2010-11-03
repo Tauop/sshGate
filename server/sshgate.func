@@ -1500,6 +1500,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     MAIL_APPEND "Hi,"
     MAIL_APPEND ''
     MAIL_APPEND "Here is the list of servers you have access to through sshGate :"
+    MAIL_APPEND ''
     for target in $( USER_LIST_TARGETS "${user}" ); do
       MAIL_APPEND " - ${target}"
       aliases=
