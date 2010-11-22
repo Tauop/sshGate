@@ -121,7 +121,7 @@ DOTHIS 'Installing sshGate'
   cp $( find . -maxdepth 1 -type f ) "${SSHGATE_DIR_BIN}"
 
   mv "${SSHGATE_DIR_BIN}/sshgate.conf" "${SSHGATE_DIR_CONF}"
-  mv "${SSHGATE_DIR_BIN}/CGU*.txt"     "${SSHGATE_DIR_CONF}"
+  find "${SSHGATE_DIR_BIN}" -name "CGU*.txt" -exec mv {} "${SSHGATE_DIR_CONF}" \;
 
   [ -d ./lib/ ] && cp -r ./lib/ "${SSHGATE_DIR_BIN}"
 
@@ -137,7 +137,7 @@ OK
 
 DOTHIS 'Setup files permissions'
   # permissions on files
-  chown "${SSHGATE_GATE_ACCOUNT}" "${SSHGATE_DIR_LOG}"
+  chown -R "${SSHGATE_GATE_ACCOUNT}" "${SSHGATE_DIR_LOG}"
   find "${SSHGATE_DIR}" -type d -exec chmod a+x {} \;
   find "${SSHGATE_DIR_BIN}" -type f -exec chmod a+r {} \;
   chown root "${SSHGATE_DIR_BIN}/sshgate"
@@ -149,6 +149,11 @@ DOTHIS 'Setup files permissions'
   # sshkeys must be in 400
   find "${SSHGATE_DIR_USERS}" -type f -exec chmod 400 {} \;
   find "${SSHGATE_DIR_TARGETS}" -name "${SSHGATE_TARGET_PRIVATE_SSHKEY_FILENAME}" -exec chmod 400 {} \;
+  find "${SSHGATE_DIR_TARGETS}" -name "*properties" -exec chmod u+w {} \;
+
+  # user properties files has to be ${SSHGATE_GATE_ACCOUNT} writable for CGU
+  find "${SSHGATE_DIR_USERS}" -name "*.properties" -exec chown "${SSHGATE_GATE_ACCOUNT}" {} \;
+  find "${SSHGATE_DIR_USERS}" -name "*.properties" -exec chmod u+w {} \;
 
   chmod 400 "${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}"
   chmod 400 "${SSHGATE_TARGET_DEFAULT_PUBLIC_SSHKEY_FILE}"
