@@ -1376,6 +1376,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     [ ! -f "${file}" ] && touch "${file}"
     CONF_SAVE --conf-file "${file}" "${var}" "${value}"
     chmod a+r "${file}" # ensure dans file permissions are good
+    chown "${SSHGATE_GATE_ACCOUNT}" "${file}" # ensure that sshgate.sh can read/write this file
 
     private_MAIL_APPEND "User '${user}' configuration: ${var} = ${value}"
 
