@@ -1,0 +1,5 @@
+All actions you perform on servers, which you connect with the gateway sshGate
+to, are recorded. By  the  way, sshGate administrators are able to diagnose  a
+problem on a server, and find which command results in the malfunction.
+
+Do you accept those Term of Service (TOS) ?

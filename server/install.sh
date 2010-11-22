@@ -66,6 +66,11 @@ fi
 CONF_SAVE SSHGATE_MAIL_SEND
 CONF_SAVE SSHGATE_MAIL_TO
 
+ASK --yesno SSHGATE_USERS_MUST_ACCEPT_CGU \
+    "Do users have to accept CGU when connecting for the first time [${SSHGATE_USERS_MUST_ACCEPT_CGU}] ? " \
+    "${SSHGATE_USERS_MUST_ACCEPT_CGU}"
+CONF_SAVE SSHGATE_USERS_MUST_ACCEPT_CGU
+
 ASK --yesno SSHGATE_ALLOW_REMOTE_COMMAND \
     "Allow remote command [${SSHGATE_ALLOW_REMOTE_COMMAND}] ? " \
     "${SSHGATE_ALLOW_REMOTE_COMMAND}"
@@ -114,7 +119,10 @@ DOTHIS 'Installing sshGate'
 
   # install stuff
   cp $( find . -maxdepth 1 -type f ) "${SSHGATE_DIR_BIN}"
+
   mv "${SSHGATE_DIR_BIN}/sshgate.conf" "${SSHGATE_DIR_CONF}"
+  mv "${SSHGATE_DIR_BIN}/CGU*.txt"     "${SSHGATE_DIR_CONF}"
+
   [ -d ./lib/ ] && cp -r ./lib/ "${SSHGATE_DIR_BIN}"
 
 OK

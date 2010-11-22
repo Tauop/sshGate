@@ -53,6 +53,26 @@ if [ -z ${SSHKEY_USER:-} ]; then
   exit 1
 fi
 
+# check usage condition ------------------------------------------------------
+if [ "${SSHGATE_USERS_MUST_ACCEPT_CGU}" = 'Y' -a -f "${SSHGATE_CGU_FILE}" ]; then
+  has_accept_cgu=$( USER_GET_CONF "${SSHKEY_USER}" HAS_ACCEPT_CGU )
+  if [ "${has_accept_cgu}" != 'true' ]; then
+    cat "${SSHGATE_CGU_FILE}"
+    echo
+    retry=0
+    while true ; do
+      ASK var "-> 'yes' / 'no' ? "
+      [ "${var}" = 'no' ] && exit 0;
+      if [ "${var}" = 'yes' ]; then
+        USER_SET_CONF "${SSHKEY_USER}" HAS_ACCEPT_CGU 'true'
+        break;
+      fi
+      echo 'Invalid answer.'
+      retry=$(( retry + 1 ))
+      [ ${retry} -eq 3 ] && exit 1;
+    done
+  fi
+fi
 
 # determine action type (ssh or scp) and build TARGET_HOST -------------------
 do_ssh='false'
