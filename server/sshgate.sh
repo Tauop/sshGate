@@ -61,13 +61,14 @@ if [ "${SSHGATE_USERS_MUST_ACCEPT_CGU}" = 'Y' -a -f "${SSHGATE_CGU_FILE}" ]; the
     echo
     retry=0
     while true ; do
-      ASK var "-> 'yes' / 'no' ? "
+      read -p "-> 'yes' / 'no' ? " var
       [ "${var}" = 'no' ] && exit 0;
       if [ "${var}" = 'yes' ]; then
         USER_SET_CONF "${SSHKEY_USER}" HAS_ACCEPT_CGU 'true'
         break;
       fi
       echo 'Invalid answer.'
+      echo 'Type exactly "yes" or "no"'
       retry=$(( retry + 1 ))
       [ ${retry} -eq 3 ] && exit 1;
     done
