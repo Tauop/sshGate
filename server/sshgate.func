@@ -1112,7 +1112,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     if [ -z "${alias}" ]; then
       BAD_ARGUMENTS ; return 1;
     fi
-    if [ ! -L "${alias}" ]; then
+    if [ ! -L "${SSHGATE_DIR_TARGETS}/${alias}" ]; then
       ERROR "Target alias '${alias}' doesn't exist" ; return 1;
     fi
 
