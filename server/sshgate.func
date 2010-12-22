@@ -1330,6 +1330,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     done
 
     rm -f "${SSHGATE_DIR_USERS}/${user}"
+    rm -f "${SSHGATE_DIR_USERS}/${user}.properties"
     private_MAIL_APPEND "User ${user} removed"
 
     BUILD_AUTHORIZED_KEYS
