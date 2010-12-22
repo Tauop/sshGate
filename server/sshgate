@@ -78,6 +78,7 @@ CLI_REGISTER_COMMAND 'usergroup ? list users'        'USERGROUP_LIST_USERS \1'
 CLI_REGISTER_COMMAND 'usergroup ? add user ?'        'USERGROUP_ADD_USER \1 \2'
 CLI_REGISTER_COMMAND 'usergroup ? del user ?'        'USERGROUP_DEL_USER \1 \2'
 CLI_REGISTER_COMMAND 'usergroup ? list targets'      'USERGROUP_LIST_TARGETS \1'
+CLI_REGISTER_COMMAND 'usergroup ? access info'       'USERGROUP_ACCESS_INFO \1'
 
 CLI_REGISTER_MENU    'target'
 CLI_REGISTER_COMMAND 'target list'        'TARGETS_LIST'

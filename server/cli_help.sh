@@ -50,9 +50,10 @@ private_SHOW_HELP_USERGROUPS () {
     MESSAGE "usergroup list                              - list all users groups"
     MESSAGE "usergroup add <group-name>                  - create a users group"
     MESSAGE "usergroup del <group-name>                  - delete a users group"
-    MESSAGE "usergroup <group-name> list [users]         - list users of a group"
+    MESSAGE "usergroup <group-name> list users           - list users of a group"
     MESSAGE "usergroup <group-name> add user <username>  - add an user into a group"
     MESSAGE "usergroup <group-name> del user <username>  - delete an user from a group"
+    MESSAGE "usergroup <group-name> list targets         - list targets which usergroup has access to"
   MSG_INDENT_DEC
   return 0
 }
