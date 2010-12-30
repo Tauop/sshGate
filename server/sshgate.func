@@ -304,15 +304,6 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
   # Try to source sshgate.conf
   # %% __SSHGATE_CONF__ %% <-- WARNING: don't remove. used by install.sh
-  if [ -z "${__SSHGATE_CONF__:-}" ]; then
-    [ -r "`pwd`/sshgate.conf"   ] && . `pwd`/sshgate.conf
-    [ -r "${0%/*}/sshgate.conf" ] && . "${0%/*}/sshgate.conf"
-    if [ -z "${__SSHGATE_CONF__:-}" ]; then
-      echo "ERROR: Unable to load sshgate.conf"
-      exit 1;
-    fi
-  fi
-
   # %% __LIB_MESSAGE__ %% <-- WARNING: don't remove. used by install.sh
   # %% __LIB_CONF__ %% <-- WARNING: don't remove. used by install.sh
 
