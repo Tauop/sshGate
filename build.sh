@@ -43,6 +43,7 @@ if [ "${action}" = 'all' -o "${action}" = 'client' ]; then
     CMD cp -r ./client/*        $dir/
     CMD cp ./lib/ask.lib.sh     $dir/lib/
     CMD cp ./lib/message.lib.sh $dir/lib/
+    CMD cp ./lib/random.lib.sh  $dir/lib/
 
     CMD chmod +x ${dir}/config-sshgate.sh
     CMD chmod +x ${dir}/sshg
@@ -70,6 +71,7 @@ if [ "${action}" = 'all' -o "${action}" = 'server' ]; then
     CMD cp ./lib/conf.lib.sh    $dir/lib/
     CMD cp ./lib/mail.lib.sh    $dir/lib/
     CMD cp ./lib/cli.lib.sh     $dir/lib/
+    CMD cp ./lib/random.lib.sh  $dir/lib/
 
     CMD chmod +x ${dir}/install.sh
 

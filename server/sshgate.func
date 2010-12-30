@@ -304,6 +304,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
   # Try to source sshgate.conf
   # %% __SSHGATE_CONF__ %% <-- WARNING: don't remove. used by install.sh
+  # %% __LIB_RANDOM__ %% <-- WARNING: don't remove. used by install.sh
   # %% __LIB_MESSAGE__ %% <-- WARNING: don't remove. used by install.sh
   # %% __LIB_CONF__ %% <-- WARNING: don't remove. used by install.sh
 
@@ -312,14 +313,15 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
   # usage: private_ACL_FILE_ADD <line> <file>
   private_ACL_FILE_ADD () {
+    [ ! -f "$2" ] && touch "$2" # to avoid bugs
     grep "^$1\$" < "$2" >/dev/null 2>/dev/null
     [ $? -ne 0 ] && echo "$1" >> "$2"
   }
 
   # usage: private_ACL_FILE_DEL <line> <file>
   private_ACL_FILE_DEL () {
-    local random=
-    random="${RANDOM}"
+    local random=$( RANDOM )
+    [ ! -f "$2" ] && return 0; # to avoir bugs
     grep -v "^$1\$" < "$2" > "/tmp/file.${random}"
     mv "/tmp/file.${random}" "$2"
   }
@@ -483,7 +485,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     target="$1"
     [ $# -eq 2 ] && file="$2"
     [ -z "${file}" ] && file="$(SSHGATE_ACCOUNT_HOMEDIR)/.ssh/known_hosts"
-    tmp_file="/tmp/file.${RANDOM}"
+    tmp_file="/tmp/file.$( RANDOM )"
 
     ADD_TARGET_TO_KNOWN_HOST "${target}" "${tmp_file}"
     target_hash=$( < "${tmp_file}" grep -v "${target}" | cut -d' ' -f 1)
@@ -903,7 +905,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     fi
 
     file="${SSHGATE_DIR_TARGETS}/${target}/ssh_logins.list"
-    tmp_file="/tmp/file.${RANDOM}"
+    tmp_file="/tmp/file.$( RANDOM )"
     [ ! -e "${file}" ] && return 0;
     grep -v  "^${login}$" < "${file}" > "${tmp_file}"
     mv "${tmp_file}" "${file}"

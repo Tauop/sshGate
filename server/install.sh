@@ -18,6 +18,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+. ./lib/random.lib.sh
 . ./lib/message.lib.sh
 . ./lib/ask.lib.sh
 . ./lib/conf.lib.sh
@@ -173,6 +174,7 @@ DOTHIS 'Update sshGate installation'
   sed_repl="${sed_repl} s|^\( *\)# %% __LIB_CLI__ %%.*$|\1. ${SSHGATE_DIR_BIN}/lib/cli.lib.sh|;"
   sed_repl="${sed_repl} s|^\( *\)# %% __LIB_MAIL__ %%.*$|\1. ${SSHGATE_DIR_BIN}/lib/mail.lib.sh|;"
   sed_repl="${sed_repl} s|^\( *\)# %% __LIB_CONF__ %%.*$|\1. ${SSHGATE_DIR_BIN}/lib/conf.lib.sh|;"
+  sed_repl="${sed_repl} s|^\( *\)# %% __LIB_RANDOM__ %%.*$|\1. ${SSHGATE_DIR_BIN}/lib/random.lib.sh|;"
 
   sed -i -e "${sed_repl}" "${SSHGATE_DIR_BIN}/sshgate"
   sed -i -e "${sed_repl}" "${SSHGATE_DIR_BIN}/sshgate.func"
