@@ -127,6 +127,7 @@
 #
 # TARGET_SSH_EDIT_CONFIG()
 #   usage: TARGET_SSH_EDIT_CONFIG <target> [ <login> ]
+#   usage: TARGET_SSH_EDIT_CONFIG [<login>@<target>]
 #   desc: Edit the ssh configuration file of the <target> for <login>
 #   note: if <login> is not given, try to use default ssh login of the target
 #         host, or the sshGate target's default ssh login
@@ -134,7 +135,8 @@
 #         "Host *". In this case, we don't care about <login>.
 #
 # TARGET_SSH_GET_CONFIG()
-#   usage: TARGET_SSH_GET_CONFG <target> [ <login> ]
+#   usage: TARGET_SSH_GET_CONFIG <target> [ <login> ]
+#   usage: TARGET_SSH_GET_CONFIG [<login>@]<target>
 #   desc: Generate and get the filename of a ssh configuration, which can be
 #         used to connect to the <target> with <login>
 #   note: if <login> is not given, try to use default ssh login of the target
@@ -147,6 +149,7 @@
 #
 # TARGET_SSH_DISPLAY_CONFIG()
 #   usage: TARGET_SSH_DISPLAY_CONFIG <target> [ <login> ]
+#   usage: TARGET_SSH_DISPLAY_CONFIG [<login>@]<target>
 #   desc: Display simple ssh configuration file used to connect to <target>
 #         with <login>
 #   note: if <login> is not given, try to use default ssh login of the target
@@ -154,6 +157,7 @@
 #
 # TARGET_SSH_DISPLAY_FULL_CONFIG()
 #   usage: TARGET_SSH_DISPLAY_FULL_CONFIG <target> [ <login> ]
+#   usage: TARGET_SSH_DISPLAY_FULL_CONFIG [<login>@]<target>
 #   desc: Display full generated ssh configuration file used to connect to
 #         <target> with <login>
 #   note: if <login> is not given, try to use default ssh login of the target
