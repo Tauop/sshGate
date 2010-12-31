@@ -19,6 +19,7 @@
 #
 
 
+# %% __LIB_RANDOM__ %% <-- WARNING: don't remove. used by install.sh
 # %% __LIB_MESSAGE__ %% <-- WARNING: don't remove. used by install.sh
 # %% __LIB_ASK__ %% <-- WARNING: don't remove. used by install.sh
 # %% __LIB_MAIL__ %% <-- WARNING: don't remove. used by install.sh
@@ -27,6 +28,7 @@
 # %% __SSHGATE_FUNC__ %% <-- WARNING: don't remove. used by install.sh
 # %% __CLI_HELP_SH__ %% <-- WARNING: don't remove. used by install.sh
 
+[ -z "${__LIB_RANDOM__}"   -a -r ./lib/random.lib.sh  ] && . ./lib/random.lib.sh
 [ -z "${__LIB_MESSAGE__}"  -a -r ./lib/message.lib.sh ] && . ./lib/message.lib.sh
 [ -z "${__LIB_ASK__}"      -a -r ./lib/ask.lib.sh     ] && . ./lib/ask.lib.sh
 [ -z "${__LIB_MAIL__}"     -a -r ./lib/mail.lib.sh    ] && . ./lib/mail.lib.sh
