@@ -20,16 +20,16 @@
 
 private_SHOW_HELP_USERS () {
   MSG_INDENT_INC
-    MESSAGE "user list                                 - List all users"
-    MESSAGE "user add <username> key <sshkey-file>     - add a new user"
-    MESSAGE "user del <username>                       - delete a user"
-    MESSAGE "user <username> display conf              - display user configuration"
-    MESSAGE "user <username> set conf <var> <value>    - set a variable in user configuration"
-    MESSAGE "user <username> list groups               - list group of user"
-    MESSAGE "user <username> list targets              - list targets hosts of user"
-    MESSAGE "user <username> has access <target-name>  - tell if a user has access to a target host"
-    MESSAGE "user <username> access info               - list all target user has access to, and how"
-    MESSAGE "user <username> access notify             - notify the user about its access list (via mail)"
+    MESSAGE "user list                                              - List all users"
+    MESSAGE "user add <username> key <sshkey-file> mail <mail@addr> - add a new user"
+    MESSAGE "user del <username>                                    - delete a user"
+    MESSAGE "user <username> display conf                           - display user configuration"
+    MESSAGE "user <username> set conf <var> <value>                 - set a variable in user configuration"
+    MESSAGE "user <username> list groups                            - list group of user"
+    MESSAGE "user <username> list targets                           - list targets hosts of user"
+    MESSAGE "user <username> has access <target-name>               - tell if a user has access to a target host"
+    MESSAGE "user <username> access info                            - list all target user has access to, and how"
+    MESSAGE "user <username> access notify                          - notify the user about its access list (via mail)"
   MSG_INDENT_DEC
   return 0
 }
@@ -54,29 +54,39 @@ private_SHOW_HELP_USERGROUPS () {
     MESSAGE "usergroup <group-name> add user <username>  - add an user into a group"
     MESSAGE "usergroup <group-name> del user <username>  - delete an user from a group"
     MESSAGE "usergroup <group-name> list targets         - list targets which usergroup has access to"
+    MESSAGE "usergroup <group-name> access info          - list all target whose users of the group have access to"
   MSG_INDENT_DEC
   return 0
 }
 
 private_SHOW_HELP_TARGETS () {
   MSG_INDENT_INC
-    MESSAGE "target list [<pattern>]                      - list all targets, whose name match <pattern> if given"
-    MESSAGE "target add <target-name>                     - add a new target host, and generate a private sshkey"
-    MESSAGE "target add <target-name> key <sshkey-file>   - add a new target host, with a given private sshkey"
-    MESSAGE "target del <target-name>                     - delete a target host"
-    MESSAGE "target alias list                            - list all aliases of a target host"
-    MESSAGE "target alias del <alias-name>                - delete an alias name"
-    MESSAGE "target ssh test all                          - test to ssh connectivity for all targets"
-    MESSAGE "target ssh install all keys                  - install public sshkey on all targets"
-    MESSAGE "target <target-name> display conf            - display target configuration file"
-    MESSAGE "target <target-name> set conf <var> <value>  - set a variable in the target configuration file"
-    MESSAGE "target <target-name> realname                - print the real name of a target host"
-    MESSAGE "target <target-name> add alias <alias-name>  - add an alias of target hostname"
-    MESSAGE "target <target-name> del alias <alias-name>  - delete an alias of the target"
-    MESSAGE "target <target-name> list aliases            - list aliases of the target host"
-    MESSAGE "target <target-name> access info             - list all user who has access to target, and how"
-    MESSAGE "target <target-name> ssh test                - test ssh connectivity for the target host"
-    MESSAGE "target <target-name> ssh install key          - install sshkey on the target host"
+    MESSAGE "target list [<pattern>]                                  - list all targets, whose name match <pattern> if given"
+    MESSAGE "target add <target-name>                                 - add a new target host, which will use the system-wide default sshkey"
+    MESSAGE "target add <target-name> key <sshkey-file>               - add a new target host, with a given private sshkey"
+    MESSAGE "target del <target-name>                                 - delete a target host"
+    MESSAGE "target alias list                                        - list all aliases of a target host"
+    MESSAGE "target alias del <alias-name>                            - delete an alias name"
+    MESSAGE "target ssh test all                                      - test to ssh connectivity for all targets"
+    MESSAGE "target ssh install all keys                              - install public sshkey on all targets"
+    MESSAGE "target ssh edit config                                   - edit global ssh configuration file"
+    MESSAGE "target ssh display config                                - display global ssh configuration file"
+    MESSAGE "target <target-name> display conf                        - display target configuration file"
+    MESSAGE "target <target-name> set conf <var> <value>              - set a variable in the target configuration file"
+    MESSAGE "target <target-name> realname                            - print the real name of a target host"
+    MESSAGE "target <target-name> add alias <alias-name>              - add an alias of target hostname"
+    MESSAGE "target <target-name> del alias <alias-name>              - delete an alias of the target"
+    MESSAGE "target <target-name> list aliases                        - list aliases of the target host"
+    MESSAGE "target <target-name> access info                         - list all user who has access to target, and how"
+    MESSAGE "target <target-name> ssh test                            - test ssh connectivity for the target host"
+    MESSAGE "target <target-name> ssh install key                     - install sshkey on the target host"
+    MESSAGE "target <target-name> ssh use default key                 - remove specific sshkey for the target host, which will use the system-wide default sshkey"
+    MESSAGE "target <target-name> ssh list logins                     - list all avariable ssh login for the target host"
+    MESSAGE "target <target-name> ssh add login <login>               - add a ssh login for the target host"
+    MESSAGE "target <target-name> ssh del login <login>               - delete a ssh login for the target host"
+    MESSAGE "target <target-name> ssh edit config for <login>         - edit the ssh configuration used to connect to <login>@<target>"
+    MESSAGE "target <target-name> ssh display config for <login>      - display the ssh configuration used to connect to <login>@<target>"
+    MESSAGE "target <target-name> ssh display full config for <login> - display the full ssh configuration used to connect to <login>@<target>"
   MSG_INDENT_DEC
   return 0
 }
@@ -86,9 +96,8 @@ private_SHOW_HELP_TARGET_CONF () {
     MESSAGE "List of all variables of a target configuration"
     MESSAGE "See 'help targets' for target's configuration commands"
     BR
-    MESSAGE "SSH_PORT       - TCP port to use when connecting with ssh to the target"
-    MESSAGE "SSH_ENABLE_X11 - Enable X11 forwarding when connecting with ssh to the target"
-    MESSAGE "SCP_PORT       - TCP port to use when connecting for scp-ing file to/from the target"
+    MESSAGE "DEFAULT_SSH_LOGIN - Default ssh login to use when connecting to the target host"
+    MESSAGE "SSH_PROXY         - Target host to use has a proxy (used of ProxyCommand). format = [<login>@]<target_host>"
   MSG_INDENT_DEC
   return 0
 }
