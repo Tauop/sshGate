@@ -75,6 +75,7 @@ if [ "${action}" = 'all' -o "${action}" = 'server' ]; then
 
     CMD chmod +x ${dir}/install.sh
 
+    CMD find $dir/ -type f -iname "*swp" -exec rm -f {} '\;'
     CMD tar c --transform "'s|^tmp/||S'" -z -f $dir.tar.gz ${dir} 2>/dev/null
 
     CMD mv $dir.tar.gz .
