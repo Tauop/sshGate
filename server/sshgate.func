@@ -454,8 +454,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
   }
 
   BUILD_KNOWN_HOSTS () {
-    local home_dir=
-
+    local home_dir= target= alias=
     home_dir=$( SSHGATE_ACCOUNT_HOMEDIR )
     if [ -z "${home_dir}" ]; then
       ERROR "Can't find home directory of ${SSHGATE_GATE_ACCOUNT} user"
@@ -464,6 +463,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
     echo -n '' > "${home_dir}/.ssh/known_hosts"
     for target in $( TARGETS_LIST ); do
+      target=$( GET_HOST "${target}" )
       echo -n "- ${target} ... "
       ADD_TARGET_TO_KNOWN_HOST "${target}" "${home_dir}/.ssh/known_hosts"
       echo 'OK'
@@ -485,8 +485,8 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
     target="$1"
     [ $# -eq 2 ] && file="$2"
-    [ -z "${file}" ] && file="$(SSHGATE_ACCOUNT_HOMEDIR)/.ssh/known_hosts"
-
+    [ -z "${file}"   ] && file="$(SSHGATE_ACCOUNT_HOMEDIR)/.ssh/known_hosts"
+    [ ! -f "${file}" ] && touch "${file}"
     target_ip=$( host "${target}" | grep 'address' | head -n 1 | sed -e 's/^.* \([^ ]*\)$/\1/' )
 
     ssh-keyscan -t dsa,rsa "${target}"    >> "${file}" 2>/dev/null
@@ -1311,8 +1311,11 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
   }
 
   USERS_LIST () {
-    ls --color=none -m "${SSHGATE_DIR_USERS}" | tr $'\n' ' ' \
-        | sed -e 's/, /,/g' | tr ',' $'\n' | grep -v '.properties$' | sort -u; echo
+    local res= find_opt=
+    [ $# -eq 1 ] && find_opt="-iname '$1'"
+
+    res=$( eval "find '${SSHGATE_DIR_USERS}' -type f ${find_opt} -printf '%P\n'" )
+    echo "${res}" | grep -v '[.]properties$' | sort -u
     return 0;
   }
 
@@ -1567,7 +1570,10 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
   }
 
   USERGROUPS_LIST () {
-    ls --color=none -m "${SSHGATE_DIR_USERS_GROUPS}" | tr $'\n' ' ' | sed -e 's/, /,/g' | tr ',' $'\n' | sort -u; echo
+    local res= find_opt=
+    [ $# -eq 1 ] && find_opt="-iname '$1'"
+    res=$( eval "find '${SSHGATE_DIR_USERS_GROUPS}' -mindepth 1 -type f ${find_opt} -printf '%P\n'" )
+    echo "${res}" | sort -u
     return 0;
   }
 
