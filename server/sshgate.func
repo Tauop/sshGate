@@ -99,6 +99,7 @@
 # TARGET_ADD()
 #   usage: TARGET_ADD <target_host> [ <target_private_sshkey_file> ]
 #   desc: add a target host to sshGate
+#   note: it will add the ${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN} login to target
 #   note: it will try to install public sshket to the target authorized_keys2
 #   important: need to be root to be able to chown ssh priv key
 #
@@ -124,32 +125,51 @@
 #   usage: TARGET_GET_CONF <target> <variable>
 #   desc: Get the <variable> value from the <target> configuration file
 #
-# TARGET_GET_SSH_OPTIONS()
-#   usage: TARGET_GET_SSH_OPTIONS [ <target> ]
-#   desc: get ssh option for ssh processing to a target host
-#   note: use private_TARGET_COMPUTE_OPTIONS() function
-#   note: if <target> is not given, try to use ${TARGET_HOST}
+# TARGET_SSH_EDIT_CONFIG()
+#   usage: TARGET_SSH_EDIT_CONFIG <target> [ <login> ]
+#   desc: Edit the ssh configuration file of the <target> for <login>
+#   note: if <login> is not given, try to use default ssh login of the target
+#         host, or the sshGate target's default ssh login
+#   note: if <target> is egal to "all", edit the global ssh configuration for
+#         "Host *". In this case, we don't care about <login>.
 #
-# TARGET_GET_SCP_OPTIONS()
-#   usage: TARGET_GET_SCP_OPTIONS [ <target> ]
-#   desc: get ssh option for scp processing to a target host
-#   note: use private_TARGET_COMPUTE_OPTIONS() function
-#   note: if <target> is not given, try to use ${TARGET_HOST}
+# TARGET_SSH_GET_CONFIG()
+#   usage: TARGET_SSH_GET_CONFG <target> [ <login> ]
+#   desc: Generate and get the filename of a ssh configuration, which can be
+#         used to connect to the <target> with <login>
+#   note: if <login> is not given, try to use default ssh login of the target
+#         host, or the sshGate target's default ssh login
+#
+# TARGET_SSH_DISPLAY_GLOBAL_CONFIG()
+#   usage: TARGET_SSH_DISPLAY_GLOBAL_CONFIG
+#   desc: Display global ssh configuration file used, which declare options
+#         for "Host *"
+#
+# TARGET_SSH_DISPLAY_CONFIG()
+#   usage: TARGET_SSH_DISPLAY_CONFIG <target> [ <login> ]
+#   desc: Display simple ssh configuration file used to connect to <target>
+#         with <login>
+#   note: if <login> is not given, try to use default ssh login of the target
+#         host, or the sshGate target's default ssh login
+#
+# TARGET_SSH_DISPLAY_FULL_CONFIG()
+#   usage: TARGET_SSH_DISPLAY_FULL_CONFIG <target> [ <login> ]
+#   desc: Display full generated ssh configuration file used to connect to
+#         <target> with <login>
+#   note: if <login> is not given, try to use default ssh login of the target
+#         host, or the sshGate target's default ssh login
 #
 # TARGET_LIST_SSH_LOGINS()
-#  usage: TARGET_LIST_SSH_LOGINS [ <target> ]
+#  usage: TARGET_LIST_SSH_LOGINS <target>
 #  desc: return ssh login list of a target host
-#  note: if <target> is not given, try to use ${TARGET_HOST}
 #
 # TARGET_ADD_SSH_LOGIN()
-#   usage: TARGET_ADD_SSH_LOGIN [ <target> ] <login>
+#   usage: TARGET_ADD_SSH_LOGIN <target> <login>
 #   desc: add a remote ssh login for the target
-#   note: if <target> is not given, try to use ${TARGET_HOST}
 #
 # TARGET_DEL_SSH_LOGIN()
-#   usage: TARGET_DEL_SSH_LOGIN [ <target> ] <login>
+#   usage: TARGET_DEL_SSH_LOGIN <target> <login>
 #   desc: remove a remote ssh login for the target
-#   note: if <target> is not given, try to use ${TARGET_HOST}
 #
 # TARGET_SSH_USE_DEFAULT_KEY()
 #   usage: TARGET_SSH_USE_DEFAULT_KEY <target_host>
@@ -164,23 +184,24 @@
 #         root account, or with the your sshkey and sshagent forwarding.
 #
 # TARGET_SSH_INSTALL_KEY()
-#   usage: TARGET_SSH_INSTALL_KEY <target_host>
+#   usage: TARGET_SSH_INSTALL_KEY <target_host> <login>
 #   desc: Try to install the public sshkey on the <target_host>
 #   note: you may have access to the <target_host> with the sshkey of the
 #         root account, or with the your sshkey and sshagent forwarding.
 #
 # TARGET_SSH_TEST()
-#   usage: TARGET_TEST <target_host>
+#   usage: TARGET_TEST <login>@<target_host>
 #   desc: Test to connect to the <target_host>
 #
-# TARGETS_SSH_TEST_ALL()
+# TARGET_SSH_TEST_ALL()
 #   usage: TARGETS_TEST_ALL
 #   desc: Test to connect to all target.
 #   important: this take a while to test ssh connection on all target
 #
 # TARGET_ACCESS_INFO()
 #   usage: TARGET_ACCESS_INFO <target_host>
-#   desc: list all user access of <target_host>, and how those access are granted
+#   desc: list all user access of <target_host>, and how those access are
+#         granted for each login of the <target_host>
 #
 # TARGET_LIST_ALIASES()
 #   usage: TARGET_LIST_ALIASES [ <target_host> ]
@@ -201,28 +222,50 @@
 #         is an alias. Otherwise, echo-return <target_host>
 #
 # TARGET_ACCESS_LIST_USERS()
-#   usage: TARGET_ACCESS_LIST_USERS <target_host>
-#   desc: list user who have access to <target_host>
+#   usage: TARGET_ACCESS_LIST_USERS [<login>@]<target_host>
+#   usage: TARGET_ACCESS_LIST_USERS <target_host> <login>
+#   desc: list users who have access to <login>@<target_host>
+#   note: if no <login> is given, use ${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}
+#
+# TARGET_ACCESS_LIST_ALL_USERS()
+#  usage: TARGET_ACCESS_LIST_USERS <target_host>
+#  desc: List users who have access to <target_host> for each <login>
 #
 # TARGET_ACCESS_ADD_USER()
-#   usage: TARGET_ACCESS_ADD_USER <target_host> <user>
+#   usage: TARGET_ACCESS_ADD_USER [<login>@]<target_host> <user>
+#   usage: TARGET_ACCESS_ADD_USER <target_host> <login> <user>
 #   desc: give access to <target_host> to the <user>
+#   note: if no <login> is given, use ${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}
 #
 # TARGET_ACCESS_DEL_USER()
-#   usage: TARGET_ACCESS_DEL_USER <target_host> <user>
+#   usage: TARGET_ACCESS_DEL_USER [<login>@]<target_host> <user>
+#   usage: TARGET_ACCESS_DEL_USER <target_host> <login> <user>
 #   desc: revoke access to <target_host> for the <user>
+#   note: if no <login> is given, use ${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}
 #
 # TARGET_ACCESS_LIST_USERGROUPS()
-#   usage: TARGET_ACCESS_LIST_USERGROUPS <target_host>
-#   desc: list users' group which have access to <target_host>
+#   usage: TARGET_ACCESS_LIST_USERGROUPS [<login>@]<target_host>
+#   usage: TARGET_ACCESS_LIST_USERGROUPS <target_host> <login>
+#   desc: list users' group which have access to <login>@<target_host>
+#
+# TARGET_ACCESS_LIST_ALL_USERGROUPS()
+#   usage: TARGET_ACCESS_LIST_ALL_USERGROUPS <target_host>
+#   desc: list users' group which have access to <target_host> for all
+#         login, which exists for <target_host>
 #
 # TARGET_ACCESS_ADD_USERGROUP()
-#   usage: TARGET_ACCESS_ADD_USERGROUP <target_host> <user_group>
-#   desc: give access to <target_host> to the <user_group>, ie to all users in this <user_group>
+#   usage: TARGET_ACCESS_ADD_USERGROUP [<login>@]<target_host> <user_group>
+#   usage: TARGET_ACCESS_ADD_USERGROUP <target_host> <login> <user_group>
+#   desc: give access to <login>@<target_host> to the <user_group>, ie to all
+#         users in this <user_group>
+#   note: if <login> is not given, use ${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}
 #
 # TARGET_ACCESS_DEL_USERGROUP()
-#   usage: TARGET_ACCESS_DEL_USERGROUP <target_host> <user_group>
-#   desc: revoke access to <target_host> for the <user_group>, ie to all users in this <user_group>
+#   usage: TARGET_ACCESS_DEL_USERGROUP [<login>@]<target_host> <user_group>
+#   usage: TARGET_ACCESS_DEL_USERGROUP <target_host> <login> <user_group>
+#   desc: revoke access to <login>@<target_host> for the <user_group>, ie to
+#         all users in this <user_group>
+#   note: if <login> is not given, use ${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}
 #
 # USERS_LIST()
 #   usage: USERS_LIST
@@ -298,7 +341,10 @@
 #   usage: USERGROUP_LIST_TARGETS <user_group>
 #   desc: List all targets who are in the <user_group>
 #
-
+# USERGROUP_ACCESS_INFO()
+#   usage: USERGROUP_ACCESS_INFO <user_group>
+#   desc: display access information for the <user_group>
+#
 # ----------------------------------------------------------------------------
 if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
   __SSHGATE_FUNC__='Loaded'
@@ -643,10 +689,15 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     is_restricted=$( USER_GET_CONF "${user}" IS_RESTRICTED )
 
     if [ "${is_admin}"  = 'true' -o "${is_restricted}" = 'false' ]; then
-      echo 'true'; return 0;
+      TARGET_SSH_LIST_LOGINS "${target}" | grep "^${login}$" >/dev/null
+      if [ $? -eq 0 ]; then
+        echo 'true'; return 0;
+      else
+        echo 'false'; return 1;
+      fi
     fi
 
-    TARGET_ACCESS_LIST_USERS "${target}" | grep "^${user}$" >/dev/null
+    TARGET_ACCESS_LIST_USERS "${target}" "${login}" | grep "^${user}$" >/dev/null
     if [ $? -eq 0 ]; then
       echo 'true'; return 0;
     fi
@@ -710,14 +761,11 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     # else use the default sshpriv key
     fi
 
-    # create empty access files
-    touch "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USER_ACCESS_FILENAME}"
-    touch "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USERGROUP_ACCESS_FILENAME}"
-
+    TARGET_SSH_ADD_LOGIN "${target}" "${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}"
     ADD_TARGET_TO_KNOWN_HOST "${target}"
-    TARGET_SSH_INSTALL_KEY   "${target}"
+    TARGET_SSH_INSTALL_KEY "${target}" "${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}"
 
-    private_MAIL_APPEND "Target ${target} added"
+    private_MAIL_APPEND "Target ${login}@${target} added"
 
     return 0;
   }
@@ -762,7 +810,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     fi
 
     mv "${SSHGATE_DIR_TARGETS}/${target}" "${SSHGATE_DIR_TARGETS}/${new_name}"
-    mv "${SSHGATE_DIR_LOG}/${target}" "${SSHGATE_DIR_LOG}/${new_name}"
+    [ -d "${SSHGATE_DIR_LOG}/${target}/" ] && mv "${SSHGATE_DIR_LOG}/${target}" "${SSHGATE_DIR_LOG}/${new_name}"
     echo "Target renamed : ${target} -> ${new_name}"
 
     TARGET_ADD_ALIAS "${new_name}" "${target}"
@@ -850,92 +898,293 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     return 0;
   }
 
-  private_TARGET_COMPUTE_OPTIONS() {
-    local target="${TARGET_HOST:-}" ssh_options= opt= var= is_flag=
+  private_TARGET_SSH_GET_CONFIG_FILE () {
+    local target= login= file=
+
+    if [ $# -ne 2 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
+    target="$1"; login="$2"
+    file="${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_SSH_CONFIG_FILENAME}.${login}"
+
+    [ ! -f "${file}" ] && touch "${file}"
+    echo "${file}"
+    return 0;
+  }
+
+  TARGET_SSH_EDIT_CONFIG () {
+    local target= login= file= tmpfile= bckfile=
+    if [ $# -eq 0 -o $# -gt 2 ]; then
+      BAD_ARGUMENTS; return 1;
+    fi
+
+    if [ "$1" != 'all' ]; then
+      if [ $# -eq 1 ]; then
+        target=$( GET_HOST "$1" )
+        login=$( GET_LOGIN "$1" )
+      else
+        target="$1"; login="$2"
+      fi
+
+      target=$( TARGET_REAL "${target}" )
+      if [ -z "${target}" ]; then
+        ERROR "Target host '${target} doesn't exist"; return 1;
+      fi
+
+      [ -z "${login}" ] && login=$( GET_LOGIN "${target}" )
+      if [ "${login}" != "${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}" ]; then
+        # check that the login exist for the target host
+        TARGET_SSH_LIST_LOGINS "${target}" | grep "^${login}\$" >/dev/null
+        if [ $? -ne 0 ]; then
+          ERROR "Login '${login}' doesn't exist for the target host '${target}'"
+          return 1;
+        fi
+      fi
+
+      file=$( private_TARGET_SSH_GET_CONFIG_FILE "${target}" "${login}" )
+    else
+      file="${SSHGATE_DIR_CONF}/${SSHGATE_TARGETS_SSH_CONFIG_FILENAME}.all"
+    fi # end of : if [ "${target}" != 'all' ]; then
+
+    [ ! -f "${file}" ] && touch "${file}"
+
+    # backup configuration
+    bckfile="${file}.bak"
+    cp "${file}" "${bckfile}"
+
+    # edit the file
+    eval "${SSHGATE_EDITOR} '${file}'"
+    
+    tmpfile="/tmp/ssh_config.${login}.$( RANDOM )"
+
+    # filter out some options and warn if they are used
+    for opt in 'BatchMode'                \
+               'CheckHostIP'              \
+               'ControlMaster'            \
+               'ControlPath'              \
+               'ForwardAgent'             \
+               'IdentityFile'             \
+               'PreferredAuthentications' \
+               'ProxyCommand'             \
+               'StrictHostKeyChecking'    \
+               'User'                     \
+               'UserKnownHostsFile' ; do
+      grep "^[[:space:]]*${opt}[[:space:]]" < "${file}" >/dev/null
+      if [ $? -eq 0 ]; then
+        echo "WARNING: ssh options '${opt}' was removed from editable configuration file. It's not allowed or deal by sshGate"
+        grep -v "^[[:space:]]*${opt}[[:space:]]" < "${file}" > "${tmpfile}"
+        mv "${tmpfile}" "${file}"
+      fi
+    done
+
+    rm -f "${tmpfile}"
+
+    # permissions
+    chown "${SSHGATE_GATE_ACCOUNT}" "${file}"
+    chmod ug+r "${file}"
+
+    return 0;
+  }
+
+  TARGET_SSH_GET_CONFIG () {
+    local target= login= proxy= proxy_host= proxy_login= file= tmpfile= known_hosts_file= sshkey_file=
+    if [ $# -eq 0 -o $# -gt 2 ]; then
+      BAD_ARGUMENTS; return 1;
+    fi
+
+    if [ $# -eq 1 ]; then
+      target=$( GET_HOST "$1" )
+      login=$( GET_LOGIN "$1" )
+    else
+      target="$1"; login="$2"
+    fi
+
+    target=$( TARGET_REAL "${target}" )
+    if [ -z "${target}" ]; then
+      ERROR "Target host '${target} doesn't exist"; return 1;
+    fi
+
+    [ -z "${login}" ] && login=$( GET_LOGIN "${target}" )
+    if [ "${login}" != "${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}" ]; then
+      # check that the login exist for the target host
+      TARGET_SSH_LIST_LOGINS "${target}" | grep "^${login}\$" >/dev/null
+      if [ $? -ne 0 ]; then
+        ERROR "Login '${login}' doesn't exist for the target host '${target}'"
+        return 1;
+      fi
+    fi
+
+    file=$( private_TARGET_SSH_GET_CONFIG_FILE "${target}" "${login}" )
+    known_hosts_file="$( SSHGATE_ACCOUNT_HOMEDIR )/.ssh/known_hosts"
+    sshkey_file=$( TARGET_PRIVATE_SSHKEY_FILE "${target}" )
+    tmpfile="/tmp/ssh_config.$( RANDOM )"
+
+    proxy=$( TARGET_GET_CONF "${target}" SSH_PROXY )
+    if [ -n "${proxy}" ]; then
+      proxy_host=$( GET_HOST "${proxy}" )
+      proxy_host=$( TARGET_REAL "${proxy_host}" )
+      proxy_login=$( GET_LOGIN "${proxy}" )
+      if [ -z "${proxy_host}" ]; then
+        ERROR "Target '${target}' was declared to need proxy target '${proxy_host}' whereas '${proxy_host}' doesn't exist";
+        return 1;
+      else
+        tmpfile=$( TARGET_SSH_GET_CONFIG "${proxy_host}" "${proxy_login}" )
+      fi
+    else
+      # no proxy, but have to get the global ssh configuration
+      echo "Host *"                                                      >> "${tmpfile}"
+      echo " IdentityFile ${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}" >> "${tmpfile}"
+      echo " IdentitiesOnly yes"                                         >> "${tmpfile}"
+      echo " UserKnownHostsFile ${known_hosts_file}"                     >> "${tmpfile}"
+      if [ -r "${SSHGATE_DIR_CONF}/${SSHGATE_TARGETS_SSH_CONFIG_FILENAME}.all" ]; then
+        cat "${SSHGATE_DIR_CONF}/${SSHGATE_TARGETS_SSH_CONFIG_FILENAME}.all" >> "${tmpfile}"
+      fi
+    fi # end of : if [ -n "${proxy}" ]; then
+
+    echo                                           >> "${tmpfile}"
+    echo "Host ${target}"                          >> "${tmpfile}"
+    echo " IdentityFile ${sshkey_file}"            >> "${tmpfile}"
+    echo " IdentitiesOnly yes"                     >> "${tmpfile}"
+    echo " User ${login}"                          >> "${tmpfile}"
+    if [ -n "${proxy}" ]; then
+      echo " ProxyCommand ssh -F ${tmpfile} ${proxy} nc %h %p" >> "${tmpfile}"
+    fi
+    cat "${file}"                                            >> "${tmpfile}"
+
+    echo "${tmpfile}"
+    return 0;
+  }
+
+  TARGET_SSH_DISPLAY_GLOBAL_CONFIG () {
+    local file="${SSHGATE_DIR_CONF}/${SSHGATE_TARGETS_SSH_CONFIG_FILENAME}.all"
+    [ -f "${file}" ] && cat "${file}"
+    return 0;
+  }
+
+  TARGET_SSH_DISPLAY_CONFIG () {
+    local target= login= file=
+    if [ $# -eq 0 -o $# -gt 2 ]; then
+      BAD_ARGUMENTS; return 1;
+    fi
+
+    if [ $# -eq 1 ]; then
+      target=$( GET_HOST "$1" );
+      login=$( GET_LOGIN "$1" );
+    else
+      target="$1"; login="$2"
+    fi
+
+    target=$( TARGET_REAL "${target}" )
+    if [ -z "${target}" ]; then
+      ERROR "Target host '${target} doesn't exist"; return 1;
+    fi
+
+    [ -z "${login}" ] && login=$( GET_LOGIN "${target}" )
+    if [ "${login}" != "${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}" ]; then
+      # check that the login exist for the target host
+      TARGET_SSH_LIST_LOGINS "${target}" | grep "^${login}\$" >/dev/null
+      if [ $? -ne 0 ]; then
+        ERROR "Login '${login}' doesn't exist for the target host '${target}'"
+        return 1;
+      fi
+    fi
+
+    file=$( private_TARGET_SSH_GET_CONFIG_FILE "${target}" "${login}" )
+    cat "${file}"
+    return 0;
+  }
+
+  TARGET_SSH_DISPLAY_FULL_CONFIG () {
+    local target= login= file=
+    if [ $# -eq 0 -o $# -gt 2 ]; then
+      BAD_ARGUMENTS; return 1;
+    fi
+
+    if [ $# -eq 1 ]; then
+      target=$( GET_HOST "$1" )
+      login=$( GET_LOGIN "$1" )
+    else
+      target="$1"; login="$2"
+    fi
+
+    target=$( TARGET_REAL "${target}" )
+    if [ -z "${target}" ]; then
+      ERROR "Target host '${target} doesn't exist"; return 1;
+    fi
+
+    [ -z "${login}" ] && login=$( GET_LOGIN "${target}" )
+    if [ "${login}" != "${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}" ]; then
+      # check that the login exist for the target host
+      TARGET_SSH_LIST_LOGINS "${target}" | grep "^${login}\$" >/dev/null
+      if [ $? -ne 0 ]; then
+        ERROR "Login '${login}' doesn't exist for the target host '${target}'"
+        return 1;
+      fi
+    fi
+
+    file=$( TARGET_SSH_GET_CONFIG "${target}" "${login}" )
+    # sed is needed to remove reference of the temporary generated file
+    cat "${file}" | sed -e "s|${file}|ssh_conf_file|g";
+    rm -f "${file}"
+    return 0;
+  }
+
+  TARGET_SSH_LIST_LOGINS () {
+    local target= file=
+    if [ $# -ne 1 ]; then
+     BAD_ARGUMENTS ; return 1;
+    fi
 
     target=$( TARGET_REAL "$1" )
     if [ -z "${target}" ]; then
       ERROR "Target host '${target}' doesn't exist" ; return 1;
     fi
-    shift;
 
-    # option_pair syntax : <ssh option>:<sshGate target conf variable>:<is flag option>
-    for option_pair in $@; do
-      opt=$(     echo "${option_pair}" | cut -d':' -f1 )
-      var=$(     echo "${option_pair}" | cut -d':' -f2 )
-      is_flag=$( echo "${option_pair}" | cut -d':' -f3 )
-
-      var=$( TARGET_GET_CONF "${target}" "${var}" )
-      [ -n "${var}" ] && continue
-
-      if [ "${is_flag}" = 'true' ]; then
-        [ "${var}" = 'true' ] && ssh_options="${ssh_options} ${opt}"
-      else
-        [ -n "${var}" ] && ssh_options="${ssh_options} ${opt} ${var}"
-      fi
-    done
-
-    echo "${ssh_options}"
-    return 0;
-
-  }
-
-  TARGET_GET_SSH_OPTIONS() {
-    local target=
-    [ $# -eq 1 ] && target="$1"
-    private_TARGET_COMPUTE_OPTIONS "${target}"    \
-                                  '-p:SSH_PORT'   \
-                                  '-X:SSH_ENABLE_X11:true'
-  }
-
-  TARGET_GET_SCP_OPTIONS() {
-    local target=
-    [ $# -eq 1 ] && target="$1"
-    private_TARGET_COMPUTE_OPTIONS "${target}" \
-                                  '-p:SCP_PORT'
-  }
-
-  TARGET_SSH_LIST_LOGINS() {
-    local target="${TARGET_HOST:-}" file=
-    [ $? -eq 1 ] && target="$1"
-
-    target=$( TARGET_REAL "${target}" )
-    if [ -z "${target}" ]; then
-      ERROR "Target host '${target}' doesn't exist" ; return 1;
-    fi
-
-    file="${SSHGATE_DIR_TARGETS}/${target}/ssh_logins.list"
+    file="${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_SSH_LOGINS_FILENAME}"
     ( [ -f "${file}" ] && cat "${file}";
-      echo "${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}"; ) | sort -u
+      TARGET_GET_CONF "${target}" DEFAULT_SSH_LOGIN;
+      echo "${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}"; ) | grep -v '^$' | sort -u
     return 0;
   }
 
-  TARGET_SSH_ADD_LOGIN() {
-    local target="${TARGET_HOST:-}" file= login=
-    if [ $? -eq 2 ]; then
-      target="$1"; shift;
+  TARGET_SSH_ADD_LOGIN () {
+    local target= file= login=
+    if [ $# -ne 2 ]; then
+      BAD_ARGUMENTS ; return 1;
     fi
-    login="$1"
 
-    [ "${login}" = "${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}" ] && return 0;
-
+    target="$1"; login="$2"
     target=$( TARGET_REAL "${target}" )
     if [ -z "${target}" ]; then
       ERROR "Target host '${target}' doesn't exist" ; return 1;
     fi
 
-    file="${SSHGATE_DIR_TARGETS}/${target}/ssh_logins.list"
-    [ ! -e "${file}" ] && touch "${file}"
+    file="${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_SSH_LOGINS_FILENAME}"
+    if [ ! -f "${file}" ]; then
+      touch "${file}"
+    else
+      grep "^${login}$" < "${file}" >/dev/null
+      if [ $? -eq 0 ]; then
+        ERROR "Login '${login}' already exists for target '${target}'"; return 1;
+      fi
+    fi # end of : if [ ! -f "${file}" ]; then
+
     echo "${login}" >> "${file}"
+    # create empty access files
+    touch "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USER_ACCESS_FILENAME}.${login}"
+    touch "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USERGROUP_ACCESS_FILENAME}.${login}"
+
     return 0;
   }
 
-  TARGET_SSH_DEL_LOGIN() {
-    local target="${TARGET_HOST:-}" login= file= tmp_file=
-    if [ $? -eq 2 ]; then
-      target="$1"; shift;
+  TARGET_SSH_DEL_LOGIN () {
+    local target= login= file= tmp_file=
+    if [ $# -ne 2 ]; then
+      BAD_ARGUMENTS ; return 1;
     fi
-    login="$2"
+
+    target="$1"; login="$2"
     [ "${login}" = "${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}" ] && return 0;
 
     target=$( TARGET_REAL "${target}" )
@@ -943,11 +1192,17 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
       ERROR "Target host '${target}' doesn't exist" ; return 1;
     fi
 
-    file="${SSHGATE_DIR_TARGETS}/${target}/ssh_logins.list"
+    file="${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_SSH_LOGINS_FILENAME}"
     tmp_file="/tmp/file.$( RANDOM )"
+
     [ ! -e "${file}" ] && return 0;
     grep -v  "^${login}$" < "${file}" > "${tmp_file}"
     mv "${tmp_file}" "${file}"
+
+    # delete access files
+    rm -f "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USER_ACCESS_FILENAME}.${login}"
+    rm -f "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USERGROUP_ACCESS_FILENAME}.${login}"
+
     return 0;
   }
 
@@ -972,12 +1227,19 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
   }
 
   TARGET_SSH_INSTALL_KEY () {
-    local target= sshkey_file= known_hosts_file=
-    if [ $# -eq 0 -o $# -gt 2 ]; then
+    local target= login= sshkey_file= ssh_conf_file=
+    if [ $# -ne 1 -a $# -ne 2 ]; then
       BAD_ARGUMENTS ; return 1;
     fi
 
-    target=$( TARGET_REAL "$1" )
+    if [ $# -eq 1 ]; then
+      target=$( GET_HOST "$1" )
+      login=$( GET_LOGIN "$1" )
+    else
+      target="$1"; login="$2"
+    fi
+
+    target=$( TARGET_REAL "${target}" )
     if [ -z "${target}" ]; then
       ERROR "Target host '${target}' doesn't exist" ; return 1;
     fi
@@ -987,88 +1249,74 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
       ERROR "Unable to find private ssh key of '${target}'" ; return 1;
     fi
 
-    [ $# -eq 2 ] && known_hosts_file="$2"
-    if [ -z "${known_hosts_file}" ]; then
-      known_hosts_file="$( SSHGATE_ACCOUNT_HOMEDIR )/.ssh/known_hosts"
-      cp "${known_hosts_file}" /tmp
-      known_hosts_file="/tmp/known_hosts"
-    fi
+    ssh_conf_file=$( TARGET_SSH_GET_CONFIG "${target}" "${login}" )
 
     cat "${sshkey_file}" \
       | ssh -o "ConnectTimeout 5"                          \
-            -o "UserKnownHostsFile ${known_hosts_file}"    \
-            "${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}@${target}"    \
+            -F "${ssh_conf_file}"                          \
+            "${login}@${target}"                           \
             "umask 077; test -d .ssh || mkdir .ssh ; cat >> .ssh/authorized_keys" 2>/dev/null
     if [ $? -ne 0 ]; then
-      echo "NOTICE: Public ssh key of '${target}' can't be installed on '${target}'. Install it manually"
+      echo "NOTICE: Public ssh key of '${target}' can't be installed on '${login}@${target}'. Install it manually"
     fi
+
+    rm -f "${ssh_conf_file}"
     return 0
   }
 
   TARGET_SSH_INSTALL_ALL_KEYS () {
     echo "= Install sshkey on all targets ="
     for target in $( TARGETS_LIST ); do
-      echo -n ".  ${target}  ... "
-      TARGET_SSH_INSTALL_KEY "${target}"
-      [ $? eq 0 ] && echo 'OK' || echo 'KO'
+      for login in $( TARGET_SSH_LIST_LOGINS "${target}" ); do
+        echo -n ".  ${login}@${target}  ... "
+        TARGET_SSH_INSTALL_KEY "${login}@${target}"
+        [ $? eq 0 ] && echo 'OK' || echo 'KO'
+      done
     done
+    return 0;
   }
 
   TARGET_SSH_TEST () {
-    local target= known_hosts_file= sshkey_file= reply=
+    local target= login= ssh_conf_file= sshkey_file= reply=
     if [ $# -eq 0 -o $# -gt 2 ]; then
       BAD_ARGUMENTS ; return 1;
     fi
 
-    target=$( TARGET_REAL "$1" )
+    target=$( GET_HOST "$1" )
+    login=$( GET_LOGIN "$1" )
+    target=$( TARGET_REAL "${target}" )
     if [ -z "${target}" ]; then
       ERROR "Target host '${target}' doesn't exist" ; return 1;
     fi
-    [ $# -eq 2 ] && known_hosts_file="$2"
 
-    if [ -z "${known_hosts_file}" ]; then
-      known_hosts_file="$( SSHGATE_ACCOUNT_HOMEDIR )/.ssh/known_hosts"
-      cp "${known_hosts_file}" /tmp
-      known_hosts_file="/tmp/known_hosts"
-    fi
-
-    echo -n "-  ${target}  ... "
-    sshkey_file=$( TARGET_PRIVATE_SSHKEY_FILE "${target}" )
-    ssh_options=$( TARGET_GET_SSH_OPTIONS "${target}" )
+    echo -n "-  ${login}@${target}  ... "
+    ssh_conf_file=$( TARGET_SSH_GET_CONFIG "${target}" "${login}" )
     reply=$( ssh -o "ConnectTimeout 5"                       \
-                 -o "UserKnownHostsFile ${known_hosts_file}" \
                  -o "BatchMode yes"                          \
-                 -o "IdentitiesOnly yes"                     \
-                 -i "${sshkey_file}"                         \
-                 ${ssh_options}                              \
-                 "${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}@${target}" "echo 'test'" 2>&1 )
+                 -F "${ssh_conf_file}"                       \
+                 "${login}@${target}" "echo 'test'" 2>&1 )
     if [ $? -eq 0 -a "${reply}" = 'test' ]; then
       echo 'OK';
     else
       echo 'KO';
-      echo "     ${reply}";
+      echo "     ${reply}" | sed -e $'s/\r//';
     fi
 
-    [ $# -ne 2 ] && rm -f "${known_hosts_file}"
+    rm -f "${ssh_conf_file}"
+    return 0;
   }
 
   TARGET_SSH_TEST_ALL () {
-    local known_hosts_file=
-
-    known_hosts_file="$( SSHGATE_ACCOUNT_HOMEDIR )/.ssh/known_hosts"
-    cp "${known_hosts_file}" /tmp
-    known_hosts_file="/tmp/known_hosts"
-
     echo "= Test all targets ssh connectivity ="
     for target in $( TARGETS_LIST ); do
-      TARGET_SSH_TEST "${target}" "${known_hosts_file}"
+      for login in $( TARGET_SSH_LIST_LOGINS "${target}" ); do
+        TARGET_SSH_TEST "${login}@${target}"
+      done
     done
-
-    rm -f "${known_hosts_file}"
   }
 
   TARGET_ACCESS_INFO () {
-    local target= targetgroup_list= users_list=
+    local target= login= targetgroup_list= users_list=
     if [ $# -ne 1 ]; then
       BAD_ARGUMENTS ; return 1;
     fi
@@ -1079,28 +1327,34 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     fi
 
     # direct access
-    for user in $( cat "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USER_ACCESS_FILENAME}" ); do
-      echo "${user} ---> ${target}"
-    done
-
-    # access through usergroup
-    for usergroup in $( TARGET_ACCESS_LIST_USERGROUPS "${target}" ); do
-      users_list=$( USERGROUP_LIST_USERS "${usergroup}" )
+    for login in $( TARGET_SSH_LIST_LOGINS "${target}" ); do
+      users_list=$( cat "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USER_ACCESS_FILENAME}.${login}" | sort -u )
       if [ -n "${users_list}" ]; then
-        echo -n "${users_list}" | tr $'\n' ','
-        echo " --- usergroup(${usergroup}) ---> ${target}"
+        echo -n "  ${users_list}" | tr $'\n' ','
+        echo " ---> ${login}@${target}"
       fi
     done
 
+    # access through usergroup
+    for login in $( TARGET_SSH_LIST_LOGINS "${target}" ); do
+      for usergroup in $( TARGET_ACCESS_LIST_USERGROUPS "${target}" "${login}" ); do
+        users_list=$( USERGROUP_LIST_USERS "${usergroup}" )
+        if [ -n "${users_list}" ]; then
+          echo -n "  ${users_list}" | tr $'\n' ','
+          echo " --- usergroup(${usergroup}) ---> ${login}@${target}"
+        fi
+      done
+    done # end of : for login in $( TARGET_SSH_LIST_LOGINS "${target}" ); do
     return 0;
   }
 
   TARGET_LIST_ALIASES () {
     local target= t=
-    [ $# -eq 1 ] && target=$( TARGET_REAL "$1" )
-
-    if [ -z "${target}" ]; then
-      ERROR "Target host '${target}' doesn't exist" ; return 1;
+    if [ $# -eq 1 ]; then
+      target=$( TARGET_REAL "$1" )
+      if [ -z "${target}" ]; then
+        ERROR "Target host '${target}' doesn't exist" ; return 1;
+      fi
     fi
 
     for file in $( find "${SSHGATE_DIR_TARGETS}/" -type l ); do
@@ -1116,7 +1370,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
       BAD_ARGUMENTS ; return 1;
     fi
 
-    target=$(TARGET_REAL "$1"); alias="$2"
+    target=$( TARGET_REAL "$1" ); alias="$2"
     if [ -z "${target}" ]; then
       ERROR "Target host '${target}' doesn't exist" ; return 1
     fi
@@ -1178,20 +1432,32 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
   }
 
   TARGET_ACCESS_LIST_USERS () {
-    local target= files=
-    if [ $# -ne 1 ]; then
+    local target= login= files=
+    if [ $# -ne 1 -a $# -ne 2 ]; then
       BAD_ARGUMENTS ; return 1;
     fi
 
-    target=$( TARGET_REAL "$1" )
+    if [ $# -eq 1 ]; then
+      target=$( GET_HOST "$1" )
+      login=$( GET_LOGIN "$1" )
+    else
+      target="$1"; login="$2"
+    fi
+
+    target=$( TARGET_REAL "${target}" )
     if [ -z "${target}" ]; then
       ERROR "Target host '${target}' doesn't exist" ; return 1;
     fi
 
-    files="${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USER_ACCESS_FILENAME}"
+    TARGET_SSH_LIST_LOGINS "${target}" | grep "^${login}$" >/dev/null
+    if [ $? -ne 0 ]; then
+      ERROR "Login '${login}' doesn't exist on target '${target}'"; return 1;
+    fi
+
+    files="${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USER_ACCESS_FILENAME}.${login}"
 
     # through groups : target -> usergroup -> users
-    for usergroup in $( cat "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USERGROUP_ACCESS_FILENAME}" ); do
+    for usergroup in $( cat "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USERGROUP_ACCESS_FILENAME}.${login}" ); do
       files="${files} ${SSHGATE_DIR_USERS_GROUPS}/${usergroup}"
     done
 
@@ -1199,16 +1465,43 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     return 0;
   }
 
+  TARGET_ACCESS_LIST_ALL_USERS () {
+    local target= login=
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS; return 1;
+    fi
+
+    target=$( TARGET_REAL "$1" )
+    if [ -z "${target}" ]; then
+      ERROR "Target host '${target}' doesn't exist"; return 1;
+    fi
+
+    for login in $( TARGET_SSH_LIST_LOGINS "${target}" ); do
+      echo "= ${login}@${target} ="
+      TARGET_ACCESS_LIST_USERS "${target}" "${login}"
+    done
+    return 0;
+  }
+
   TARGET_ACCESS_ADD_USER () {
-    local target= user=
-    if [ $# -ne 2 ]; then
+    local target= login= user=
+    if [ $# -ne 2 -a $# -ne 3 ]; then
       BAD_ARGUMENTS ; return 1;
     fi
 
-    target=$( TARGET_REAL "$1"); user="$2";
+    if [ $# -eq 2 ]; then
+      target=$( GET_HOST "$1" )
+      login=$( GET_LOGIN "$1" )
+      user="$2"
+    else
+      target="$1"; login="$2"; user="$3"
+    fi
+
     if [ -z "${user}" ]; then
       BAD_ARGUMENTS ; return 1;
     fi
+
+    target=$( TARGET_REAL "${target}" )
     if [ -z "${target}" ]; then
       ERROR "Target host '${target}' doesn't exist" ; return 1;
     fi
@@ -1216,23 +1509,35 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
       ERROR "User '${user}' doesn't exist" ; return 1;
     fi
 
-    private_ACL_FILE_ADD "${user}" "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USER_ACCESS_FILENAME}"
+    TARGET_SSH_LIST_LOGINS "${target}" | grep "^${login}$" >/dev/null
+    if [ $? -ne 0 ]; then
+      ERROR "Login '${login}' doesn't exist on '${target}'"; return 1;
+    fi
 
-    private_MAIL_APPEND "User ${user} access to Target ${target} granted"
+    private_ACL_FILE_ADD "${user}" "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USER_ACCESS_FILENAME}.${login}"
+    private_MAIL_APPEND "User ${user} access to Target ${login}@${target} granted"
 
     return 0;
   }
 
   TARGET_ACCESS_DEL_USER () {
-    local target= user= access_file= random=
-    if [ $# -ne 2 ]; then
+    local target= login= user= access_file=
+    if [ $# -ne 2 -a $# -ne 3 ]; then
       BAD_ARGUMENTS ; return 1
     fi
 
-    target=$( TARGET_REAL "$1" ); user="$2"
+    if [ $# -eq 2 ]; then
+      target=$( GET_HOST "$1" )
+      login=$( GET_LOGIN "$1" )
+      user="$2"
+    else
+      target="$1"; login="$2"; user="$3"
+    fi
+
     if [ -z "${user}" ]; then
       BAD_ARGUMENTS ; return 1;
     fi
+    target=$( TARGET_REAL "${target}" )
     if [ -z "${target}" ]; then
       ERROR "Target host '${target}' doesn't exist" ; return 1;
     fi
@@ -1240,38 +1545,81 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
       ERROR "User '${user}' doesn't exist" ; return 1;
     fi
 
-    private_ACL_FILE_DEL "${user}" "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USER_ACCESS_FILENAME}"
+    TARGET_SSH_LIST_LOGINS "${target}" | grep "^${login}$" >/dev/null
+    if [ $? -ne 0 ]; then
+      ERROR "Login '${login}' doesn't exist on target '${target}'"; return 1;
+    fi
 
-    private_MAIL_APPEND "User ${user} access to Target ${target} revoked"
+    private_ACL_FILE_DEL "${user}" "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USER_ACCESS_FILENAME}.${login}"
+    private_MAIL_APPEND "User ${user} access to Target ${login}@${target} revoked"
 
     return 0;
   }
 
   TARGET_ACCESS_LIST_USERGROUPS () {
-    local target=
-    if [ $# -ne 1 ]; then
+    local target= login=
+    if [ $# -ne 1 -a $# -ne 2 ]; then
       BAD_ARGUMENTS ; return 1;
     fi
 
-    target=$( TARGET_REAL "$1" )
+    if [ $# -eq 1 ]; then
+      target=$( GET_HOST "$1" )
+      login=$( GET_LOGIN "$1" )
+    else
+      target="$1"; login="$2"
+    fi
+
+    target=$( TARGET_REAL "${target}" )
     if [ -z "${target}" ]; then
       ERROR "Target host '${target}' doesn't exist" ; return 1;
     fi
 
-    cat "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USERGROUP_ACCESS_FILENAME}" | sort -u
+    TARGET_SSH_LIST_LOGINS "${target}" | grep "^${login}$" >/dev/null
+    if [ $? -ne 0 ]; then
+      ERROR "Login '${login}' doesn't exist on target '${target}'"; return 1;
+    fi
+
+    cat "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USERGROUP_ACCESS_FILENAME}.${login}" | sort -u
     return 0;
   }
 
+  TARGET_ACCESS_LIST_ALL_USERGROUPS () {
+    local target= login=
+
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS; return 1;
+    fi
+
+    target=$( TARGET_REAL "$1" )
+    if [ -z "${target}" ]; then
+      ERROR "Target host '${target}' doesn't exist"; return 1;
+    fi
+
+    for login in $( TARGET_SSH_LIST_LOGINS "${target}" ); do
+      echo "= ${login}@${target} ="
+      TARGET_ACCESS_LIST_USERGROUPS "${target}" "${login}"
+    done
+  }
+
   TARGET_ACCESS_ADD_USERGROUP () {
-    local target= usergroup=
-    if [ $# -ne 2 ]; then
+    local target= login= usergroup=
+    if [ $# -ne 2 -a $# -ne 3 ]; then
       BAD_ARGUMENTS ; return 1;
     fi
 
-    target=$( TARGET_REAL "$1" ); usergroup="$2"
+    if [ $# -eq 2 ]; then
+      target=$( GET_HOST "$1" )
+      login=$( GET_LOGIN "$1" )
+      usergroup="$2"
+    else
+      target="$1"; login="$2"; usergroup="$3"
+    fi
+
     if [ -z "${usergroup}" ]; then
       BAD_ARGUMENTS ; return 1;
     fi
+
+    target=$( TARGET_REAL "${target}" )
     if [ -z "${target}" ]; then
       ERROR "Target host '${target}' doesn't exist" ; return 1;
     fi
@@ -1279,23 +1627,31 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
       ERROR "User group '${usergroup}' doesn't exist" ; return 1;
     fi
 
-    private_ACL_FILE_ADD "${usergroup}" "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USERGROUP_ACCESS_FILENAME}"
-
-    private_MAIL_APPEND "User Group ${usergroup} access to Target ${target} granted"
+    private_ACL_FILE_ADD "${usergroup}" "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USERGROUP_ACCESS_FILENAME}.${login}"
+    private_MAIL_APPEND "User Group ${usergroup} access to Target ${login}@${target} granted"
 
     return 0;
   }
 
   TARGET_ACCESS_DEL_USERGROUP () {
-    local target= usergroup=
-    if [ $# -ne 2 ]; then
+    local target= login= usergroup=
+    if [ $# -ne 2 -a $# -ne 3 ]; then
       BAD_ARGUMENTS ; return 1
     fi
 
-    target=$( TARGET_REAL "$1" ); usergroup="$2"
+    if [ $# -eq 2 ]; then
+      target=$( GET_HOST "$1" )
+      login=$( GET_LOGIN "$1" )
+      usergroup="$2"
+    else
+      target="$1"; login="$2"; usergroup="$3"
+    fi
+
     if [ -z "${usergroup}" ]; then
       BAD_ARGUMENTS ; return 1;
     fi
+
+    target=$( TARGET_REAL "${target}" )
     if [ -z "${target}" ]; then
       ERROR "Target  host '${target}' doesn't exist" ; return 1;
     fi
@@ -1303,9 +1659,8 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
       ERROR "User group '${usergroup}' doesn't exist" ; return 1;
     fi
 
-    private_ACL_FILE_DEL "${usergroup}" "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USERGROUP_ACCESS_FILENAME}"
-
-    private_MAIL_APPEND "User Group ${usergroup} access to Target ${target} revoked"
+    private_ACL_FILE_DEL "${usergroup}" "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USERGROUP_ACCESS_FILENAME}.${login}"
+    private_MAIL_APPEND "User Group ${usergroup} access to Target ${login}@${target} revoked"
 
     return 0;
   }
@@ -1356,24 +1711,26 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
   }
 
   USER_DEL () {
+    local user= usergroup=
     if [ $# -ne 1 ]; then
       BAD_ARGUMENTS ; return 1
     fi
 
-    local user="$1"
+    user="$1"
     if [ ! -f "${SSHGATE_DIR_USERS}/${user}" -o -z "${user}" ]; then
       ERROR "User '${user}' doesn't exist"  ; return 1;
     fi
 
-
     # delete user from groups
-    for group in $( USER_LIST_USERGROUPS "${user}" ); do
-      private_ACL_FILE_DEL "${user}" "${SSHGATE_DIR_USERS_GROUPS}/${group}"
+    for usergroup in $( USER_LIST_USERGROUPS "${user}" ); do
+      private_ACL_FILE_DEL "${user}" "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}"
     done
 
     # delete user from target access list
     for target in $( USER_LIST_TARGETS "${user}" ); do
-      private_ACL_FILE_DEL "${user}" "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USER_ACCESS_FILENAME}"
+      login=$( GET_LOGIN "${target}" )
+      target=$( GET_HOST "${target}" )
+      private_ACL_FILE_DEL "${user}" "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USER_ACCESS_FILENAME}.${login}"
     done
 
     rm -f "${SSHGATE_DIR_USERS}/${user}"
@@ -1470,8 +1827,8 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
       ERROR "User '${user}' doesn't exist" ; return 1;
     fi
 
-    for group in $( grep -l -r "^${user}\$" "${SSHGATE_DIR_USERS_GROUPS}/" | sort -u ); do
-      echo "${group##*/}"
+    for usergroup in $( grep -l -r "^${user}\$" "${SSHGATE_DIR_USERS_GROUPS}/" | sort -u ); do
+      echo "${usergroup##*/}"
     done | sort -u
     return 0;
   }
@@ -1489,15 +1846,19 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
     is_restricted=$( USER_GET_CONF "${user}" IS_RESTRICTED )
     if [ "${is_restricted}" = 'false' ]; then
-      TARGETS_LIST
+      for target in $( TARGETS_LIST ); do
+        for login in $( TARGET_SSH_LIST_LOGINS "${target}" ); do
+          echo "${login}@${target}"
+        done
+      done
     else
       ( # subshell :(
           # direct access
-          for file in $( find "${SSHGATE_DIR_TARGETS}"                      \
-                            -name "${SSHGATE_TARGETS_USER_ACCESS_FILENAME}" \
+          for target in $( find "${SSHGATE_DIR_TARGETS}"                      \
+                            -name "${SSHGATE_TARGETS_USER_ACCESS_FILENAME}*" \
                             -exec grep -l "^${user}\$" {} \; ); do
-            file="${file%%/${SSHGATE_TARGETS_USER_ACCESS_FILENAME}}"
-            echo "${file##*/}"
+            target=$( echo "${target}" | sed -e "s|^.*/\([^/]*\)/${SSHGATE_TARGETS_USER_ACCESS_FILENAME}.\(.*\)$|\2@\1|" )
+            echo "${target}"
           done
 
           # access through usergroup
@@ -1505,7 +1866,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
             USERGROUP_LIST_TARGETS "${usergroup}"
           done
       ) | sort -u
-    fi
+    fi # end of : if [ "${is_restricted}" = 'false' ]; then
     return 0;
   }
 
@@ -1521,25 +1882,28 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     fi
 
     # direct access
-    for file in $( find "${SSHGATE_DIR_TARGETS}"                      \
-                      -name "${SSHGATE_TARGETS_USER_ACCESS_FILENAME}" \
-                      -exec grep -l "^${user}\$" {} \; ); do
-      file="${file%%/${SSHGATE_TARGETS_USER_ACCESS_FILENAME}}"
-      echo "${user} ---> ${file##*/}"
+    for target in $( find "${SSHGATE_DIR_TARGETS}"                     \
+                      -name "${SSHGATE_TARGETS_USER_ACCESS_FILENAME}*" \
+                      -exec grep -l "^${user}\$" {} \; | sort -u ); do
+      target=$( echo "${target}" | sed -e "s|^.*/\([^/]*\)/${SSHGATE_TARGETS_USER_ACCESS_FILENAME}.\(.*\)$|\2@\1|" )
+      echo "  ${user} ---> ${target}"
     done
 
     # access through usergroup
     for usergroup in $( USER_LIST_USERGROUPS "${user}" ); do
-      targets=$( USERGROUP_LIST_TARGETS "${usergroup}" )
-      if [ -n "${targets}" ]; then
-        echo -n "${user} --- usergroup(${usergroup}) ---> "
-        echo -n "${targets}" | tr $'\n' ','; echo
-      fi
+      for target in $( find "${SSHGATE_DIR_TARGETS}"                          \
+                        -name "${SSHGATE_TARGETS_USERGROUP_ACCESS_FILENAME}*" \
+                        -exec grep -l "^${usergroup}\$" {} \; | sort -u ); do
+        target=$( echo "${target}" | sed -e "s|^.*/\([^/]*\)/${SSHGATE_TARGETS_USERGROUP_ACCESS_FILENAME}.\(.*\)$|\2@\1|" )
+        echo "  ${user} --- usergroup(${usergroup}) ---> ${target}"
+      done
     done
 
     is_restricted=$( USER_GET_CONF "${user}" IS_RESTRICTED )
     if [ "${is_restricted}" = 'false' ]; then
-      echo "User has access to whole target host, as its configuration IS_RESTRICTED variable is set to 'false'.";
+      echo
+      echo "NOTICE: User has access to whole target host, as its configuration IS_RESTRICTED variable is set to 'false'.";
+      echo
     fi
     return 0;
   }
@@ -1561,7 +1925,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
     MAIL_APPEND "Hi,"
     MAIL_APPEND ''
-    MAIL_APPEND "Here is the list of servers you have access to through sshGate :"
+    MAIL_APPEND "Here is the list of your access of sshGate :"
     MAIL_APPEND ''
     for target in $( USER_LIST_TARGETS "${user}" ); do
       MAIL_APPEND " - ${target}"
@@ -1579,7 +1943,10 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
   }
 
   USERGROUPS_LIST () {
-    ls --color=none -m "${SSHGATE_DIR_USERS_GROUPS}" | tr $'\n' ' ' | sed -e 's/, /,/g' | tr ',' $'\n' | sort -u; echo
+    local res= find_opt=
+    [ $# -eq 1 ] && find_opt="-iname '$1'"
+    res=$( eval "find '${SSHGATE_DIR_USERS_GROUPS}' -mindepth 1 -type f ${find_opt} -printf '%P\n'" )
+    echo "${res}" | sort -u
     return 0;
   }
 
@@ -1691,11 +2058,11 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
       ERROR "User group '${usergroup}' doesn't exist" ; return 1;
     fi
 
-    for file in $( find "${SSHGATE_DIR_TARGETS}"                           \
-                      -name "${SSHGATE_TARGETS_USERGROUP_ACCESS_FILENAME}" \
-                      -exec grep -l "^${usergroup}\$" {} \; ); do
-      file="${file%%/${SSHGATE_TARGETS_USERGROUP_ACCESS_FILENAME}}"
-      echo "${file##*/}"
+    for target in $( find "${SSHGATE_DIR_TARGETS}"                          \
+                      -name "${SSHGATE_TARGETS_USERGROUP_ACCESS_FILENAME}*" \
+                      -exec grep -l "^${usergroup}\$" {} \; | sort -u ); do
+      target=$( echo "${target}" | sed -e "s|^.*/\([^/]*\)/${SSHGATE_TARGETS_USERGROUP_ACCESS_FILENAME}.\(.*\)$|\2@\1|" )
+      echo "${target}"
     done | sort -u
     return 0;
   }
@@ -1713,7 +2080,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
     users=$(   USERGROUP_LIST_USERS "${usergroup}"   ); users=$(   echo -n "${users}"   | tr $'\n' ',' )
     targets=$( USERGROUP_LIST_TARGETS "${usergroup}" ); targets=$( echo -n "${targets}" | tr $'\n' ',' )
-    echo "${users} --- usergroup(${usergroup}) ---> ${targets}"
+    echo "  ${users} --- usergroup(${usergroup}) ---> ${targets}"
 
     return 0;
   }
