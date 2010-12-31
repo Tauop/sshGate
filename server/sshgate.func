@@ -61,43 +61,36 @@
 #   note: if <file> is not specified, determine it with SSHGATE_ACCOUNT_HOMEDIR
 #
 # TARGET_LOG_FILE()
-#   usage: TARGET_LOG_FILE [ <target_host> ]
+#   usage: TARGET_LOG_FILE <target_host>
 #   desc: echo-return the target global log file
 #   note: create the target main directory in ${SSHGATGE_DIR_LOG} if needed
-#   note: if called without argument, try to use ${TARGET_HOST} variable
 #
 # TARGET_SESSION_LOG_FILE()
-#   usage: TARGET_SESSION_LOG_FILE [ <target_host> [ <username> ] ]
+#   usage: TARGET_SESSION_LOG_FILE <target_host> <username>
 #   desc: echo-return the target session log file path
-#   note: if called without argument, try to use ${SSHKEY_USER} and ${TARGET_HOST} variable
-#   note: if called without second argument, try to use ${SSHKEY_USER} variable
 #
 # USER_SSHKEY_FILE()
-#   usage: USER_SSHKEY_FILE [ <user> ]
+#   usage: USER_SSHKEY_FILE <user>
 #   desc: echo-return the path to the user sshkey file
-#   note: if called without argument, try to use ${SSHKEY_USER}
 #
 # DISPLAY_USER_SSHKEY_FILE()
-#   usage: DISPLAY_USER_SSHKEY_FILE [ <user> ]
+#   usage: DISPLAY_USER_SSHKEY_FILE <user>
 #   desc: echo-return the public sshkey of a user
-#   note: if called without argument, try to use ${SSHKEY_USER}
-#   note: if called without argument and ${SSHKEY_USER} is not set, display the public sshkey of all users
+#   note: if called without argument, display the public sshkey of all users
 #
 # TARGET_PRIVATE_SSHKEY_FILE()
-#   usage: TARGET_PRIVATE_SSHKEY_FILE [ <target_host> ]
+#   usage: TARGET_PRIVATE_SSHKEY_FILE <target_host>
 #   desc: echo-return the path to the private ssh key of the target host
-#   note: if called without argument, try to use ${TARGET_HOST} variable
 #
 # TARGET_PUBLIC_SSHKEY_FILE()
-#   usage: TARGET_PUBLIC_SSHKEY_FILE [ <target_host> ]
+#   usage: TARGET_PUBLIC_SSHKEY_FILE <target_host>
 #   desc: echo-return the path to the public ssh key of the target host
-#   note: if called without argument, try to use ${TARGET_HOST} variable
 #
 # HAS_ACCESS()
-#   usage: HAS_ACCESS [ <username> [ <target_host> ] ]
+#   usage: HAS_ACCESS <username> [<login>@]<target_host>
+#   usage: HAS_ACCESS <username> <target_host> <login>
 #   desc: echo-return 'true' if <username> is allowed to access to <target_host>, 'false' otherwise
-#   note: if called without argument, try to use ${SSHKEY_USER} and ${TARGET_HOST} variable
-#   note: if called without second argument, try to use ${TARGET_HOST} variable
+#   note: if no <login> is given, use ${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}
 #
 # TARGETS_LIST()
 #   usage: TARGETS_LIST
@@ -106,6 +99,7 @@
 # TARGET_ADD()
 #   usage: TARGET_ADD <target_host> [ <target_private_sshkey_file> ]
 #   desc: add a target host to sshGate
+#   note: it will try to install public sshket to the target authorized_keys2
 #   important: need to be root to be able to chown ssh priv key
 #
 # TARGET_DEL()
@@ -117,18 +111,16 @@
 #   desc: rename a target host and create an alias with the old target name
 #
 # TARGET_DISPLAY_CONF()
-#   usage: TARGET_DISPLAY_CONF [ <target> ]
+#   usage: TARGET_DISPLAY_CONF <target>
 #   desc: display the configuration file of the <target>
-#   note: if <target> is not given, try to use ${TARGET_HOST}
 #
 # TARGET_SET_CONF()
 #   usage: TARGET_SET_CONF <target> <variable> [ <value> ]
 #   desc: Set a variable/value pair into the target configuration file
 #
 # TARGET_GET_CONF()
-#   usage: TARGET_GET_CONF [ <target> ] <variable>
+#   usage: TARGET_GET_CONF <target> <variable>
 #   desc: Get the <variable> value from the <target> configuration file
-#   note: if <target> is not given, try to use ${TARGET_HOST}
 #
 # TARGET_GET_SSH_OPTIONS()
 #   usage: TARGET_GET_SSH_OPTIONS [ <target> ]
@@ -202,10 +194,9 @@
 #   desc: delete an <alias> name of a target_host
 #
 # TARGET_REAL()
-#   usage: TARGET_REAL [ <target_host> ]
+#   usage: TARGET_REAL <target_host>
 #   desc: echo-return the 'real' <target_host> name if the argument
 #         is an alias. Otherwise, echo-return <target_host>
-#   note: if called without argument, try to use ${TARGET_HOST} variable
 #
 # TARGET_ACCESS_LIST_USERS()
 #   usage: TARGET_ACCESS_LIST_USERS <target_host>
@@ -244,30 +235,26 @@
 #   desc: delete a user from the sshGate users list
 #
 # USER_DISPLAY_CONF()
-#   usage: USER_DISPLAY_CONF [ <user> ]
+#   usage: USER_DISPLAY_CONF <user>
 #   desc: display <user> configuration file
-#   note: if <user> is not given, try to use ${SSHKEY_USER}
 #
 # USER_SET_CONF()
 #   usage: USER_SET_CONF <user> <variable> [ <value> ]
 #   desc: set a variable/value pair into the user configuration
 #
 # USER_GET_CONF()
-#   usage: USER_GET_CONF [ <user> ] <variable>
+#   usage: USER_GET_CONF <user> <variable>
 #   desc: get a variable value from the user configuration
-#   note: if <user> is not given, try to use ${SSHKEY_USER}
 #
 # USER_LIST_USERGROUPS()
-#   usage: USER_LIST_USERGROUPS [ <user> ]
+#   usage: USER_LIST_USERGROUPS <user>
 #   desc: List all users' group, which the user is in.
 #   note: users' group name are separated by \n
-#   note: if called without argument, try to use ${SSHKEY_USER} variable
 #
 # USER_LIST_TARGETS()
-#   usage: USER_LIST_TARGETS [ <user> ]
+#   usage: USER_LIST_TARGETS <user>
 #   desc: List all target host, which the <user> has access on
 #   note: target host name are separated by '\n'.
-#   note: if called without argument, try to use ${SSHKEY_USER} variable
 #
 # USER_ACCESS_NOTIFY()
 #   usage: USER_ACCESS_NOTIFY <user>
@@ -534,9 +521,11 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
   # create the log directory if not exists
   TARGET_LOG_FILE () {
     local target= dir=
-    [ $# -eq 0 ] && target="${TARGET_HOST:-}" || target="$1"
-    target=$( TARGET_REAL "${target}" )
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
 
+    target=$( TARGET_REAL "$1" )
     if [ -z "${target}" ]; then
       echo ''; return 1;
     fi
@@ -552,13 +541,12 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
   # the user session log file
   TARGET_SESSION_LOG_FILE () {
     local user= target= f=
-    if [ $# -eq 0 ]; then
-      target="${TARGET_HOST:-}"
-      user="${SSHKEY_USER:-}"
-    else
-      target="$1"
-      [ $# -lt 2 ] && user="${SSHKEY_USER:-}" || user="$2"
+
+    if [ $# -ne 2 ]; then
+      BAD_ARGUMENTS ; return 1;
     fi
+
+    target="$1"; user="$2"
     target=$( TARGET_REAL "${target}" )
     if [ -z "${target}" -o -z "${user}" ]; then
       echo ''; return 1;
@@ -572,15 +560,22 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
   USER_SSHKEY_FILE () {
     local user= f=
-    [ $# -eq 0 ] && user="${SSHKEY_USER:-}" || user="$1"
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+    user="$1"
     f="${SSHGATE_DIR_USERS}/${user}"
     [ ! -r "$f" -o -z "${user}" ] && f=''
     echo "$f"
+    return 0;
   }
 
   DISPLAY_USER_SSHKEY_FILE () {
     local user= f=
-    [ $# -eq 0 ] && user="${SSHKEY_USER:-all}" || user="$1"
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+    user="$1"
     if [ "${user}" != 'all' ]; then
       f=$( USER_SSHKEY_FILE "${user}" )
       if [ -n "$f" ]; then
@@ -600,7 +595,10 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
   TARGET_PRIVATE_SSHKEY_FILE () {
     local target= f=
-    [ $# -eq 0 ] && target="${TARGET_HOST:-}" || target="$1"
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+    target="$1"
     f="${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGET_PRIVATE_SSHKEY_FILENAME}"
     [ ! -r "$f" -o -z "${target}" ] && f="${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}"
     echo "$f"
@@ -608,7 +606,10 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
   TARGET_PUBLIC_SSHKEY_FILE () {
     local target= f=
-    [ $# -eq 0 ] && target="${TARGET_HOST:-}" || target="$1"
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+    target="$1"
     f="${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGET_PUBLIC_SSHKEY_FILENAME}"
     [ ! -r "$f" -o -z "${target}" ] && f="${SSHGATE_TARGET_DEFAULT_PUBLIC_SSHKEY_FILE}"
     echo "$f"
@@ -617,16 +618,18 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
   HAS_ACCESS() {
     local user= target= login= is_admin= is_restricted=
 
-    if [ $# -eq 0 ]; then
-      user="${SSHKEY_USER:-}"
-      target="${TARGET_HOST:-}"
-      login="${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}"
-    else
-      user="$1"
-      [ $# -lt 2 ] && target="${TARGET_HOST:-}" || target="$2"
-      [ $# -lt 3 ] && login="${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}" || login="$3"
+    if [ $# -ne 2 -a $# -ne 3 ]; then
+      BAD_ARGUMENTS ; return 1;
     fi
 
+    if [ $# -eq 2 ]; then
+      user="$1"
+      target=$( GET_HOST "$2" )
+      login=$( GET_LOGIN "$2" )
+    else
+      user="$1"; target="$2"; login="$3"
+    fi
+    
     target=$( TARGET_REAL "${target}" )
     if [ -z "${user}" -o -z "${target}" ]; then
       echo 'false'; return 1;
@@ -767,14 +770,13 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     return 0;
   }
 
-  TARGET_DISPLAY_CONF() {
-    local target="${TARGET_HOST:-}" file=
-    if [ $# -gt 1 ]; then
+  TARGET_DISPLAY_CONF () {
+    local target= file=
+    if [ $# -ne 1 ]; then
       BAD_ARGUMENTS; return 1;
     fi
 
-    [ $# -eq 1 ] && target="$1"
-    target=$( TARGET_REAL "${target}" )
+    target=$( TARGET_REAL "$1" )
     if [ -z "${target}" ]; then
       ERROR "Target host '${target}' doesn't exist" ; return 1;
     fi
@@ -788,7 +790,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     return 0
   }
 
-  TARGET_SET_CONF() {
+  TARGET_SET_CONF () {
     local target= var= value= file=
     if [ $# -lt 2 -o $# -gt 3 ]; then
       BAD_ARGUMENTS; return 1;
@@ -816,16 +818,13 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     return 0;
   }
 
-  TARGET_GET_CONF() {
-    local target="${TARGET_HOST:-}" var= file=
-    if [ $# -lt 1 -o $# -gt 2 ]; then
-      BAD_ARGUMENTS; return 1;
+  TARGET_GET_CONF () {
+    local target= var= file=
+    if [ $# -ne 2 ]; then
+      BAD_ARGUMENTS ; return 1;
     fi
 
-    if [ $# -eq 2 ]; then
-      target="$1"; shift;
-    fi
-    var="$1"
+    target="$1"; var="$2"
     target=$( TARGET_REAL "${target}" )
 
     if [ -z "${target}" ]; then
@@ -945,7 +944,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
   TARGET_SSH_USE_DEFAULT_KEY () {
     local target=
-    if [ $# -eq 0 ]; then
+    if [ $# -ne 1 ]; then
       BAD_ARGUMENTS ; return 1;
     fi
 
@@ -1146,8 +1145,11 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
   TARGET_REAL () {
     local target=
-    [ $# -ne 1 ] && target="${TARGET_HOST:-}" || target="$1"
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
 
+    target="$1"
     if [ -z "${target}" ]; then
       echo ''; return 1;
     fi
@@ -1362,12 +1364,12 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
   }
 
   USER_DISPLAY_CONF () {
-    local user="${SSHKEY_USER:-}" file=
-    if [ $# -gt 1 ]; then
+    local user= file=
+    if [ $# -ne 1 ]; then
       BAD_ARGUMENTS; return 1;
     fi
-    [ $# -eq 1 ] && user="$1"
 
+    user="$1"
     if [ ! -f "${SSHGATE_DIR_USERS}/${user}" -o -z "${user}" ]; then
       ERROR "User '${user}' doesn't exist"; return 1;
     fi
@@ -1409,17 +1411,14 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
   }
 
   USER_GET_CONF () {
-    local user="${SSHKEY_USER:-}" var= file=
-    if [ $# -lt 1 -o $# -gt 2 ]; then
+    local user= var= file=
+    if [ $# -ne 2 ]; then
       BAD_ARGUMENTS; return 1;
     fi
 
-    if [ $# -eq 2 ]; then
-      user="$1"; shift
-    fi
-    var="$1"
+    user="$1"; var="$2"
 
-    if [ -z "${var}" ]; then
+    if [ -z "${user}" -o -z "${var}" ]; then
       BAD_ARGUMENTS; return 1;
     fi
     if [ ! -f "${SSHGATE_DIR_USERS}/${user}" -o -z "${user}" ]; then
@@ -1435,9 +1434,12 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
   }
 
   USER_LIST_USERGROUPS () {
-    local user=
-    [ $# -eq 0 ] && user="${SSHKEY_USER:-}" || user="$1"
+    local user= usergroup=
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
 
+    user="$1"
     if [ ! -f "${SSHGATE_DIR_USERS}/${user}" -o -z "${user}" ]; then
       ERROR "User '${user}' doesn't exist" ; return 1;
     fi
@@ -1449,9 +1451,12 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
   }
 
   USER_LIST_TARGETS () {
-    local user= is_restricted=
-    [ $# -eq 0 ] && user="${SSHKEY_USER:-}" || user="$1"
+    local user= target= is_restricted=
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
 
+    user="$1"
     if [ ! -f "${SSHGATE_DIR_USERS}/${user}" -o -z "${user}" ]; then
       ERROR "User '${user}' doesn't exist" ; return 1;
     fi
@@ -1479,9 +1484,12 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
   }
 
   USER_ACCESS_INFO () {
-    local user= targets= is_restricted=
-    [ $# -eq 0 ] && user="${SSHKEY_USER:-}" || user="$1"
+    local user= target= usergroup= is_restricted=
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
 
+    user="$1"
     if [ ! -f "${SSHGATE_DIR_USERS}/${user}" -o -z "${user}" ]; then
       ERROR "User '${user}' doesn't exist" ; return 1;
     fi
@@ -1512,9 +1520,11 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
   USER_ACCESS_NOTIFY () {
     local user= user_mail= mail_file= old_mail_file= aliases=
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
 
-    [ $# -eq 0 ] && user="${SSHKEY_USER:-}" || user="$1"
-
+    user="$1"
     user_mail=$( USER_GET_CONF "${user}" MAIL )
     if [ -z "${user_mail}" ]; then
       ERROR "No e-mail was setup for user '${user}'"; return 1;
@@ -1563,7 +1573,6 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     fi
 
     touch "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}"
-
     private_MAIL_APPEND "User Group ${usergroup} added"
 
     return 0;
@@ -1571,7 +1580,6 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
   USERGROUP_DEL () {
     local usergroup=
-
     if [ $# -ne 1 ]; then
       BAD_ARGUMENTS ; return 1;
     fi
@@ -1586,7 +1594,6 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     done
 
     rm -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}"
-
     private_MAIL_APPEND "User Group ${usergroup} removed"
 
     return 0
@@ -1594,7 +1601,6 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
   USERGROUP_LIST_USERS () {
     local usergroup=
-
     if [ $# -ne 1 ]; then
       BAD_ARGUMENTS ; return 1;
     fi
@@ -1623,7 +1629,6 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     fi
 
     private_ACL_FILE_ADD "${user}" "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}"
-
     private_MAIL_APPEND "User ${user} added to User Group ${usergroup}"
 
     return 0;
@@ -1644,7 +1649,6 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     fi
 
     private_ACL_FILE_DEL "${user}" "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}"
-
     private_MAIL_APPEND "User ${user} removed from User Group ${usergroup}"
 
     return 0;
