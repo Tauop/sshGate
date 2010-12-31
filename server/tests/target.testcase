@@ -69,7 +69,7 @@ sshGate >  target ssh test all
      Permission denied (publickey,password).
 -  ${user_unix_test_account}@${hostname}  ... OK
 -  ${user_unix_test_account}@${alias}  ... KO
-     ssh: Could not resolve hostname tauop-netbook2: Name or service not known
+     ssh: Could not resolve hostname ${alias}: Name or service not known
 sshGate >  target ssh display config
 sshGate >  target ssh edit config
 <<-User root
