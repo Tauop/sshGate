@@ -458,6 +458,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     done
 
     chown "${SSHGATE_GATE_ACCOUNT}" "${authorized_keys2}"
+    chmod u+r "${authorized_keys2}"
     return 0;
   }
 
