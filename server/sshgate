@@ -57,9 +57,10 @@ user_id=`id -u`
   && KO "You must execute $0 with root privileges"
 
 CLI_REGISTER_MENU    'user'
-CLI_REGISTER_COMMAND 'user list'           'USERS_LIST'
-CLI_REGISTER_COMMAND 'user add ? key ?'    'USER_ADD \1 \2'
-CLI_REGISTER_COMMAND 'user del ?'          'USER_DEL \1'
+CLI_REGISTER_COMMAND 'user list'                 'USERS_LIST'
+CLI_REGISTER_COMMAND 'user list ?'               'USERS_LIST \1'
+CLI_REGISTER_COMMAND 'user add ? key ? mail ?'   'USER_ADD \1 \2 \3'
+CLI_REGISTER_COMMAND 'user del ?'                'USER_DEL \1'
 
 CLI_REGISTER_MENU    'user ?'
 CLI_REGISTER_COMMAND 'user ? display conf'       'USER_DISPLAY_CONF \1'

@@ -1320,18 +1320,21 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
   }
 
   USER_ADD () {
-    if [ $# -ne 2 ]; then
+    local user= userkey= usermail=
+    if [ $# -ne 3 ]; then
       BAD_ARGUMENTS ; return 1;
     fi
 
-    local user="$1" userkey="$2"
-    if [ -z "${user}" -o -z "${userkey}" ]; then
+    user="$1"; userkey="$2"; usermail="$3"
+    if [ -z "${user}" -o -z "${userkey}" -o -z "${usermail}" ]; then
       BAD_ARGUMENTS ; return 1;
     fi
     if [ ! -r "${userkey}" ]; then
       ERROR "Can't read user ssh key" ; return 1;
     fi
-    if [ -z "${user}" -o "${user/ }" != "${user}" ]; then
+
+    echo "${user}" | grep ' ' >/dev/null
+    if [ $? -eq 0 -o -z "${user}" ]; then
       ERROR "${user} is not a valid username" ; return 1
     fi
 
@@ -1339,8 +1342,14 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
       ERROR "User '${user}' already exists" ; return 1;
     fi
 
+    echo "${usermail}" | grep '@' >/dev/null
+    if [ $? -ne 0 ]; then
+      ERROR "Invalid user e-mail" ; return 1;
+    fi
+
     cp "${userkey}" "${SSHGATE_DIR_USERS}/${user}"
     private_MAIL_APPEND "User ${user} added"
+    USER_SET_CONF "${user}" MAIL "${usermail}"
 
     BUILD_AUTHORIZED_KEYS
     return 0
@@ -1570,10 +1579,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
   }
 
   USERGROUPS_LIST () {
-    local res= find_opt=
-    [ $# -eq 1 ] && find_opt="-iname '$1'"
-    res=$( eval "find '${SSHGATE_DIR_USERS_GROUPS}' -mindepth 1 -type f ${find_opt} -printf '%P\n'" )
-    echo "${res}" | sort -u
+    ls --color=none -m "${SSHGATE_DIR_USERS_GROUPS}" | tr $'\n' ' ' | sed -e 's/, /,/g' | tr ',' $'\n' | sort -u; echo
     return 0;
   }
 
