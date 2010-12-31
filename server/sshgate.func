@@ -30,6 +30,16 @@
 #   usage: SSHGATE_ACCOUNT_HOMEDIR
 #   desc: return the home directory of the SSHGATE_GATE_ACCOUNT user
 #
+# GET_LOGIN()
+#   usage: GET_LOGIN <string>
+#   desc: Echo-return the login from a connection string
+#   note: if the string doesn't contain the login, we try to get the DEFAULT_SSH_LOGIN
+#         of the host, otherwise ${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}
+#
+# GET_HOST()
+#   usage: GET_HOST <string>
+#   desc: Echo-return the host from a connection string
+#
 # BUILD_AUTHORIZED_KEYS()
 #   usage: BUILD_AUTHORIZED_KEYS
 #   desc: update the authorized_key2 of the sshGate account
@@ -405,6 +415,26 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
   SSHGATE_ACCOUNT_HOMEDIR() {
     cat /etc/passwd | grep "^${SSHGATE_GATE_ACCOUNT}:" | cut -d':' -f6
   }
+
+  GET_LOGIN () {
+    local string="$1" login=
+
+    # the login is present in the connection string
+    if [ "${string}" != "${string%%@*}" ]; then
+      echo "${string%%@*}";
+      return 0;
+    fi
+
+    login=$( TARGET_GET_CONF "${string}" DEFAULT_SSH_LOGIN )
+    if [ -n "${login}" ]; then
+      echo "${login}"
+    else
+      echo "${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}"
+    fi
+    return 0;
+  }
+
+  GET_HOST () { echo "${1#*@}"; return 0; }
 
   BUILD_AUTHORIZED_KEYS () {
     local home_dir= authorized_keys2= user_key= real_target=

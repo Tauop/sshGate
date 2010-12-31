@@ -141,13 +141,8 @@ if [ -z "${TARGET_HOST}" ]; then
 fi
 
 # Determine information for connecting to the host ---------------------------
-TARGET_LOGIN="${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}"
-
-echo "${TARGET_HOST}" | grep '@' >/dev/null 2>/dev/null
-if [ $? -eq 0 ]; then
-  TARGET_LOGIN="${TARGET_HOST%@*}"
-  TARGET_HOST="${TARGET_HOST#${TARGET_LOGIN}@}"
-fi
+TARGET_LOGIN=$( GET_LOGIN "${TARGET_HOST}" )
+TARGET_HOST=$( GET_HOST "${TARGET_HOST}" )
 
 ORIGINAL_TARGET_HOST="${TARGET_HOST}"
 TARGET_HOST=$( TARGET_REAL "${TARGET_HOST}" )
