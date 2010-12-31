@@ -117,6 +117,8 @@
 # TARGET_SET_CONF()
 #   usage: TARGET_SET_CONF <target> <variable> [ <value> ]
 #   desc: Set a variable/value pair into the target configuration file
+#   note: if no <value> is given, the <variable> is removed from the
+#         configuration file of the <target>
 #
 # TARGET_GET_CONF()
 #   usage: TARGET_GET_CONF <target> <variable>
@@ -241,6 +243,8 @@
 # USER_SET_CONF()
 #   usage: USER_SET_CONF <user> <variable> [ <value> ]
 #   desc: set a variable/value pair into the user configuration
+#   note: if no <value> is given, the <variable> is removed from the
+#         configuration file of the <user>
 #
 # USER_GET_CONF()
 #   usage: USER_GET_CONF <user> <variable>
@@ -809,12 +813,16 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     fi
 
     file="${SSHGATE_DIR_TARGETS}/${target}/properties"
-    [ ! -f "${file}" ] && touch "${file}"
-    CONF_SAVE --conf-file "${file}" "${var}" "${value}"
-    chmod a+r "${file}" # ensure file permissions
+    if [ -n "${value}" ]; then
+      [ ! -f "${file}" ] && touch "${file}"
+      CONF_SAVE --conf-file "${file}" "${var}" "${value}"
+      private_MAIL_APPEND "Target '${target}' configuration: ${var} = ${value}"
+    else
+      CONF_DEL --conf-file "${file}" "${var}"
+      private_MAIL_APPEND "Target '${target}' configuration: ${var} removed"
+    fi
 
-    private_MAIL_APPEND "Target '${target}' configuration: ${var} = ${value}"
-
+    [ -f "${file}" ] && chmod a+r "${file}" # ensure file permissions
     return 0;
   }
 
@@ -837,6 +845,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     file="${SSHGATE_DIR_TARGETS}/${target}/properties"
     if [ -f "${file}" ]; then
       CONF_GET --conf-file "${file}" "${var}"
+      eval "echo \"\${${var}}\""
     fi
     return 0;
   }
@@ -1400,13 +1409,18 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     fi
 
     file="${SSHGATE_DIR_USERS}/${user}.properties"
-    [ ! -f "${file}" ] && touch "${file}"
-    chown "${SSHGATE_GATE_ACCOUNT}" "${file}" # ensure that sshgate.sh can read/write this file
-    CONF_SAVE --conf-file "${file}" "${var}" "${value}"
-    chmod a+r "${file}" # ensure dans file permissions are good
+    if [ -n "${value}" ]; then
+      [ ! -f "${file}" ] && touch "${file}"
+      chown "${SSHGATE_GATE_ACCOUNT}" "${file}" # ensure that sshgate.sh can read/write this file
+      CONF_SAVE --conf-file "${file}" "${var}" "${value}"
+      private_MAIL_APPEND "User '${user}' configuration: ${var} = ${value}"
+    else
+      CONF_DEL --conf-file "${file}" "${var}"
+      [ ! -s "${file}" ] && rm -f "${file}"
+      private_MAIL_APPEND "User '${user}' configuration: ${var} removed"
+    fi
 
-    private_MAIL_APPEND "User '${user}' configuration: ${var} = ${value}"
-
+    [ -f "${file}" ] && chmod a+r "${file}" # ensure dans file permissions are good
     return 0;
   }
 
@@ -1428,7 +1442,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     file="${SSHGATE_DIR_USERS}/${user}.properties"
     if [ -f "${file}" ]; then
       CONF_GET --conf-file "${file}" "${var}"
-      echo "${!var}"
+      eval "echo \"\${${var}}\""
     fi
     return 0
   }
