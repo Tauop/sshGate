@@ -119,7 +119,7 @@ CLI_REGISTER_COMMAND 'target ? ssh use default key'     'TARGET_SSH_USE_DEFAULT_
 CLI_REGISTER_COMMAND 'target ? ssh list logins'         'TARGET_SSH_LIST_LOGINS \1'
 CLI_REGISTER_COMMAND 'target ? ssh add login ?'         'TARGET_SSH_ADD_LOGIN \1 \2'
 CLI_REGISTER_COMMAND 'target ? ssh del login ?'         'TARGET_SSH_DEL_LOGIN \1 \2'
-CLI_REGISTER_COMMAND 'target ? ssh edit config'         'TARGET_SSH_EDIT_CONFIG \1 \2'
+CLI_REGISTER_COMMAND 'target ? ssh edit config'         'TARGET_SSH_EDIT_CONFIG \1'
 CLI_REGISTER_COMMAND 'target ? ssh display config'      'TARGET_SSH_DISPLAY_CONFIG \1'
 CLI_REGISTER_COMMAND 'target ? ssh display full config' 'TARGET_SSH_DISPLAY_FULL_CONFIG \1'
 
