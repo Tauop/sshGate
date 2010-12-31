@@ -1,0 +1,87 @@
+#
+# Copyright (c) 2010 Linagora
+# Patrick Guiran <pguiran@linagora.com>
+# http://github.com/Tauop/ScriptHelper
+#
+# ScriptHelper is free software, you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of
+# the License, or (at your option) any later version.
+#
+# ScriptHelper is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# --------------------------------------------------------------------------
+
+mDOTHIS 'Generate usergroup tests'
+
+cat >"${expected_test_file}" <<EOF
+sshGate >  usergroup list
+
+sshGate >  user add pguiran key ${sshkey_pub_test_file} mail pguiran@linagora.com
+sshGate >  user add scourtois key ${sshkey_pub_test_file} mail simon@courtois.fr
+sshGate >  user list
+pguiran
+scourtois
+sshGate >  usergroup add OSSA
+sshGate >  usergroup add LRS
+sshGate >  usergroup list
+LRS
+OSSA
+sshGate >  usergroup LRS
+sshGate [usergroup LRS]>  add user pguiran
+sshGate [usergroup LRS]>  add user scourtois
+sshGate [usergroup LRS]>  quit
+sshGate >  usergroup OSSA add user scourtois
+sshGate >  usergroup OSSA add user pguiran
+sshGate >  usergroup OSSA list users
+pguiran
+scourtois
+sshGate >  usergroup OSSA del user scourtois
+sshGate >  usergroup OSSA list users
+pguiran
+sshGate >  usergroup LRS list users
+pguiran
+scourtois
+sshGate >  user pguiran list usergroups
+LRS
+OSSA
+sshGate >  user scourtois list usergroups
+LRS
+sshGate >  usergroup del OSSA
+sshGate >  user pguiran list usergroups
+LRS
+sshGate >  usergroup list
+LRS
+sshGate >  usergroup LRS list users
+pguiran
+scourtois
+sshGate >  user del scourtois
+sshGate >  usergroup LRS list users
+pguiran
+sshGate >  exit
+EOF
+
+grep '^sshGate [^>]*>' < "${expected_test_file}" \
+ | sed -e 's/^sshGate [^>]*>  //' > "${input_test_file}"
+
+mOK
+
+# --------------------------------------------------------------------------
+mDOTHIS 'Launch usergroup tests'
+  ASK_SET_AUTOANSWER_FILE "${input_test_file}"
+  ( CLI_RUN > "${output_test_file}" )
+  result_diff=$( diff -au "${expected_test_file}" "${output_test_file}" )
+if [ $? -eq 0 ]; then
+  mOK
+else
+  echo "Test Failed"
+  echo "=========================================================="
+  echo "${result_diff}"
+  echo "=========================================================="
+fi

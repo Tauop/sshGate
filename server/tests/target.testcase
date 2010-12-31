@@ -1,0 +1,157 @@
+#
+# Copyright (c) 2010 Linagora
+# Patrick Guiran <pguiran@linagora.com>
+# http://github.com/Tauop/ScriptHelper
+#
+# ScriptHelper is free software, you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of
+# the License, or (at your option) any later version.
+#
+# ScriptHelper is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# --------------------------------------------------------------------------
+
+mDOTHIS 'Generate target tests'
+
+hostname=$( hostname )
+alias="${hostname}2"
+ip=$( hostname -i )
+
+cat >"${expected_test_file}" <<EOF
+sshGate >  target list
+
+sshGate >  target add ${hostname}
+sshGate >  target add ${ip} key ${sshkey_priv_test_file}
+sshGate >  target list
+${ip}
+${hostname}
+sshGate >  target list ${hostname%??}*
+${hostname}
+sshGate >  target alias list
+sshGate >  target ${hostname} add alias ${alias}
+sshGate >  target alias list
+${alias}
+sshGate >  target ${hostname} list aliases
+${alias}
+sshGate >  target ${alias} realname
+${hostname}
+sshGate >  target ${hostname} del alias ${alias}
+sshGate >  target ${hostname} list aliases
+sshGate >  target ${ip} rename ${alias}
+Target renamed : ${ip} -> ${alias}
+Target alias '${ip}' created
+sshGate >  target alias list
+${ip}
+sshGate >  target ${hostname} display conf
+NOTICE: Target host '${hostname}' has no configuration file
+sshGate >  target ${ip} set conf DEFAULT_SSH_LOGIN ${user_unix_test_account}
+sshGate >  target ${alias} display conf
+DEFAULT_SSH_LOGIN="${user_unix_test_account}"
+sshGate >  target ${hostname}
+sshGate [target ${hostname}]>  set conf DEFAULT_SSH_LOGIN ${user_unix_test_account}
+sshGate [target ${hostname}]>  ssh test
+-  ${user_unix_test_account}@${hostname}  ... OK
+sshGate [target ${hostname}]>  ssh add login root
+sshGate [target ${hostname}]>  ssh list logins
+root
+${user_unix_test_account}
+sshGate [target ${hostname}]>  quit
+sshGate >  target ssh test all
+= Test all targets ssh connectivity =
+-  root@${hostname}  ... KO
+     Permission denied (publickey,password).
+-  ${user_unix_test_account}@${hostname}  ... OK
+-  ${user_unix_test_account}@${alias}  ... KO
+     ssh: Could not resolve hostname tauop-netbook2: Name or service not known
+sshGate >  target ssh display config
+sshGate >  target ssh edit config
+<<-User root
+WARNING: ssh options 'User' was removed from editable configuration file. It's not allowed or deal by sshGate
+sshGate >  target ssh display config
+sshGate >  target ssh edit config
+<<-ConnectTimeout 10
+sshGate >  target ssh display config
+ConnectTimeout 10
+sshGate >  target ${hostname} ssh edit config for root
+<<-ConnectTimeout 30
+sshGate >  target ${hostname} ssh edit config for root
+<<-ForwardX11 yes
+sshGate >  target ${hostname} ssh display config for root
+ConnectTimeout 30
+ForwardX11 yes
+sshGate >  target ${hostname} ssh display full config for root
+Host *
+ IdentityFile ${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}
+ IdentitiesOnly yes
+ UserKnownHostsFile $(SSHGATE_ACCOUNT_HOMEDIR)/.ssh/known_hosts
+ConnectTimeout 10
+
+Host ${hostname}
+ IdentityFile ${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}
+ IdentitiesOnly yes
+ User root
+ConnectTimeout 30
+ForwardX11 yes
+sshGate >  target ${hostname} set conf SSH_PROXY ${user_unix_test_account}@${alias}
+sshGate >  target ${hostname} display conf
+DEFAULT_SSH_LOGIN="${user_unix_test_account}"
+SSH_PROXY="${user_unix_test_account}@${alias}"
+sshGate >  target ${hostname} ssh display full config for root
+Host *
+ IdentityFile ${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}
+ IdentitiesOnly yes
+ UserKnownHostsFile $(SSHGATE_ACCOUNT_HOMEDIR)/.ssh/known_hosts
+ConnectTimeout 10
+
+Host ${alias}
+ IdentityFile ${SSHGATE_DIR_TARGETS}/${alias}/sshkey.priv
+ IdentitiesOnly yes
+ User ${user_unix_test_account}
+
+Host ${hostname}
+ IdentityFile ${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}
+ IdentitiesOnly yes
+ User root
+ ProxyCommand ssh -F ssh_conf_file ${user_unix_test_account}@${alias} nc %h %p
+ConnectTimeout 30
+ForwardX11 yes
+sshGate >  target ${hostname} ssh del login root
+sshGate >  target ${hostname} ssh list logins
+${user_unix_test_account}
+sshGate >  target del ${ip}
+sshGate >  target alias list
+sshGate >  target list
+${hostname}
+sshGate >  exit
+EOF
+
+grep -E '^(<<-|sshGate [^>]*>)' < "${expected_test_file}" \
+ | sed -e 's/^sshGate [^>]*>  //'                    \
+ | sed -e 's/^<<-//' > "${input_test_file}"
+
+tmp_file="${expected_test_file}.$(RANDOM)"
+sed -e 's/^<<-//' < "${expected_test_file}" > "${tmp_file}"
+mv "${tmp_file}" "${expected_test_file}"
+
+mOK
+
+# --------------------------------------------------------------------------
+mDOTHIS 'Launch target tests'
+  ASK_SET_AUTOANSWER_FILE "${input_test_file}"
+  ( CLI_RUN > "${output_test_file}" </dev/null )
+  result_diff=$( diff -au "${expected_test_file}" "${output_test_file}" )
+if [ $? -eq 0 ]; then
+  mOK
+else
+  echo "Test Failed"
+  echo "=========================================================="
+  echo "${result_diff}"
+  echo "=========================================================="
+fi

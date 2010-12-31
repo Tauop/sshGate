@@ -36,20 +36,23 @@
 [ -z "${__SSHGATE_CONF__}" -a -r ./sshgate.conf       ] && . ./sshgate.conf
 [ -z "${__SSHGATE_FUNC__}" -a -r ./sshgate.func       ] && . ./sshgate.func
 
-SSHKEY_USER=
-while true ; do
-  [ $# -eq 0 ] && break;
-  case $1 in
-    -u ) shift; SSHKEY_USER="$1"; shift ;;
-    *  ) shift ;; # ignore
-  esac
-done
+if [ "${SSHGATE_TEST:-}" != 'sshGateTest' ]; then
+  # during test, don't check for user
+  SSHKEY_USER=
+  while true ; do
+    [ $# -eq 0 ] && break;
+    case $1 in
+      -u ) shift; SSHKEY_USER="$1"; shift ;;
+      *  ) shift ;; # ignore
+    esac
+  done
 
-if [ -z "${SSHKEY_USER}" ]; then
-  echo "ERROR: you have to specify a username to use sshgate CLI"
-  echo "usage: $0 -u <username>"
-  exit 1
-fi
+  if [ -z "${SSHKEY_USER}" ]; then
+    echo "ERROR: you have to specify a username to use sshgate CLI"
+    echo "usage: $0 -u <username>"
+    exit 1
+  fi
+fi # end of: if [ "${SSHGATE_TEST:-}" != 'sshGateTest' ]; then
 
 # don't want to add exec.lib.sh in dependencies :/
 user_id=`id -u`
@@ -144,20 +147,27 @@ CLI_REGISTER_COMMAND 'build authorized_keys' 'BUILD_AUTHORIZED_KEYS'
 CLI_REGISTER_COMMAND 'build known_hosts'     'BUILD_KNOWN_HOSTS'
 
 
-MSG "sshGate administration Interface"
-MSG "By Patrick Guiran <pguiran@linagora.com>"
-BR
-MSG "Use 'help' command to list all avariable commands"
-BR
-
 # use --force when CLI is called from remote
 CLI_USE_READLINE --force --history-file ~/.sshgate_history
 CLI_SET_PROMPT "sshGate"
 
 [ ${SSHGATE_MAIL_SEND:-} = 'true' ] && MAIL_CREATE
 
-CLI_RUN
 
-[ ${SSHGATE_MAIL_SEND:-} = 'true' ] \
-  && MAIL_SEND "${SSHGATE_MAIL_SUBJECT} (${SSHKEY_USER})" "${SSHGATE_MAIL_TO}"
-[ $? -eq 2 ] && NOTICE "No modification noticed. Repport e-mail will not be sent"
+# during test :
+#  - don't print Wall message
+#  - don't run the CLI (we will launch it manually)
+#  - don't send mail
+if [ "${SSHGATE_TEST:-}" != 'sshGateTest' ]; then
+  MSG "sshGate administration Interface"
+  MSG "By Patrick Guiran <pguiran@linagora.com>"
+  BR
+  MSG "Use 'help' command to list all avariable commands"
+  BR
+
+  CLI_RUN
+
+  [ ${SSHGATE_MAIL_SEND:-} = 'true' ] \
+    && MAIL_SEND "${SSHGATE_MAIL_SUBJECT} (${SSHKEY_USER})" "${SSHGATE_MAIL_TO}"
+  [ $? -eq 2 ] && NOTICE "No modification noticed. Repport e-mail will not be sent"
+fi

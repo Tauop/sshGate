@@ -124,8 +124,8 @@ DOTHIS 'Installing sshGate'
   mv "${SSHGATE_DIR_BIN}/sshgate.conf" "${SSHGATE_DIR_CONF}"
   find "${SSHGATE_DIR_BIN}" -name "CGU*.txt" -exec mv {} "${SSHGATE_DIR_CONF}" \;
 
-  [ -d ./lib/ ] && cp -r ./lib/ "${SSHGATE_DIR_BIN}"
-
+  [ -d ./lib/   ] && cp -r ./lib/   "${SSHGATE_DIR_BIN}"
+  [ -d ./tests/ ] && cp -r ./tests/ "${SSHGATE_DIR_BIN}"
 OK
 
 DOTHIS 'Generate default sshkey pair'
@@ -144,6 +144,7 @@ DOTHIS 'Setup files permissions'
   find "${SSHGATE_DIR_BIN}" -type f -exec chmod a+r {} \;
   chown root "${SSHGATE_DIR_BIN}/sshgate"
   chmod a+x "${SSHGATE_DIR_BIN}/sshgate"
+  chmod a+x "${SSHGATE_DIR_BIN}/tests/test.sh"
 
   # some file has to be readable for all unix users
   find "${SSHGATE_DIR_USERS}"   -type f -name "*.properties"    -exec chmod a+r {} \;
@@ -168,6 +169,7 @@ OK
 DOTHIS 'Update sshGate installation'
   # update files and replace patterns
   sed_repl=
+  sed_repl="${sed_repl} s|^\( *\)# %% __SSHGATE_CLI__ %%.*$|\1. ${SSHGATE_DIR_BIN}/sshgate|;"
   sed_repl="${sed_repl} s|^\( *\)# %% __SSHGATE_CONF__ %%.*$|\1. ${SSHGATE_DIR_CONF}/sshgate.conf|;"
   sed_repl="${sed_repl} s|^\( *\)# %% __SSHGATE_FUNC__ %%.*$|\1. ${SSHGATE_DIR_BIN}/sshgate.func|;"
   sed_repl="${sed_repl} s|^\( *\)# %% __CLI_HELP_SH__ %%.*$|\1. ${SSHGATE_DIR_BIN}/cli_help.sh|;"
@@ -182,6 +184,7 @@ DOTHIS 'Update sshGate installation'
   sed -i -e "${sed_repl}" "${SSHGATE_DIR_BIN}/sshgate.func"
   sed -i -e "${sed_repl}" "${SSHGATE_DIR_BIN}/sshgate.sh"
   sed -i -e "${sed_repl}" "${SSHGATE_DIR_BIN}/archive-log.sh"
+  sed -i -e "${sed_repl}" "${SSHGATE_DIR_BIN}/tests/test.sh"
 
   rm -f ${SSHGATE_DIR_BIN}/install.sh # ;-p
 OK

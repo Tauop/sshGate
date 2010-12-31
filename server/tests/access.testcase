@@ -1,0 +1,126 @@
+#
+# Copyright (c) 2010 Linagora
+# Patrick Guiran <pguiran@linagora.com>
+# http://github.com/Tauop/ScriptHelper
+#
+# ScriptHelper is free software, you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of
+# the License, or (at your option) any later version.
+#
+# ScriptHelper is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# --------------------------------------------------------------------------
+
+mDOTHIS 'Generate access tests'
+
+hostname=$( hostname )
+alias="${hostname}2"
+ip=$( hostname -i )
+
+cat >"${expected_test_file}" <<EOF
+sshGate >  target add ${hostname}
+sshGate >  target add ${ip} key ${sshkey_priv_test_file}
+sshGate >  target ${hostname} add alias ${alias}
+sshGate >  target ${hostname} ssh add login root
+sshGate >  target ${ip} ssh add login tauop
+sshGate >  user add pguiran key ${sshkey_pub_test_file} mail pguiran@linagora.com
+sshGate >  user add scourtois key ${sshkey_pub_test_file} mail simon@courtois.fr
+sshGate >  usergroup add LRS
+sshGate >  usergroup add OSSA
+sshGate >  usergroup LRS add user pguiran
+sshGate >  usergroup LRS add user scourtois
+sshGate >  usergroup OSSA add user pguiran
+sshGate >  target ${hostname} access add user pguiran
+sshGate >  target ${hostname} access add user scourtois
+sshGate >  target ${hostname} access with root add user scourtois
+sshGate >  target ${hostname} access add usergroup LRS
+sshGate >  target ${hostname} access with root add usergroup OSSA
+sshGate >  target ${ip} access add user scourtois
+sshGate >  target ${ip} access with tauop add usergroup OSSA
+sshGate >  target ${hostname} access list users
+pguiran
+scourtois
+sshGate >  target ${hostname} access with root list users
+pguiran
+scourtois
+sshGate >  target ${alias} access list users
+pguiran
+scourtois
+sshGate >  target ${ip} access list users
+scourtois
+sshGate >  target ${ip} access with tauop list users
+pguiran
+sshGate >  target ${hostname} access list usergroups
+LRS
+sshGate >  target root@${hostname} access list usergroups
+OSSA
+sshGate >  target ${hostname} access with root list usergroups
+OSSA
+sshGate >  target ${ip} access with tauop list usergroups
+OSSA
+sshGate >  target ${hostname} access info
+  scourtois ---> root@${hostname}
+  pguiran,scourtois ---> ${user_unix_test_account}@${hostname}
+  pguiran --- usergroup(OSSA) ---> root@${hostname}
+  pguiran,scourtois --- usergroup(LRS) ---> ${user_unix_test_account}@${hostname}
+sshGate >  user pguiran access info
+  pguiran ---> ${user_unix_test_account}@${hostname}
+  pguiran --- usergroup(LRS) ---> ${user_unix_test_account}@${hostname}
+  pguiran --- usergroup(OSSA) ---> tauop@${ip}
+  pguiran --- usergroup(OSSA) ---> root@${hostname}
+sshGate >  usergroup LRS access info
+  pguiran,scourtois --- usergroup(LRS) ---> ${user_unix_test_account}@${hostname}
+sshGate >  usergroup OSSA access info
+  pguiran --- usergroup(OSSA) ---> root@${hostname},tauop@${ip}
+sshGate >  usergroup LRS list targets
+${user_unix_test_account}@${hostname}
+sshGate >  usergroup OSSA list targets
+root@${hostname}
+tauop@${ip}
+sshGate >  target ${hostname} access with root del usergroup OSSA
+sshGate >  target ${ip} access del user scourtois
+sshGate >  target ${hostname} access info
+  scourtois ---> root@${hostname}
+  pguiran,scourtois ---> ${user_unix_test_account}@${hostname}
+  pguiran,scourtois --- usergroup(LRS) ---> ${user_unix_test_account}@${hostname}
+sshGate >  target ${ip} access list users
+sshGate >  usergroup del LRS
+sshGate >  target ${hostname} access info
+  scourtois ---> root@${hostname}
+  pguiran,scourtois ---> ${user_unix_test_account}@${hostname}
+sshGate >  user del scourtois
+sshGate >  target ${hostname} access info
+  pguiran ---> ${user_unix_test_account}@${hostname}
+sshGate >  exit
+EOF
+
+grep -E '^(<<-|sshGate [^>]*>)' < "${expected_test_file}" \
+ | sed -e 's/^sshGate [^>]*>  //'                    \
+ | sed -e 's/^<<-//' > "${input_test_file}"
+
+tmp_file="${expected_test_file}.$(RANDOM)"
+sed -e 's/^<<-//' < "${expected_test_file}" > "${tmp_file}"
+mv "${tmp_file}" "${expected_test_file}"
+
+mOK
+
+# --------------------------------------------------------------------------
+mDOTHIS 'Launch access tests'
+  ASK_SET_AUTOANSWER_FILE "${input_test_file}"
+  ( CLI_RUN > "${output_test_file}" </dev/null )
+  result_diff=$( diff -au "${expected_test_file}" "${output_test_file}" )
+if [ $? -eq 0 ]; then
+  mOK
+else
+  echo "Test Failed"
+  echo "=========================================================="
+  echo "${result_diff}"
+  echo "=========================================================="
+fi
