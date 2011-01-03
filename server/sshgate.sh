@@ -96,7 +96,7 @@ if [ "${SSHGATE_ALLOW_REMOTE_COMMAND}" = 'Y' -a "${do_ssh}" = 'true' ]; then
     }
     is_admin=$( USER_GET_CONF "${SSHKEY_USER}" IS_ADMIN )
     code=
-    code="${code} $(BUILD_SED_CODE 'cmd list targets'   'USER_LIST_TARGETS')"
+    code="${code} $(BUILD_SED_CODE 'cmd list targets'   'USER_LIST_TARGETS ${SSHKEY_USER}')"
     code="${code} $(BUILD_SED_CODE 'cmd list targets ?' 'USER_LIST_TARGETS \1')"
     code="${code} $(BUILD_SED_CODE 'cmd sshkey all'     'DISPLAY_USER_SSHKEY_FILE all')"
     code="${code} $(BUILD_SED_CODE 'cmd sshkey ?'       'DISPLAY_USER_SSHKEY_FILE \1')"
@@ -168,7 +168,7 @@ fi
 mLOG ${GLOG_FILE} "New session $$. Connection from ${SSH_CONNECTION%% *} with SSH_ORIGINAL_COMMAND = ${SSH_ORIGINAL_COMMAND:-}"
 
 if [ "${do_ssh:-}" = 'true' ]; then
-  SLOG_FILE=$( TARGET_SESSION_LOG_FILE "${TARGET_HOST}" )
+  SLOG_FILE=$( TARGET_SESSION_LOG_FILE "${TARGET_HOST}" "${SSHKEY_USER}" )
   mLOG ${GLOG_FILE} "Creating session log file ${SLOG_FILE}"
   mLOG ${SSHGATE_LOG_FILE} "[SSSH] ${SSHKEY_USER} -> ${TARGET_LOGIN}@${TARGET_HOST} ${TARGET_HOST_COMMAND}"
 
