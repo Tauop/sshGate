@@ -56,6 +56,7 @@ private_SHOW_HELP_USERGROUPS () {
     MESSAGE "usergroup <group> del user <user>  - delete an user from a group"
     MESSAGE "usergroup <group> list targets     - list targets which usergroup has access to"
     MESSAGE "usergroup <group> access info      - list all target whose users of the group have access to"
+    MESSAGE "usergroup <group> access notify    - notify all users of the usergroup about their access list (via mail)"
   MSG_INDENT_DEC
   return 0
 }

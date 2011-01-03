@@ -349,6 +349,10 @@
 #   usage: USERGROUP_ACCESS_INFO <user_group>
 #   desc: display access information for the <user_group>
 #
+# USERGROUP_ACCESS_NOTIFY()
+#   usage: USERGROUP_ACCESS_NOTIFY <user_group>
+#   desc: call USER_ACCESS_NOTIFY on each user of the <user_group>
+#
 # ----------------------------------------------------------------------------
 if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
   __SSHGATE_FUNC__='Loaded'
@@ -683,7 +687,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     else
       user="$1"; target="$2"; login="$3"
     fi
-    
+
     target=$( TARGET_REAL "${target}" )
     if [ -z "${user}" -o -z "${target}" ]; then
       echo 'false'; return 1;
@@ -959,7 +963,7 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
     # edit the file
     eval "${SSHGATE_EDITOR} '${file}'"
-    
+
     tmpfile="/tmp/ssh_config.${login}.$( RANDOM )"
 
     # filter out some options and warn if they are used
@@ -2085,6 +2089,24 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     users=$(   USERGROUP_LIST_USERS "${usergroup}"   ); users=$(   echo -n "${users}"   | tr $'\n' ',' )
     targets=$( USERGROUP_LIST_TARGETS "${usergroup}" ); targets=$( echo -n "${targets}" | tr $'\n' ',' )
     echo "  ${users} --- usergroup(${usergroup}) ---> ${targets}"
+
+    return 0;
+  }
+
+  USERGROUP_ACCESS_NOTIFY () {
+    local usergroup= user=
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
+    usergroup="$1"
+    if [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" -o -z "${usergroup}" ]; then
+      ERROR "User group '${usergroup}' doesn't exist" ; return 1;
+    fi
+
+    for user in $( USERGROUP_LIST_USERS "${usergroup}" ); do
+      USER_ACCESS_NOTIFY "${user}"
+    done
 
     return 0;
   }
