@@ -97,10 +97,11 @@
 #   desc: echo-return the list of target host, separated by '\n'
 #
 # TARGET_ADD()
-#   usage: TARGET_ADD <target_host> [ <target_private_sshkey_file> ]
+#   usage: TARGET_ADD [<login>@]<target_host> [ <target_private_sshkey_file> ]
 #   desc: add a target host to sshGate
 #   note: it will add the ${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN} login to target
 #   note: it will try to install public sshket to the target authorized_keys2
+#   note: if no <login> is given, use ${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}
 #   important: need to be root to be able to chown ssh priv key
 #
 # TARGET_DEL()
@@ -723,11 +724,12 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
 
   TARGET_ADD () {
     local target= privsshkey= target_privsshkey= target_pubsshkey=
-    if [ $# -eq 0 -o $# -gt 2 ]; then
+    if [ $# -ne 1 -a $# -ne 2 ]; then
       BAD_ARGUMENTS ; return 1;
     fi
 
-    target="$1"
+    target=$( GET_HOST "$1" )
+    login=$( GET_LOGIN "$1" )
     if [ -z "${target}" ]; then
       BAD_ARGUMENTS ; return 1;
     fi
@@ -769,9 +771,9 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     # else use the default sshpriv key
     fi
 
-    TARGET_SSH_ADD_LOGIN "${target}" "${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}"
+    TARGET_SSH_ADD_LOGIN "${target}" "${login}"
     ADD_TARGET_TO_KNOWN_HOST "${target}"
-    TARGET_SSH_INSTALL_KEY "${target}" "${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}"
+    TARGET_SSH_INSTALL_KEY "${target}" "${login}"
 
     private_MAIL_APPEND "Target ${login}@${target} added"
 
