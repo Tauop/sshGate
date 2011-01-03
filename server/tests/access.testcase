@@ -84,6 +84,10 @@ ${user_unix_test_account}@${hostname}
 sshGate >  usergroup OSSA list targets
 root@${hostname}
 tauop@${ip}
+sshGate >  user pguiran has access ${user_unix_test_account}@${hostname}
+true
+sshGate >  user scourtois has access ${hostname} with root
+true
 sshGate >  target ${hostname} access with root del usergroup OSSA
 sshGate >  target ${ip} access del user scourtois
 sshGate >  target ${hostname} access info
