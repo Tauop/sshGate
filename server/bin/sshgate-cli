@@ -59,6 +59,8 @@ user_id=`id -u`
 [ "${user_id}" != "0" ] \
   && KO "You must execute $0 with root privileges"
 
+CLI_REGISTER_HELP '/tmp/sshgate-cli-help.txt' SSHGATE_GET_HELP
+
 CLI_REGISTER_MENU    'user'
 CLI_REGISTER_COMMAND 'user list'                 'USERS_LIST'
 CLI_REGISTER_COMMAND 'user list ?'               'USERS_LIST \1'
@@ -148,10 +150,6 @@ CLI_REGISTER_COMMAND 'target ? ssh edit config for ?'           'TARGET_SSH_EDIT
 CLI_REGISTER_COMMAND 'target ? ssh display config for ?'        'TARGET_SSH_DISPLAY_CONFIG \1 \2'
 CLI_REGISTER_COMMAND 'target ? ssh display full config for ?'   'TARGET_SSH_DISPLAY_FULL_CONFIG \1 \2'
 
-
-CLI_REGISTER_KCOMMAND 'help'     'SHOW_HELP'
-CLI_REGISTER_KCOMMAND 'help ?'   'SHOW_HELP \1'
-CLI_REGISTER_KCOMMAND 'help ? ?' 'SHOW_HELP \1 \2'
 
 
 CLI_REGISTER_COMMAND 'build authorized_keys' 'BUILD_AUTHORIZED_KEYS'

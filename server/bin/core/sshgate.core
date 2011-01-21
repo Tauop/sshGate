@@ -21,11 +21,6 @@
 #
 # FUNCTIONS ------------------------------------------------------------------
 #
-# HELP()
-#   usage: HELP [ <function_name> ]
-#   desc: if called without argument, display all functions usage list.
-#         if called with a function_name, display all information about this function
-#
 # SSHGATE_ACCOUNT_HOMEDIR()
 #   usage: SSHGATE_ACCOUNT_HOMEDIR
 #   desc: return the home directory of the SSHGATE_GATE_ACCOUNT user
@@ -387,74 +382,23 @@ if [ "${__SSHGATE_FUNC__:-}" != 'Loaded' ]; then
     [ "${__LIB_MAIL__:-}" = 'Loaded' -a "${SSHGATE_MAIL_SEND:-}" = 'true' ] && MAIL_APPEND "$*"
   }
 
-  HELP () {
-    local func=
-    [ $# -eq 1 ] && func="$1"
-
-    if [ -z "${func}" ]; then
-      # == sed explanation ==
-      # 1: :loop label
-      # 2: read the next line
-      # 3: match line which begin by # and ended with () -> ex: "# USERGROUP_DEL_USER()"
-      # 4: if the current line not match, goto :loop
-      # 5: the current line match 3:, read the next line and print the usage
-      # 6: if not at the end of the file, goto :loop
-      help=$( < "${SSHGATE_DIR_BIN}/sshgate.func" \
-                sed -n -e \
-                ':loop
-                 n;
-                 s/^# \([^ ].*[(][)]\)$/\1/;
-                 T loop;
-                 n; s/^# *usage: \(.*\)$/\1/p;
-                 $! b loop;' )
-      echo "== FILES =="
-      echo "${help}" | grep --color=never "_FILE"
-      echo
-      echo "== USERS =="
-      echo "${help}" | grep "^USERS\{0,1\}_" | grep -v "_FILE"
-      echo
-      echo "== USER GROUPS =="
-      echo "${help}" | grep "^USERGROUP" | grep -v "_FILE"
-      echo
-      echo "== TARGETS =="
-      echo "${help}" | grep "^TARGETS\{0,1\}_" | grep -v "_ACCESS" | grep -v "_FILE"
-      echo
-      echo "== TARGET GROUPS =="
-      echo "${help}" | grep "^TARGETGROUP" | grep -v "_ACCESS" | grep -v "_FILE"
-      echo
-      echo "== ACCESS =="
-      echo "${help}" | grep "_ACCESS" | grep -v "_FILE"
-      echo
-      echo "== others =="
-      echo "${help}" | grep -v "_FILE"          \
-                     | grep -v "^USERS\{0,1\}_" \
-                     | grep -v "^USERGROUP"     \
-                     | grep -v "^TARGET"        \
-                     | grep -v "^TARGETGROUP"   \
-                     | grep -v "_ACCESS"
-      echo
+  SSHGATE_GET_HELP() {
+    local type="$1" cli_command="$2" func= help= sed_code=
+    if [ "${type}" = 'command' ]; then
+      help="$4"
+      if [ -z "${help}" ]; then
+        func="${3%% *}"
+        sed_code="${sed_code} /usage: ${func} / {  :next n; s/^ *# *desc: *\(.*\) *$/\1/p; t; b next; };"
+        sed_code="${sed_code} /usage: ${func}\$/ { :next n; s/^ *# *desc: *\(.*\) *$/\1/p; t; b next; };"
+        help=$( find "${SSHGATE_DIR_CORE}/" -type f -exec cat {} \; | sed -n -e "${sed_code}" )
+      fi
     else
-      # == sed explanation ==
-      # 1: :search_func label
-      # 2: read the next line
-      # 3: match line which contain ${func} -> ex: "# ${func}()". print it if match
-      # 4: if the current line not match, goto :search_func
-      # 5: :loop label
-      # 6: read the next line
-      # 7: match line which don't only contain "#"
-      # 8: if the current line match, goto :loop, else end
-      < "${SSHGATE_DIR_BIN}/sshgate.func" \
-        sed -n -e \
-        ":search_func
-         n;
-         s/^# \\(${func}[(][)]\\)$/\1/p;
-         T search_func
-         :loop
-         n;
-         s/^#\\(..*\\)$/\1/p;
-         t loop;
-        "
+      help="$3"
+      cli_command=$( private_PURIFY_CLI_COMMAND "${cli_command}" )
+      cli_command=$( private_CLI_GET_COMMAND_BASE "${cli_command}" )
     fi
+    printf "%s\t%s\t%s" "${type}" "${cli_command}" "${help}"
+
     return 0;
   }
 
