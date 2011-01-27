@@ -18,12 +18,29 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-# need to load sshgate.conf to know where to find test-case files
-# %% __SSHGATE_CONF__ %% <-- WARNING: don't remove. used by install.sh
+load() {
+  local var= value= file=
+
+  var="$1"; file="$2"
+  value=$( eval "echo \"\${${var}:-}\"" )
+
+  [ -n "${value}" ] && return 1;
+  if [ -f "${file}" ]; then
+    . "${file}"
+  else
+    echo "ERROR: Unable to load ${file}"
+    exit 2
+  fi
+  return 0;
+}
+
+load SSHGATE_DIRECTORY '/etc/sshgate.conf'
+load __SSHGATE_SETUP__ "${SSHGATE_DIRECTORY}/data/sshgate.setup"
+
 
 testcases=$( find "${SSHGATE_DIR_BIN}/tests/" -type f -iname "*.testcase" -printf "%P\n" \
              | sed -e 's/^\(.*\)[.]testcase$/\1/' )
- 
+
 usage () {
   testcases=$( echo -n "${testcases}" | tr $'\n' ',' | sed -e 's/,/, /g' )
   echo 'Usage: $0 <test-case>'
@@ -57,28 +74,30 @@ SSHGATE_TEST='sshGateTest'
 
 # --------------------------------------------------------------------------
 mDOTHIS 'Loading sshGate core'
-  # %% __SSHGATE_CLI__ %% <-- WARNING: don't remove. used by install.sh
-  # %% __LIB_RANDOM__ %% <-- WARNING: don't remove. used by install.sh
+  load __SSHGATE_CLI__   "${SSHGATE_DIR_BIN}/sshgate-cli"
+  load __LIB_RANDOM__    "${SCRIPT_HELPER_DIRECTORY}/random.lib.sh"
 mOK
 
 # --------------------------------------------------------------------------
 mDOTHIS 'Setup sshGate data directory'
   # get from sshgate.conf
-  SSHGATE_DIR="/tmp/sshgate.$(RANDOM)"
-  SSHGATE_DIR_CONF="${SSHGATE_DIR}/conf"
-  SSHGATE_DIR_BIN="${SSHGATE_DIR}/bin"
-  SSHGATE_DIR_USERS="${SSHGATE_DIR}/users"
-  SSHGATE_DIR_TARGETS="${SSHGATE_DIR}/targets"
-  SSHGATE_DIR_USERS_GROUPS="${SSHGATE_DIR}/users.groups"
-  SSHGATE_DIR_LOG="${SSHGATE_DIR}/log"
-  SSHGATE_DIR_ARCHIVE="${SSHGATE_DIR}/archives"
+  SSHGATE_DIRECTORY="/tmp/sshgate.$(RANDOM)"
+  SSHGATE_DIR_DATA="${SSHGATE_DIRECTORY}/data"
+  SSHGATE_DIR_BIN="${SSHGATE_DIRECTORY}/bin"
+  SSHGATE_DIR_CORE="${SSHGATE_DIRECTORY}/core"
+  SSHGATE_DIR_USERS="${SSHGATE_DIRECTORY}/users"
+  SSHGATE_DIR_TARGETS="${SSHGATE_DIRECTORY}/targets"
+  SSHGATE_DIR_USERS_GROUPS="${SSHGATE_DIRECTORY}/users.groups"
+  SSHGATE_DIR_LOG="${SSHGATE_DIRECTORY}/log"
+  SSHGATE_DIR_ARCHIVE="${SSHGATE_DIRECTORY}/archives"
   SSHGATE_LOG_FILE="${SSHGATE_DIR_LOG}/sshgate.log"
 
   # get from install.sh
   MK () { [ ! -d "$1/" ] && mkdir -p "$1"; }
-  MK "${SSHGATE_DIR}"
-  MK "${SSHGATE_DIR_CONF}"
+  MK "${SSHGATE_DIRECTORY}"
+  MK "${SSHGATE_DIR_DATA}"
   MK "${SSHGATE_DIR_BIN}"
+  MK "${SSHGATE_DIR_CORE}"
   MK "${SSHGATE_DIR_USERS}"
   MK "${SSHGATE_DIR_TARGETS}"
   MK "${SSHGATE_DIR_USERS_GROUPS}"
@@ -125,12 +144,21 @@ mDOTHIS 'Create and setup temporary Unix account'
   SSHGATE_TARGETS_DEFAULT_SSH_LOGIN="${user_unix_test_account}"
 
   # need to read lines prefixed by "<<-" from ${expected_test_file}/${input_test_file}.
-  SSHGATE_EDITOR='ASK --allow-empty input; echo "${input}" >>'
+  # it ends when ASK read '->>' string
+  SSHGATE_EDITOR='input="";
+                  while [ "${input}" != "->>" ]; do
+                    ASK --no-print --no-echo --allow-empty input
+                    input="${input#"<<-"}"
+                    if [ "${input}" != "${input#"<<="}" ]; then
+                      echo "${input#"<<="}"; break;
+                    fi
+                    [ "${input}" != "->>" ] && echo "${input}"
+                  done >>'
 
   # install unix user sshkey to sshGate default key so that we can call TARGET_ADD
   # and TARGET_SSH_INSTALL_KEY without problems
-  SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE="${SSHGATE_DIR_CONF}/${SSHGATE_TARGET_PRIVATE_SSHKEY_FILENAME}"
-  SSHGATE_TARGET_DEFAULT_PUBLIC_SSHKEY_FILE="${SSHGATE_DIR_CONF}/${SSHGATE_TARGET_PUBLIC_SSHKEY_FILENAME}"
+  SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE="${SSHGATE_DIR_DATA}/${SSHGATE_TARGET_PRIVATE_SSHKEY_FILENAME}"
+  SSHGATE_TARGET_DEFAULT_PUBLIC_SSHKEY_FILE="${SSHGATE_DIR_DATA}/${SSHGATE_TARGET_PUBLIC_SSHKEY_FILENAME}"
   cp "${sshkey_priv_unix_test_file}" "${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}"
   cp "${sshkey_pub_unix_test_file}"  "${SSHGATE_TARGET_DEFAULT_PUBLIC_SSHKEY_FILE}"
 mOK
@@ -149,10 +177,11 @@ else
       echo -n '' > "${expected_test_file}"
     mOK
     mDOTHIS 'Reset sshGate data directories'
-      rm -rf "${SSHGATE_DIR}"
-      MK "${SSHGATE_DIR}"
-      MK "${SSHGATE_DIR_CONF}"
+      rm -rf "${SSHGATE_DIRECTORY}"
+      MK "${SSHGATE_DIRECTORY}"
+      MK "${SSHGATE_DIR_DATA}"
       MK "${SSHGATE_DIR_BIN}"
+      MK "${SSHGATE_DIR_CORE}"
       MK "${SSHGATE_DIR_USERS}"
       MK "${SSHGATE_DIR_TARGETS}"
       MK "${SSHGATE_DIR_USERS_GROUPS}"
@@ -178,6 +207,6 @@ mDOTHIS 'Remove tests data'
   rm -f "${sshkey_priv_test_file}" "${sshkey_pub_test_file}"
   rm -f "${sshkey_priv_unix_test_file}" "${sshkey_pub_unix_test_file}"
   rm -f "${mail_test_file}"
-  rm -rf "${SSHGATE_DIR}"
+  rm -rf "${SSHGATE_DIRECTORY}"
 mOK
 exit 0

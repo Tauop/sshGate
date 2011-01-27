@@ -1,0 +1,397 @@
+#
+# Copyright (c) 2010 Linagora
+# Patrick Guiran <pguiran@linagora.com>
+# http://github.com/Tauop/sshGate
+#
+# sshGate is free software, you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of
+# the License, or (at your option) any later version.
+#
+# sshGate is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# README ---------------------------------------------------------------------
+#
+# Collection of all users related functions
+#
+# ----------------------------------------------------------------------------
+
+if [ "${__SSHGATE_CORE__}" != 'Loaded' ]; then
+  echo "ERROR: Only sshgate.core can load user.func."; exit 1;
+fi
+
+if [ "${__USER_FUNC__:-}" != 'Loaded' ]; then
+  __USER_FUNC__='Loaded'
+
+  # usage: USERS_LIST
+  # desc: List all users
+  USERS_LIST () {
+    local res= find_opt=
+    [ $# -eq 1 ] && find_opt="-iname '$1'"
+
+    res=$( eval "find '${SSHGATE_DIR_USERS}' -type f ${find_opt} -printf '%P\n'" )
+    echo "${res}" | grep -v '[.]properties$' | sort -u
+    return 0;
+  }
+
+  # usage: USER_ADD <user> <public_sshkey_file> <mail>
+  # desc: Add a new user
+  USER_ADD () {
+    local user= userkey= usermail=
+    if [ $# -ne 3 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
+    user="$1"; userkey="$2"; usermail="$3"
+    if [ -z "${user}" -o -z "${userkey}" -o -z "${usermail}" ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+    if [ ! -r "${userkey}" ]; then
+      ERROR "Can't read user ssh key" ; return 1;
+    fi
+
+    echo "${user}" | grep ' ' >/dev/null
+    if [ $? -eq 0 -o -z "${user}" ]; then
+      ERROR "${user} is not a valid username" ; return 1
+    fi
+
+    if [ -f "${SSHGATE_DIR_USERS}/${user}" ]; then
+      ERROR "User '${user}' already exists" ; return 1;
+    fi
+
+    echo "${usermail}" | grep '@' >/dev/null
+    if [ $? -ne 0 ]; then
+      ERROR "Invalid user e-mail" ; return 1;
+    fi
+
+    cp "${userkey}" "${SSHGATE_DIR_USERS}/${user}"
+    private_MAIL_APPEND "User ${user} added"
+    USER_SET_CONF "${user}" MAIL "${usermail}"
+
+    BUILD_AUTHORIZED_KEYS
+    return 0
+  }
+
+  # usage: USER_DEL <user>
+  # desc: Delete a user
+  USER_DEL () {
+    local user= usergroup=
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1
+    fi
+
+    user="$1"
+    if [ ! -f "${SSHGATE_DIR_USERS}/${user}" -o -z "${user}" ]; then
+      ERROR "User '${user}' doesn't exist"  ; return 1;
+    fi
+
+    # delete user from groups
+    for usergroup in $( USER_LIST_USERGROUPS "${user}" ); do
+      private_ACL_FILE_DEL "${user}" "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}"
+    done
+
+    # delete user from target access list
+    for target in $( USER_LIST_TARGETS "${user}" ); do
+      login=$( GET_LOGIN "${target}" )
+      target=$( GET_HOST "${target}" )
+      private_ACL_FILE_DEL "${user}" "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USER_ACCESS_FILENAME}.${login}"
+    done
+
+    rm -f "${SSHGATE_DIR_USERS}/${user}"
+    rm -f "${SSHGATE_DIR_USERS}/${user}.properties"
+    private_MAIL_APPEND "User ${user} removed"
+
+    BUILD_AUTHORIZED_KEYS
+    return 0
+  }
+
+  # usage: USER_DISPLAY_CONF <user>
+  # desc: Display user configuration
+  USER_DISPLAY_CONF () {
+    local user= file=
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS; return 1;
+    fi
+
+    user="$1"
+    if [ ! -f "${SSHGATE_DIR_USERS}/${user}" -o -z "${user}" ]; then
+      ERROR "User '${user}' doesn't exist"; return 1;
+    fi
+
+    file="${SSHGATE_DIR_USERS}/${user}.properties"
+    if [ ! -f "${file}" ]; then
+      NOTICE "User '${user}' has no configuration file"
+    else
+      cat "${file}"
+    fi
+    return 0
+  }
+
+  # usage: USER_SET_CONF <user> <variable> <value>
+  # desc: Set a variable/value pair into the user configuration
+  # note: if no <value> is given, the <variable> is removed from the
+  #       configuration file of the <user>
+  USER_SET_CONF () {
+    local user= var= value= file=
+    if [ $# -lt 2 -o $# -gt 3 ]; then
+      BAD_ARGUMENTS; return 1;
+    fi
+
+    user="$1"; var="$2"
+    [ $# -eq 3 ] && value="$3"
+
+    if [ -z "${user}" -o -z "${var}" ]; then
+      BAD_ARGUMENTS; return 1;
+    fi
+    if [ ! -f "${SSHGATE_DIR_USERS}/${user}" -o -z "${user}" ]; then
+      ERROR "User '${user}' doesn't exist"; return 1;
+    fi
+
+    file="${SSHGATE_DIR_USERS}/${user}.properties"
+    if [ -n "${value}" ]; then
+      [ ! -f "${file}" ] && touch "${file}"
+      chown "${SSHGATE_GATE_ACCOUNT}" "${file}" # ensure that sshgate.sh can read/write this file
+      CONF_SAVE --conf-file "${file}" "${var}" "${value}"
+      private_MAIL_APPEND "User '${user}' configuration: ${var} = ${value}"
+    else
+      CONF_DEL --conf-file "${file}" "${var}"
+      [ ! -s "${file}" ] && rm -f "${file}"
+      private_MAIL_APPEND "User '${user}' configuration: ${var} removed"
+    fi
+
+    [ -f "${file}" ] && chmod a+r "${file}" # ensure dans file permissions are good
+    return 0;
+  }
+
+  # usage: USER_DEL_CONF <user> <variable>
+  # desc: Delete a variable from the user configuration
+  USER_DEL_CONF () {
+    local user= var= file=
+    if [ $# -ne 2 ]; then
+      BAD_ARGUMENTS; return 1;
+    fi
+
+    user="$1"; var="$2"
+    if [ -z "${user}" -o -z "${var}" ]; then
+      BAD_ARGUMENTS; return 1;
+    fi
+    if [ ! -f "${SSHGATE_DIR_USERS}/${user}" -o -z "${user}" ]; then
+      ERROR "User '${user}' doesn't exist"; return 1;
+    fi
+
+    file="${SSHGATE_DIR_USERS}/${user}.properties"
+    CONF_DEL --conf-file "${file}" "${var}"
+    [ ! -s "${file}" ] && rm -f "${file}"
+    [ -f "${file}" ] && chmod a+r "${file}" # ensure dans file permissions are good
+
+    private_MAIL_APPEND "User '${user}' configuration: ${var} removed"
+    return 0;
+  }
+
+  # usage: USER_GET_CONF <user> <variable>
+  # desc: Get a variable value from the user configuration
+  USER_GET_CONF () {
+    local user= var= file=
+    if [ $# -ne 2 ]; then
+      BAD_ARGUMENTS; return 1;
+    fi
+
+    user="$1"; var="$2"
+
+    if [ -z "${user}" -o -z "${var}" ]; then
+      BAD_ARGUMENTS; return 1;
+    fi
+    if [ ! -f "${SSHGATE_DIR_USERS}/${user}" -o -z "${user}" ]; then
+      ERROR "User '${user}' doesn't exist"; return 1;
+    fi
+
+    file="${SSHGATE_DIR_USERS}/${user}.properties"
+    if [ -f "${file}" ]; then
+      CONF_GET --conf-file "${file}" "${var}"
+      eval "echo \"\${${var}}\""
+    fi
+    return 0
+  }
+
+  # usage: USER_LIST_USERGROUPS <user>
+  # desc: List usergroups of the user
+  USER_LIST_USERGROUPS () {
+    local user= usergroup=
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
+    user="$1"
+    if [ ! -f "${SSHGATE_DIR_USERS}/${user}" -o -z "${user}" ]; then
+      ERROR "User '${user}' doesn't exist" ; return 1;
+    fi
+
+    for usergroup in $( grep -l -r "^${user}\$" "${SSHGATE_DIR_USERS_GROUPS}/" | sort -u ); do
+      echo "${usergroup##*/}"
+    done | sort -u
+    return 0;
+  }
+
+  # usage: USER_LIST_TARGETS <user>
+  # desc: List all target host, which the <user> has access to
+  USER_LIST_TARGETS () {
+    local user= target= is_restricted=
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
+    user="$1"
+    if [ ! -f "${SSHGATE_DIR_USERS}/${user}" -o -z "${user}" ]; then
+      ERROR "User '${user}' doesn't exist" ; return 1;
+    fi
+
+    is_restricted=$( USER_GET_CONF "${user}" IS_RESTRICTED )
+    if [ "${is_restricted}" = 'false' ]; then
+      for target in $( TARGETS_LIST ); do
+        for login in $( TARGET_SSH_LIST_LOGINS "${target}" ); do
+          echo "${login}@${target}"
+        done
+      done
+    else
+      ( # subshell :(
+          # direct access
+          for target in $( find "${SSHGATE_DIR_TARGETS}"                      \
+                            -name "${SSHGATE_TARGETS_USER_ACCESS_FILENAME}*" \
+                            -exec grep -l "^${user}\$" {} \; ); do
+            target=$( echo "${target}" | sed -e "s|^.*/\([^/]*\)/${SSHGATE_TARGETS_USER_ACCESS_FILENAME}.\(.*\)$|\2@\1|" )
+            echo "${target}"
+          done
+
+          # access through usergroup
+          for usergroup in $( USER_LIST_USERGROUPS "${user}" ); do
+            USERGROUP_LIST_TARGETS "${usergroup}"
+          done
+      ) | sort -u
+    fi # end of : if [ "${is_restricted}" = 'false' ]; then
+    return 0;
+  }
+
+  # usage: USER_ACCESS_INFO <user>
+  # desc: List all user's access, and how those access are granted
+  USER_ACCESS_INFO () {
+    local user= target= usergroup= is_restricted=
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
+    user="$1"
+    if [ ! -f "${SSHGATE_DIR_USERS}/${user}" -o -z "${user}" ]; then
+      ERROR "User '${user}' doesn't exist" ; return 1;
+    fi
+
+    # direct access
+    for target in $( find "${SSHGATE_DIR_TARGETS}"                     \
+                      -name "${SSHGATE_TARGETS_USER_ACCESS_FILENAME}*" \
+                      -exec grep -l "^${user}\$" {} \; | sort -u ); do
+      target=$( echo "${target}" | sed -e "s|^.*/\([^/]*\)/${SSHGATE_TARGETS_USER_ACCESS_FILENAME}.\(.*\)$|\2@\1|" )
+      echo "  ${user} ---> ${target}"
+    done
+
+    # access through usergroup
+    for usergroup in $( USER_LIST_USERGROUPS "${user}" ); do
+      for target in $( find "${SSHGATE_DIR_TARGETS}"                          \
+                        -name "${SSHGATE_TARGETS_USERGROUP_ACCESS_FILENAME}*" \
+                        -exec grep -l "^${usergroup}\$" {} \; | sort -u ); do
+        target=$( echo "${target}" | sed -e "s|^.*/\([^/]*\)/${SSHGATE_TARGETS_USERGROUP_ACCESS_FILENAME}.\(.*\)$|\2@\1|" )
+        echo "  ${user} --- usergroup(${usergroup}) ---> ${target}"
+      done
+    done
+
+    is_restricted=$( USER_GET_CONF "${user}" IS_RESTRICTED )
+    if [ "${is_restricted}" = 'false' ]; then
+      echo
+      echo "NOTICE: User has access to whole target host, as its configuration IS_RESTRICTED variable is set to 'false'.";
+      echo
+    fi
+    return 0;
+  }
+
+  # usage: USER_ACCESS_NOTIFY <user>
+  # desc: Send a mail to the user to notify him about its access
+  USER_ACCESS_NOTIFY () {
+    local user= user_mail= mail_file= old_mail_file= aliases=
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
+    user="$1"
+    user_mail=$( USER_GET_CONF "${user}" MAIL )
+    if [ -z "${user_mail}" ]; then
+      ERROR "No e-mail was setup for user '${user}'"; return 1;
+    fi
+
+    old_mail_file=$( MAIL_GET_FILE )
+    MAIL_CREATE
+
+    MAIL_APPEND "Hi,"
+    MAIL_APPEND ''
+    MAIL_APPEND "Here is the list of your access of sshGate :"
+    MAIL_APPEND ''
+    for target in $( USER_LIST_TARGETS "${user}" ); do
+      MAIL_APPEND " - ${target}"
+      aliases=
+      aliases=$( TARGET_LIST_ALIASES "${target}" )
+      if [ "${aliases}" != '' ]; then
+        aliases=$( echo "${aliases}" | tr $'\n' ',' )
+        MAIL_APPEND "     alias: ${aliases}"
+      fi
+    done
+    MAIL_SEND "Your sshGate access" "${user_mail}"
+
+    MAIL_SET_FILE "${old_mail_file}"
+    return 0
+  }
+
+
+  # usage: private_USER_SSHKEY_FILE <user>
+  # desc: echo-return the path to the user sshkey file
+  private_USER_SSHKEY_FILE () {
+    local user= f=
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+    user="$1"
+    f="${SSHGATE_DIR_USERS}/${user}"
+    [ ! -r "$f" -o -z "${user}" ] && f=''
+    echo "$f"
+    return 0;
+  }
+
+  # usage: DISPLAY_USER_SSHKEY_FILE <user>
+  # desc: Display the public sshkey of a user
+  # note: if called without argument, display the public sshkey of all users
+  DISPLAY_USER_SSHKEY_FILE () {
+    local user= f=
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+    user="$1"
+    if [ "${user}" != 'all' ]; then
+      f=$( private_USER_SSHKEY_FILE "${user}" )
+      if [ -n "$f" ]; then
+        echo "# public sshkey ${user}"
+        cat "$f";
+      else
+        ERROR "Unknown user $user" ; return 1;
+      fi
+    else
+      for user in $( USERS_LIST ); do
+        echo "# public sshkey ${user}"
+        cat $( private_USER_SSHKEY_FILE "${user}" )
+      done
+    fi
+    return 0;
+  }
+
+fi # if [ "${__USER_FUNC__}" != 'Loaded' ]; then

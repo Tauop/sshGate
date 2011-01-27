@@ -28,7 +28,12 @@ cat >"${expected_test_file}" <<EOF
 sshGate >  target list
 
 sshGate >  target add ${hostname}
-sshGate >  target add ${ip} key ${sshkey_priv_test_file}
+Use the sshGate default sshkey for this target host [Y] ?   Y
+<<=Y
+sshGate >  target add ${ip}
+Use the sshGate default sshkey for this target host [Y] ?   N
+<<=N
+$(cat "${sshkey_priv_test_file}" | while read line ; do echo "<<-${line}"; done; echo "->>" )
 sshGate >  target list
 ${ip}
 ${hostname}
@@ -73,16 +78,18 @@ sshGate >  target ssh test all
 sshGate >  target ssh display config
 sshGate >  target ssh edit config
 <<-User root
+->>
 WARNING: ssh options 'User' was removed from editable configuration file. It's not allowed or deal by sshGate
 sshGate >  target ssh display config
 sshGate >  target ssh edit config
 <<-ConnectTimeout 10
+->>
 sshGate >  target ssh display config
 ConnectTimeout 10
 sshGate >  target ${hostname} ssh edit config for root
 <<-ConnectTimeout 30
-sshGate >  target ${hostname} ssh edit config for root
 <<-ForwardX11 yes
+->>
 sshGate >  target ${hostname} ssh display config for root
 ConnectTimeout 30
 ForwardX11 yes
@@ -90,12 +97,14 @@ sshGate >  target ${hostname} ssh display full config for root
 Host *
  IdentityFile ${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}
  IdentitiesOnly yes
+ StrictHostKeyChecking yes
  UserKnownHostsFile $(SSHGATE_ACCOUNT_HOMEDIR)/.ssh/known_hosts
 ConnectTimeout 10
 
 Host ${hostname}
  IdentityFile ${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}
  IdentitiesOnly yes
+ StrictHostKeyChecking yes
  User root
 ConnectTimeout 30
 ForwardX11 yes
@@ -107,17 +116,20 @@ sshGate >  target ${hostname} ssh display full config for root
 Host *
  IdentityFile ${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}
  IdentitiesOnly yes
+ StrictHostKeyChecking yes
  UserKnownHostsFile $(SSHGATE_ACCOUNT_HOMEDIR)/.ssh/known_hosts
 ConnectTimeout 10
 
 Host ${alias}
  IdentityFile ${SSHGATE_DIR_TARGETS}/${alias}/sshkey.priv
  IdentitiesOnly yes
+ StrictHostKeyChecking yes
  User ${user_unix_test_account}
 
 Host ${hostname}
  IdentityFile ${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}
  IdentitiesOnly yes
+ StrictHostKeyChecking yes
  User root
  ProxyCommand ssh -F ssh_conf_file ${user_unix_test_account}@${alias} nc %h %p
 ConnectTimeout 30
@@ -129,15 +141,17 @@ sshGate >  target del ${ip}
 sshGate >  target alias list
 sshGate >  target list
 ${hostname}
+sshGate >  target add ${ip} with proxy ${hostname}
+Use the sshGate default sshkey for this target host [Y] ?   Y
+<<=Y
 sshGate >  exit
 EOF
 
-grep -E '^(<<-|sshGate [^>]*>)' < "${expected_test_file}" \
- | sed -e 's/^sshGate [^>]*>  //'                    \
- | sed -e 's/^<<-//' > "${input_test_file}"
+grep -E '^(<<=|<<-|->>|sshGate [^>]*>)' < "${expected_test_file}" \
+ | sed -e 's/^sshGate [^>]*>  //; s/^<<=//;' > "${input_test_file}"
 
 tmp_file="${expected_test_file}.$(RANDOM)"
-sed -e 's/^<<-//' < "${expected_test_file}" > "${tmp_file}"
+grep -v -E '^(<<=|<<-|->>)' < "${expected_test_file}" > "${tmp_file}"
 mv "${tmp_file}" "${expected_test_file}"
 
 mOK

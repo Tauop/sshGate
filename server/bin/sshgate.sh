@@ -26,14 +26,13 @@
 # - TARGET_HOST : target  host of the sshg call
 # - TARGET_HOST_COMMAND : ssh command which will be exec on the ${TARGET_HOST}
 # - TARGET_LOGIN : login to use when connecting to the ${TARGET_HOST}
-# - TARGET_SSHKEY : ${TARGET_HOST} private ssh key
 # - ORIGINAL_TARGET_HOST : copy of TARGET_HOST used by error messages
 # - GLOG_FILE : Global ${TARGET_HOST} log file
 # - SLOG_FILE : Session log file (one per session/user/host)
 # - SSHGATE_LOG_FILE : Global sshGate log file
 # ----------------------------------------------------------------------------
 
-if [ $# -ne 1 ]; then
+if [ $# -ne 1 -o -z "${1:-}" ]; then
   echo "your SSH KEY is not well configured. Please contact the sshGate administrator."
   exit 1
 fi
@@ -42,16 +41,31 @@ fi
 SSHKEY_USER="$1"
 SFTP_SERVER=/usr/libexec/openssh/sftp-server
 
-# %% __SSHGATE_CONF__ %% <-- WARNING: don't remove. used by install.sh
-# %% __SSHGATE_FUNC__ %% <-- WARNING: don't remove. used by install.sh
+# Load libraries -------------------------------------------------------------
 
-# one little function
+load() {
+  local var= value= file=
+
+  var="$1"; file="$2"
+  value=$( eval "echo \"\${${var}:-}\"" )
+
+  [ -n "${value}" ] && return 1;
+  if [ -f "${file}" ]; then
+    . "${file}"
+  else
+    echo "ERROR: Unable to load ${file}"
+    exit 2
+  fi
+  return 0;
+}
+
+load SSHGATE_DIRECTORY       '/etc/sshgate.conf'
+
+load __SSHGATE_SETUP__ "${SSHGATE_DIRECTORY}/data/sshgate.setup"
+load __SSHGATE_CORE__  "${SSHGATE_DIR_CORE}/sshgate.core"
+
+# one little function --------------------------------------------------------
 mLOG () { local file=$1; shift; echo "$(date +'[%D %T]') $*" >> ${file}; }
-
-if [ -z ${SSHKEY_USER:-} ]; then
-  echo "your SSH key is not well configured. Please, contact the sshGate administrator."
-  exit 1
-fi
 
 # determine action type (ssh or scp) and build TARGET_HOST -------------------
 do_ssh='false'
@@ -152,11 +166,6 @@ if [ -z "${TARGET_HOST}" ]; then
 fi
 
 GLOG_FILE=$( TARGET_LOG_FILE "${TARGET_HOST}" )
-TARGET_SSHKEY=$( TARGET_PRIVATE_SSHKEY_FILE "${TARGET_HOST}" )
-if [ -z "${TARGET_SSHKEY}" -o ! -r "${TARGET_SSHKEY:-}" ]; then
-  echo "ERROR: can't read target host ssh key. Please contact the sshGate administrator"
-  exit 1
-fi
 
 # check ACL ------------------------------------------------------------------
 if [ $( HAS_ACCESS "${SSHKEY_USER}" "${TARGET_HOST}" "${TARGET_LOGIN}" ) = 'false' ]; then

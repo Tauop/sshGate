@@ -1,0 +1,213 @@
+#
+# Copyright (c) 2010 Linagora
+# Patrick Guiran <pguiran@linagora.com>
+# http://github.com/Tauop/sshGate
+#
+# sshGate is free software, you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of
+# the License, or (at your option) any later version.
+#
+# sshGate is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# README ---------------------------------------------------------------------
+#
+# Collection of all users' group related functions
+#
+# ----------------------------------------------------------------------------
+
+if [ "${__SSHGATE_CORE__}" != 'Loaded' ]; then
+  echo "ERROR: Only sshgate.core can load user.func."; exit 1;
+fi
+
+if [ "${__USERGROUP_FUNC__:-}" != 'Loaded' ]; then
+  __USERGROUP_FUNC__='Loaded'
+
+  # usage: USERGROUPS_LIST
+  # desc: List all users groups
+  # note: users' group name are separated by '\n'
+  USERGROUPS_LIST () {
+    local res= find_opt=
+    [ $# -eq 1 ] && find_opt="-iname '$1'"
+    res=$( eval "find '${SSHGATE_DIR_USERS_GROUPS}' -mindepth 1 -type f ${find_opt} -printf '%P\n'" )
+    echo "${res}" | sort -u
+    return 0;
+  }
+
+  # usage: USERGROUP_ADD <user_group>
+  # desc: Create a users group
+  USERGROUP_ADD () {
+    local usergroup=
+
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
+    usergroup="$1"
+    if [ -z "${usergroup}" ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+    if [ -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" ]; then
+      ERROR "User group '${usergroup}' already exists" ; return 1
+    fi
+
+    touch "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}"
+    private_MAIL_APPEND "User Group ${usergroup} added"
+
+    return 0;
+  }
+
+  # usage: USERGROUP_DEL <user_group>
+  # desc: Delete a users group
+  USERGROUP_DEL () {
+    local usergroup=
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
+    usergroup="$1"
+    if [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" -o -z "${usergroup}" ]; then
+      ERROR "User group '${usergroup}' doesn't exist" ; return 1
+    fi
+
+    for target in $( USERGROUP_LIST_TARGETS "${usergroup}" ); do
+      TARGET_ACCESS_DEL_USERGROUP "${target}" "${usergroup}"
+    done
+
+    rm -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}"
+    private_MAIL_APPEND "User Group ${usergroup} removed"
+
+    return 0
+  }
+
+  # usage: USERGROUP_LIST_USERS <user_group>
+  # desc: List users of a group
+  # note: user names are separated by \n
+  USERGROUP_LIST_USERS () {
+    local usergroup=
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
+    usergroup="$1"
+    if [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" -o -z "${usergroup}" ]; then
+      ERROR "User group '${usergroup}' doesn't exist" ; return 1;
+    fi
+
+    cat "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" | sort -u
+    return 0;
+  }
+
+  # usage: USERGROUP_ADD_USER <user_group> <user>
+  # desc: Add an user into a group
+  USERGROUP_ADD_USER () {
+    local usergroup= user=
+    if [ $# -ne 2 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
+    usergroup="$1"; user="$2";
+    if [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" -o -z "${usergroup}" ]; then
+      ERROR "User group '${usergroup}' doesn't exist" ; return 1;
+    fi
+    if [ ! -f "${SSHGATE_DIR_USERS}/${user}" -o -z "${user}" ]; then
+      ERROR "User '${user}' doesn't exist" ; return 1;
+    fi
+
+    private_ACL_FILE_ADD "${user}" "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}"
+    private_MAIL_APPEND "User ${user} added to User Group ${usergroup}"
+
+    return 0;
+  }
+
+  # usage: USERGROUP_DEL_USER <user_group> <user>
+  # desc: Remove an user from a group
+  USERGROUP_DEL_USER () {
+    local usergroup= user=
+    if [ $# -ne 2 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
+    usergroup="$1"; user="$2"
+    if [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" -o -z "${usergroup}" ]; then
+      ERROR "User group '${usergroup}' doesn't exist" ; return 1;
+    fi
+    if [ ! -f "${SSHGATE_DIR_USERS}/${user}" -o -z "${user}" ]; then
+      ERROR "User '${user}' doesn't exist" ; return 1;
+    fi
+
+    private_ACL_FILE_DEL "${user}" "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}"
+    private_MAIL_APPEND "User ${user} removed from User Group ${usergroup}"
+
+    return 0;
+  }
+
+  # usage: USERGROUP_LIST_TARGETS <user_group>
+  # desc: List targets which usergroup has access to
+  USERGROUP_LIST_TARGETS () {
+    local usergroup= target=
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
+    usergroup="$1"
+    if [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" -o -z "${usergroup}" ]; then
+      ERROR "User group '${usergroup}' doesn't exist" ; return 1;
+    fi
+
+    for target in $( find "${SSHGATE_DIR_TARGETS}"                          \
+                      -name "${SSHGATE_TARGETS_USERGROUP_ACCESS_FILENAME}*" \
+                      -exec grep -l "^${usergroup}\$" {} \; | sort -u ); do
+      target=$( echo "${target}" | sed -e "s|^.*/\([^/]*\)/${SSHGATE_TARGETS_USERGROUP_ACCESS_FILENAME}.\(.*\)$|\2@\1|" )
+      echo "${target}"
+    done | sort -u
+    return 0;
+  }
+
+  # usage: USERGROUP_ACCESS_INFO <user_group>
+  # desc: List all target whose users of the group have access to
+  USERGROUP_ACCESS_INFO () {
+    local usergroup= users= targets=
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
+    usergroup="$1"
+    if [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" -o -z "${usergroup}" ]; then
+      ERROR "User group '${usergroup}' doesn't exist" ; return 1;
+    fi
+
+    users=$(   USERGROUP_LIST_USERS "${usergroup}"   ); users=$(   echo -n "${users}"   | tr $'\n' ',' )
+    targets=$( USERGROUP_LIST_TARGETS "${usergroup}" ); targets=$( echo -n "${targets}" | tr $'\n' ',' )
+    echo "  ${users} --- usergroup(${usergroup}) ---> ${targets}"
+
+    return 0;
+  }
+
+  # usage: USERGROUP_ACCESS_NOTIFY <user_group>
+  # desc: Notify all users of the usergroup about their access list (via mail)
+  USERGROUP_ACCESS_NOTIFY () {
+    local usergroup= user=
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
+    usergroup="$1"
+    if [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" -o -z "${usergroup}" ]; then
+      ERROR "User group '${usergroup}' doesn't exist" ; return 1;
+    fi
+
+    for user in $( USERGROUP_LIST_USERS "${usergroup}" ); do
+      USER_ACCESS_NOTIFY "${user}"
+    done
+
+    return 0;
+  }
+
+fi # if [ "${__USERGROUP_FUNC__}" != 'Loaded' ]; then

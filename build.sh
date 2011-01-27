@@ -18,20 +18,40 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-. ./lib/message.lib.sh
-. ./lib/ask.lib.sh
-. ./lib/exec.lib.sh
-
-version=
-ASK version "sshgate version ? "
-
-build=
-ASK build "sshGate build number ?"
-
 action='all'
 if [ $# -ne 0 ]; then
   [ "$1" = 'client' ] && action='client'
   [ "$1" = 'server' ] && action='server'
+fi
+
+
+# Load configuration file
+if [ -r /etc/ScriptHelper.conf ]; then
+  . /etc/ScriptHelper.conf
+  SCRIPT_HELPER_DIRECTORY="${SCRIPT_HELPER_DIRECTORY:-}"
+  SCRIPT_HELPER_DIRECTORY="${SCRIPT_HELPER_DIRECTORY%%/}"
+else
+  SCRIPT_HELPER_DIRECTORY='./lib'
+fi
+
+if [ ! -d "${SCRIPT_HELPER_DIRECTORY}/" ]; then
+  echo "ERROR: sshGate depends on ScriptHelper which doesn't seem to be installed"
+  exit 2
+fi
+
+. "${SCRIPT_HELPER_DIRECTORY}/message.lib.sh"
+. "${SCRIPT_HELPER_DIRECTORY}/ask.lib.sh"
+. "${SCRIPT_HELPER_DIRECTORY}/exec.lib.sh"
+
+version=
+ASK version "sshgate version ?"
+
+build=
+ASK build "sshGate build number ?"
+
+include_script_helper='N'
+if [ "${action}" = 'all' -o "${action}" = 'server' ]; then
+  ASK --yesno include_script_helper 'Include ScriptHelper in package ?'
 fi
 
 if [ "${action}" = 'all' -o "${action}" = 'client' ]; then
@@ -67,16 +87,12 @@ if [ "${action}" = 'all' -o "${action}" = 'server' ]; then
 
     [ -d ${dir}/ ] && CMD rm -rf ${dir}/
     CMD mkdir ${dir}/
-    CMD mkdir ${dir}/lib/
 
     CMD cp COPYING              ${dir}/
     CMD cp -r ./server/*        ${dir}/
-    CMD cp ./lib/ask.lib.sh     ${dir}/lib/
-    CMD cp ./lib/message.lib.sh ${dir}/lib/
-    CMD cp ./lib/conf.lib.sh    ${dir}/lib/
-    CMD cp ./lib/mail.lib.sh    ${dir}/lib/
-    CMD cp ./lib/cli.lib.sh     ${dir}/lib/
-    CMD cp ./lib/random.lib.sh  ${dir}/lib/
+    if [ "${include_script_helper}" = 'Y' ]; then
+      CMD cp -r ./lib/          ${dir}/
+    fi
 
     # put version and build number
     sed_repl=
@@ -89,6 +105,7 @@ if [ "${action}" = 'all' -o "${action}" = 'server' ]; then
     CMD chmod +x ${dir}/install.sh
 
     CMD find ${dir}/ -type f -iname "*swp" -exec rm -f {} '\;'
+    CMD 'find ${dir}/ -iname ".git" | xargs rm -rf'
     CMD tar c --transform "'s|^tmp/||S'" -z -f ${dir}.tar.gz ${dir} 2>/dev/null
 
     CMD mv ${dir}.tar.gz .

@@ -67,8 +67,12 @@ pguiran
 sshGate >  exit
 EOF
 
-grep '^sshGate [^>]*>' < "${expected_test_file}" \
+grep -E '^(<<=|<<-|->>|sshGate [^>]*>)' < "${expected_test_file}" \
  | sed -e 's/^sshGate [^>]*>  //' > "${input_test_file}"
+
+tmp_file="${expected_test_file}.$(RANDOM)"
+grep -v -E '^(<<=|<<-|->>)' < "${expected_test_file}" > "${tmp_file}"
+mv "${tmp_file}" "${expected_test_file}"
 
 mOK
 

@@ -26,7 +26,12 @@ ip=$( hostname -i )
 
 cat >"${expected_test_file}" <<EOF
 sshGate >  target add ${hostname}
-sshGate >  target add ${ip} key ${sshkey_priv_test_file}
+Use the sshGate default sshkey for this target host [Y] ?   Y
+<<=Y
+sshGate >  target add ${ip}
+Use the sshGate default sshkey for this target host [Y] ?   N
+<<=N
+$(cat "${sshkey_priv_test_file}" | while read line ; do echo "<<-${line}"; done; echo "->>" )
 sshGate >  target ${hostname} add alias ${alias}
 sshGate >  target ${hostname} ssh add login root
 sshGate >  target ${ip} ssh add login tauop
@@ -105,12 +110,11 @@ sshGate >  target ${hostname} access info
 sshGate >  exit
 EOF
 
-grep -E '^(<<-|sshGate [^>]*>)' < "${expected_test_file}" \
- | sed -e 's/^sshGate [^>]*>  //'                    \
- | sed -e 's/^<<-//' > "${input_test_file}"
+grep -E '^(<<=|<<-|->>|sshGate [^>]*>)' < "${expected_test_file}" \
+ | sed -e 's/^sshGate [^>]*>  //; s/^<<=//;' > "${input_test_file}"
 
 tmp_file="${expected_test_file}.$(RANDOM)"
-sed -e 's/^<<-//' < "${expected_test_file}" > "${tmp_file}"
+grep -v -E '^(<<=|<<-|->>)' < "${expected_test_file}" > "${tmp_file}"
 mv "${tmp_file}" "${expected_test_file}"
 
 mOK

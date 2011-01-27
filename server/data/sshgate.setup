@@ -1,0 +1,68 @@
+#
+# Copyright (c) 2010 Linagora
+# Patrick Guiran <pguiran@linagora.com
+# http://github.com/Tauop/sshGate
+#
+# sshGate is free software, you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of
+# the License, or (at your option) any later version.
+#
+# sshGate is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+
+# for tests
+if [ -n "${SSHGATE_CONFIGURATION}" ]; then
+  . "${SSHGATE_CONFIGURATION}"
+fi
+
+if [ -z "${SSHGATE_DIRECTORY:-}" ]; then
+  if [ -r /etc/sshgate.conf ]; then
+    . /etc/sshgate.conf
+  else
+    echo "ERROR: can't load sshGate configuration file"
+  fi
+fi
+
+if [ "${__SSHGATE_SETUP__:-}" != 'Loaded' ]; then
+  __SSHGATE_SETUP__='Loaded'
+
+  # remove trailing /
+  SSHGATE_DIRECTORY="${SSHGATE_DIRECTORY%%/}"
+
+  # directories of sshgates
+  SSHGATE_DIR_DATA="${SSHGATE_DIRECTORY}/data"
+  SSHGATE_DIR_BIN="${SSHGATE_DIRECTORY}/bin"
+  SSHGATE_DIR_CORE="${SSHGATE_DIR_BIN}/core"
+  SSHGATE_DIR_TEST="${SSHGATE_DIR_BIN}/tests"
+  SSHGATE_DIR_USERS="${SSHGATE_DIRECTORY}/users"
+  SSHGATE_DIR_TARGETS="${SSHGATE_DIRECTORY}/targets"
+  SSHGATE_DIR_USERS_GROUPS="${SSHGATE_DIRECTORY}/users.groups"
+  SSHGATE_DIR_LOG="${SSHGATE_DIRECTORY}/log"
+  SSHGATE_DIR_ARCHIVE="${SSHGATE_DIRECTORY}/archives"
+
+  SSHGATE_EDITOR="${SSHGATE_EDITOR:-${EDITOR}}"
+
+  SSHGATE_TARGET_PRIVATE_SSHKEY_FILENAME='sshkey.priv'
+  SSHGATE_TARGET_PUBLIC_SSHKEY_FILENAME='sshkey.pub'
+  SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE="${SSHGATE_DIR_DATA}/${SSHGATE_TARGET_PRIVATE_SSHKEY_FILENAME}"
+  SSHGATE_TARGET_DEFAULT_PUBLIC_SSHKEY_FILE="${SSHGATE_DIR_DATA}/${SSHGATE_TARGET_PUBLIC_SSHKEY_FILENAME}"
+
+  SSHGATE_TARGETS_USER_ACCESS_FILENAME='access.users'
+  SSHGATE_TARGETS_USERGROUP_ACCESS_FILENAME='access.groups'
+  SSHGATE_TARGETS_SSH_CONFIG_FILENAME='ssh_conf'
+  SSHGATE_TARGETS_SSH_LOGINS_FILENAME='ssh_logins.list'
+
+  # logs files
+  SSHGATE_LOG_FILE="${SSHGATE_DIR_LOG}/sshgate.log"
+
+  # TODO : a multi-language support.
+  SSHGATE_CGU_FILE="${SSHGATE_DIR_DATA}/CGU.txt"
+
+fi # __SSHGATE_SETUP__

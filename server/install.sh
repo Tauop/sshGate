@@ -18,24 +18,58 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-. ./lib/random.lib.sh
-. ./lib/message.lib.sh
-. ./lib/ask.lib.sh
-. ./lib/conf.lib.sh
-. ./upgrade.sh
+load() {
+  local var= value= file=
+
+  var="$1"; file="$2"
+  value=$( eval "echo \"\${${var}:-}\"" )
+
+  [ -n "${value}" ] && return 1;
+  if [ -f "${file}" ]; then
+    . "${file}"
+  else
+    echo "ERROR: Unable to load ${file}"
+    exit 2
+  fi
+  return 0;
+}
+
+# Load configuration file
+if [ -r /etc/ScriptHelper.conf ]; then
+  . /etc/ScriptHelper.conf
+  SCRIPT_HELPER_DIRECTORY="${SCRIPT_HELPER_DIRECTORY:-}"
+  SCRIPT_HELPER_DIRECTORY="${SCRIPT_HELPER_DIRECTORY%%/}"
+else
+  SCRIPT_HELPER_DIRECTORY='./lib/'
+fi
+
+if [ ! -d "${SCRIPT_HELPER_DIRECTORY}" ]; then
+  echo "ERROR: sshGate depends on ScriptHelper which doesn't seem to be installed"
+  exit 2
+fi
+
+load __LIB_RANDOM__  "${SCRIPT_HELPER_DIRECTORY}/random.lib.sh"
+load __LIB_MESSAGE__ "${SCRIPT_HELPER_DIRECTORY}/message.lib.sh"
+load __LIB_ASK__     "${SCRIPT_HELPER_DIRECTORY}/ask.lib.sh"
+load __LIB_CONF__    "${SCRIPT_HELPER_DIRECTORY}/conf.lib.sh"
+
+[ -r ./upgrade.sh ] && . ./upgrade.sh
 
 # don't want to add exec.lib.sh in dependencies :/
 user_id=`id -u`
 [ "${user_id}" != "0" ] \
   && KO "You must execute $0 with root privileges"
 
+# ----------------------------------------------------------------------------
 
-action='install' # install | update
-configure='yes'  # yes | no. when action=update, it can be 'no'
-this_version='%% __SSHGATE_VERSION__ %%'  # version of this package (set by build.sh)
-installed_version= # version of installed sshgate
+action='install'          # install | update
+install_script_helper='N' # when ScriptHelper is bundled in the package, install it ?
+configure='yes'           # yes | no. when action=update, it can be 'no'
+this_version=             # version of this package (set by build.sh)
+installed_version=        # version of installed sshgate
 
-CONF_SET_FILE "sshgate.conf"
+# ----------------------------------------------------------------------------
+CONF_SET_FILE "./sshgate.conf"
 CONF_LOAD
 
 BR
@@ -43,12 +77,7 @@ MESSAGE "   --- sshGate server configuration ---"
 MESSAGE "             by Patrick Guiran"
 BR
 
-ASK SSHGATE_DIR \
-    "Where do you want to install sshGate [${SSHGATE_DIR}] ? " \
-    "${SSHGATE_DIR}"
-CONF_SAVE SSHGATE_DIR
-
-if [ -d "${SSHGATE_DIR}" -a -r "${SSHGATE_DIR}/conf/sshgate.conf" ]; then
+if [ -r /etc/sshgate.conf ]; then
   action='update'
   MESSAGE "It seems that sshGate is already installed on your system."
   ASK --yesno reply \
@@ -56,13 +85,19 @@ if [ -d "${SSHGATE_DIR}" -a -r "${SSHGATE_DIR}/conf/sshgate.conf" ]; then
       'Y'
   [ "${reply}" = 'Y' ] && configure='no'
 
-  installed_version=$( < "${SSHGATE_DIR}/conf/sshgate.conf" grep SSHGATE_VERSION | sed -e "s/^.*SSHGATE_VERSION='\([^']*\)'.*$/\1/" )
+  CONF_GET --conf-file ./sshgate.conf    SSHGATE_VERSION this_version
+  CONF_GET --conf-file /etc/sshgate.conf SSHGATE_VERSION installed_version
+
   # old version of sshGate hasn't a SSHGATE_VERSION conf variable
   [ -z "${installed_version}" ] && installed_version='0'
 fi
 
-
 if [ "${configure}" = 'yes' ]; then
+  ASK SSHGATE_DIRECTORY \
+      "Where do you want to install sshGate [${SSHGATE_DIRECTORY}] ? " \
+      "${SSHGATE_DIRECTORY}"
+  CONF_SAVE SSHGATE_DIRECTORY
+
   ASK SSHGATE_GATE_ACCOUNT \
       "Which unix account to use for sshGate users [${SSHGATE_GATE_ACCOUNT}] ? " \
       "${SSHGATE_GATE_ACCOUNT}"
@@ -109,19 +144,39 @@ if [ "${configure}" = 'yes' ]; then
   fi
   CONF_SAVE SSHGATE_ALLOW_REMOTE_COMMAND
   CONF_SAVE SSHGATE_USE_REMOTE_ADMIN_CLI
+
+  # ScriptHelper dependency
+  if [ -r /etc/ScriptHelper.conf ]; then
+    CONF_GET --conf-file /etc/ScriptHelper.conf SCRIPT_HELPER_DIRECTORY
+  elif [ "${action}" = 'install' ]; then
+    if [ ! -d ./lib/ ]; then
+      ERROR "sshGate depends on ScriptHelper which doesn't seem to be installed"
+      exit 1;
+    fi
+    BR
+    NOTICE "ScriptHelper will be installed as part of sshGate, not system-wide"
+    MESSAGE "If you want to install ScriptHelper system-wide, please visit http://github.com/Tauop/ScriptHelper"
+    SCRIPT_HELPER_DIRECTORY="${SSHGATE_DIRECTORY}/bin/lib"
+    install_script_helper='Y'
+  fi
+  CONF_SAVE SCRIPT_HELPER_DIRECTORY
+
 fi # end of : if [ "${configure}" = 'yes' ]; then
+
+# ----------------------------------------------------------------------------
 
 BR
 BR
 DOTHIS 'Reload configuration'
   # reset loaded configuration and reload it
-  __SSHGATE_CONF__=
   if [ "${configure}" = 'yes' ]; then
     CONF_LOAD
   else
-    CONF_SET_FILE "${SSHGATE_DIR}/conf/sshgate.conf"
+    CONF_SET_FILE "/etc/sshgate.conf"
     CONF_LOAD
   fi
+  # load sshGate setup for constants
+  load __SSHGATE_SETUP__ './data/sshgate.setup'
 OK
 
 if [ "${action}" = 'update' ]; then
@@ -140,9 +195,7 @@ DOTHIS 'Installing sshGate'
   if [ "${action}" = 'install' ]; then
     # create directories
     MK () { [ ! -d "$1/" ] && mkdir -p "$1"; }
-    MK "${SSHGATE_DIR}"
-    MK "${SSHGATE_DIR_CONF}"
-    MK "${SSHGATE_DIR_BIN}"
+    MK "${SSHGATE_DIRECTORY}"
     MK "${SSHGATE_DIR_USERS}"
     MK "${SSHGATE_DIR_TARGETS}"
     MK "${SSHGATE_DIR_USERS_GROUPS}"
@@ -152,7 +205,7 @@ DOTHIS 'Installing sshGate'
     grep "${SSHGATE_GATE_ACCOUNT}" /etc/passwd >/dev/null 2>/dev/null
     if [ $? -ne 0 ]; then
       useradd "${SSHGATE_GATE_ACCOUNT}"
-      home_dir=$( cat /etc/passwd | grep "${SSHGATE_GATE_ACCOUNT}" | cut -d':' -f6 )
+      home_dir=$( cat /etc/passwd | grep "^${SSHGATE_GATE_ACCOUNT}:" | cut -d':' -f6 )
 
       MK "${home_dir}"
       chmod 755 "${home_dir}"
@@ -161,18 +214,20 @@ DOTHIS 'Installing sshGate'
   fi
 
   # install stuff
-  cp $( find . -maxdepth 1 -type f ) "${SSHGATE_DIR_BIN}"
+  cp -r ./bin/ ./data/ COPYING "${SSHGATE_DIRECTORY}/"
+  [ -d ./tests/ ] && cp -r ./tests/ "${SSHGATE_DIR_BIN}/"
 
-  if [ "${configure}" = 'yes' ]; then
-     mv "${SSHGATE_DIR_BIN}/sshgate.conf" "${SSHGATE_DIR_CONF}"
-  else
-    rm -f "${SSHGATE_DIR_BIN}/sshgate.conf"
+  if [ "${action}" = 'install' -a "${install_script_helper}" = 'Y' ]; then
+    cp -r ./lib/   "${SSHGATE_DIR_BIN}/"
+  elif [ "${action}"  = 'update' ]; then
+    if [ -d ./lib/ -a -d "${SSHGATE_DIR_BIN}/lib/" ]; then
+      cp -r ./lib/   "${SSHGATE_DIR_BIN}/"
+    fi
   fi
 
-  find "${SSHGATE_DIR_BIN}" -name "CGU*.txt" -exec mv {} "${SSHGATE_DIR_CONF}" \;
-
-  [ -d ./lib/   ] && cp -r ./lib/   "${SSHGATE_DIR_BIN}"
-  [ -d ./tests/ ] && cp -r ./tests/ "${SSHGATE_DIR_BIN}"
+  if [ "${configure}" = 'yes' ]; then
+    cp ./sshgate.conf /etc/sshgate.conf
+  fi
 OK
 
 DOTHIS 'Generate default sshkey pair'
@@ -184,60 +239,27 @@ DOTHIS 'Generate default sshkey pair'
 OK
 
 DOTHIS 'Setup files permissions'
-  # permissions on files
-  chown -R "${SSHGATE_GATE_ACCOUNT}" "${SSHGATE_DIR_LOG}"
-  chown "${SSHGATE_GATE_ACCOUNT}" "${SSHGATE_DIR_USERS}"
+  chown -R "${SSHGATE_GATE_ACCOUNT}" "${SSHGATE_DIRECTORY}"
+  chown -R root "${SSHGATE_DIR_BIN}"
 
-  # TODO : it's this ok ?
-  find "${SSHGATE_DIR_TARGETS}" -mindepth 1 -type d -exec chown "${SSHGATE_GATE_ACCOUNT}" {} \;
+  find "${SSHGATE_DIRECTORY}" -type d -exec chmod a=rx,u+w {} \;
+  find "${SSHGATE_DIR_BIN}"   -type f -exec chmod a=r {} \;
 
-  find "${SSHGATE_DIR}"     -type d -exec chmod a+x {} \;
-  find "${SSHGATE_DIR_BIN}" -type f -exec chmod a+r {} \;
-  chown root "${SSHGATE_DIR_BIN}/sshgate"
-  chmod a+x "${SSHGATE_DIR_BIN}/sshgate"
-  chmod a+x "${SSHGATE_DIR_BIN}/tests/test.sh"
+  chmod a=rx "${SSHGATE_DIR_BIN}/sshgate-cli"
+  chmod a=rx "${SSHGATE_DIR_TEST}/test.sh"
 
-  # some file has to be readable for all unix users
-  find "${SSHGATE_DIR_USERS}"   -type f -name "*.properties"    -exec chmod a+r {} \;
-  find "${SSHGATE_DIR_TARGETS}" -type f -name "ssh_logins.list" -exec chmod a+r {} \;
-  find "${SSHGATE_DIR_TARGETS}" -type f -name "ssh_conf*"       -exec chmod a+r {} \;
+  find "${SSHGATE_DIR_USERS}"   -type f -name "*properties"     -exec chmod a=r,u+w {} \;
+  find "${SSHGATE_DIR_TARGETS}" -type f -name "*properties"     -exec chmod a=r,u+w {} \;
+  find "${SSHGATE_DIR_TARGETS}" -type f -name "ssh_logins.list" -exec chmod a=r,u+w {} \;
+  find "${SSHGATE_DIR_TARGETS}" -type f -name "ssh_conf*"       -exec chmod a=r,u+w {} \;
 
   # sshkeys must be in 400
-  find "${SSHGATE_DIR_USERS}" -type f -exec chmod 400 {} \;
-  find "${SSHGATE_DIR_TARGETS}" -name "${SSHGATE_TARGET_PRIVATE_SSHKEY_FILENAME}" -exec chmod 400 {} \;
-  find "${SSHGATE_DIR_TARGETS}" -name "*properties" -exec chmod u+w {} \;
+  find "${SSHGATE_DIR_USERS}"   -type f ! -name "*.properties" -exec chmod u=r {} \;
+  find "${SSHGATE_DIR_TARGETS}" -name "${SSHGATE_TARGET_PRIVATE_SSHKEY_FILENAME}" -exec chmod a=,u+rw {} \;
+  find "${SSHGATE_DIR_TARGETS}" -name "${SSHGATE_TARGET_PUBLIC_SSHKEY_FILENAME}"  -exec chmod a=r,u+w {} \;
+  chmod a=,u+r "${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}"
+  chmod a=,u+r "${SSHGATE_TARGET_DEFAULT_PUBLIC_SSHKEY_FILE}"
 
-  # user properties files has to be ${SSHGATE_GATE_ACCOUNT} writable for CGU
-  find "${SSHGATE_DIR_USERS}" -name "*.properties" -exec chown "${SSHGATE_GATE_ACCOUNT}" {} \;
-  find "${SSHGATE_DIR_USERS}" -name "*.properties" -exec chmod u+w {} \;
-
-  chmod 400 "${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}"
-  chmod 400 "${SSHGATE_TARGET_DEFAULT_PUBLIC_SSHKEY_FILE}"
-  chown "${SSHGATE_GATE_ACCOUNT}" "${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}"
-  chown "${SSHGATE_GATE_ACCOUNT}" "${SSHGATE_TARGET_DEFAULT_PUBLIC_SSHKEY_FILE}"
-OK
-
-DOTHIS 'Update sshGate installation'
-  # update files and replace patterns
-  sed_repl=
-  sed_repl="${sed_repl} s|^\( *\)# %% __SSHGATE_CLI__ %%.*$|\1. ${SSHGATE_DIR_BIN}/sshgate|;"
-  sed_repl="${sed_repl} s|^\( *\)# %% __SSHGATE_CONF__ %%.*$|\1. ${SSHGATE_DIR_CONF}/sshgate.conf|;"
-  sed_repl="${sed_repl} s|^\( *\)# %% __SSHGATE_FUNC__ %%.*$|\1. ${SSHGATE_DIR_BIN}/sshgate.func|;"
-  sed_repl="${sed_repl} s|^\( *\)# %% __CLI_HELP_SH__ %%.*$|\1. ${SSHGATE_DIR_BIN}/cli_help.sh|;"
-  sed_repl="${sed_repl} s|^\( *\)# %% __LIB_MESSAGE__ %%.*$|\1. ${SSHGATE_DIR_BIN}/lib/message.lib.sh|;"
-  sed_repl="${sed_repl} s|^\( *\)# %% __LIB_ASK__ %%.*$|\1. ${SSHGATE_DIR_BIN}/lib/ask.lib.sh|;"
-  sed_repl="${sed_repl} s|^\( *\)# %% __LIB_CLI__ %%.*$|\1. ${SSHGATE_DIR_BIN}/lib/cli.lib.sh|;"
-  sed_repl="${sed_repl} s|^\( *\)# %% __LIB_MAIL__ %%.*$|\1. ${SSHGATE_DIR_BIN}/lib/mail.lib.sh|;"
-  sed_repl="${sed_repl} s|^\( *\)# %% __LIB_CONF__ %%.*$|\1. ${SSHGATE_DIR_BIN}/lib/conf.lib.sh|;"
-  sed_repl="${sed_repl} s|^\( *\)# %% __LIB_RANDOM__ %%.*$|\1. ${SSHGATE_DIR_BIN}/lib/random.lib.sh|;"
-
-  sed -i -e "${sed_repl}" "${SSHGATE_DIR_BIN}/sshgate"
-  sed -i -e "${sed_repl}" "${SSHGATE_DIR_BIN}/sshgate.func"
-  sed -i -e "${sed_repl}" "${SSHGATE_DIR_BIN}/sshgate.sh"
-  sed -i -e "${sed_repl}" "${SSHGATE_DIR_BIN}/archive-log.sh"
-  sed -i -e "${sed_repl}" "${SSHGATE_DIR_BIN}/tests/test.sh"
-
-  rm -f ${SSHGATE_DIR_BIN}/install.sh # ;-p
 OK
 
 DOTHIS 'Install archive cron'

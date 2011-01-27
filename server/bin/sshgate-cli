@@ -18,23 +18,31 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+load() {
+  local var= value= file=
 
-# %% __LIB_RANDOM__ %% <-- WARNING: don't remove. used by install.sh
-# %% __LIB_MESSAGE__ %% <-- WARNING: don't remove. used by install.sh
-# %% __LIB_ASK__ %% <-- WARNING: don't remove. used by install.sh
-# %% __LIB_MAIL__ %% <-- WARNING: don't remove. used by install.sh
-# %% __LIB_CLI__ %% <-- WARNING: don't remove. used by install.sh
-# %% __SSHGATE_CONF__ %% <-- WARNING: don't remove. used by install.sh
-# %% __SSHGATE_FUNC__ %% <-- WARNING: don't remove. used by install.sh
-# %% __CLI_HELP_SH__ %% <-- WARNING: don't remove. used by install.sh
+  var="$1"; file="$2"
+  value=$( eval "echo \"\${${var}:-}\"" )
 
-[ -z "${__LIB_RANDOM__}"   -a -r ./lib/random.lib.sh  ] && . ./lib/random.lib.sh
-[ -z "${__LIB_MESSAGE__}"  -a -r ./lib/message.lib.sh ] && . ./lib/message.lib.sh
-[ -z "${__LIB_ASK__}"      -a -r ./lib/ask.lib.sh     ] && . ./lib/ask.lib.sh
-[ -z "${__LIB_MAIL__}"     -a -r ./lib/mail.lib.sh    ] && . ./lib/mail.lib.sh
-[ -z "${__LIB_CLI__}"      -a -r ./lib/cli.lib.sh     ] && . ./lib/cli.lib.sh
-[ -z "${__SSHGATE_CONF__}" -a -r ./sshgate.conf       ] && . ./sshgate.conf
-[ -z "${__SSHGATE_FUNC__}" -a -r ./sshgate.func       ] && . ./sshgate.func
+  [ -n "${value}" ] && return 1;
+  if [ -f "${file}" ]; then
+    . "${file}"
+  else
+    echo "ERROR: Unable to load ${file}"
+    exit 2
+  fi
+  return 0;
+}
+
+load SSHGATE_DIRECTORY       '/etc/sshgate.conf'
+
+load __SSHGATE_SETUP__ "${SSHGATE_DIRECTORY}/data/sshgate.setup"
+load __SSHGATE_CORE__  "${SSHGATE_DIR_CORE}/sshgate.core"
+
+load __LIB_ASK__       "${SCRIPT_HELPER_DIRECTORY}/ask.lib.sh"
+load __LIB_MAIL__      "${SCRIPT_HELPER_DIRECTORY}/mail.lib.sh"
+load __LIB_CLI__       "${SCRIPT_HELPER_DIRECTORY}/cli.lib.sh"
+
 
 if [ "${SSHGATE_TEST:-}" != 'sshGateTest' ]; then
   # during test, don't check for user
@@ -61,94 +69,93 @@ user_id=`id -u`
 
 CLI_REGISTER_HELP '/tmp/sshgate-cli-help.txt' SSHGATE_GET_HELP
 
-CLI_REGISTER_MENU    'user'
-CLI_REGISTER_COMMAND 'user list'                 'USERS_LIST'
-CLI_REGISTER_COMMAND 'user list ?'               'USERS_LIST \1'
-CLI_REGISTER_COMMAND 'user add ? key ? mail ?'   'USER_ADD \1 \2 \3'
-CLI_REGISTER_COMMAND 'user del ?'                'USER_DEL \1'
+CLI_REGISTER_MENU    'user'                                        'User related commands'
+CLI_REGISTER_COMMAND 'user list'                                   'USERS_LIST'
+CLI_REGISTER_COMMAND 'user list <pattern>'                         'USERS_LIST \1'
+CLI_REGISTER_COMMAND 'user add <user> key <sshkey> mail <email>'   'USER_ADD \1 \2 \3'
+CLI_REGISTER_COMMAND 'user del <user>'                             'USER_DEL \1'
 
-CLI_REGISTER_MENU    'user ?'
-CLI_REGISTER_COMMAND 'user ? display conf'        'USER_DISPLAY_CONF \1'
-CLI_REGISTER_COMMAND 'user ? set conf ? ?'        'USER_SET_CONF \1 \2 \3'
-CLI_REGISTER_COMMAND 'user ? del conf ?'          'USER_SET_CONF \1 \2'
-CLI_REGISTER_COMMAND 'user ? list targets'        'USER_LIST_TARGETS \1'
-CLI_REGISTER_COMMAND 'user ? list usergroups'     'USER_LIST_USERGROUPS \1'
-CLI_REGISTER_COMMAND 'user ? has access ?'        'HAS_ACCESS \1 \2'
-CLI_REGISTER_COMMAND 'user ? has access ? with ?' 'HAS_ACCESS \1 \2 \3'
-CLI_REGISTER_COMMAND 'user ? access info'         'USER_ACCESS_INFO \1'
-CLI_REGISTER_COMMAND 'user ? access notify'       'USER_ACCESS_NOTIFY \1'
+CLI_REGISTER_MENU    'user <user>'                                  'User related commands'
+CLI_REGISTER_COMMAND 'user <user> display conf'                     'USER_DISPLAY_CONF \1'
+CLI_REGISTER_COMMAND 'user <user> set conf <variable> <value>'      'USER_SET_CONF \1 \2 \3'
+CLI_REGISTER_COMMAND 'user <user> del conf <variable>'              'USER_SET_CONF \1 \2'
+CLI_REGISTER_COMMAND 'user <user> list targets'                     'USER_LIST_TARGETS \1'
+CLI_REGISTER_COMMAND 'user <user> list usergroups'                  'USER_LIST_USERGROUPS \1'
+CLI_REGISTER_COMMAND 'user <user> has access <target>'              'HAS_ACCESS \1 \2'
+CLI_REGISTER_COMMAND 'user <user> has access <target> with <login>' 'HAS_ACCESS \1 \2 \3'
+CLI_REGISTER_COMMAND 'user <user> access info'                      'USER_ACCESS_INFO \1'
+CLI_REGISTER_COMMAND 'user <user> access notify'                    'USER_ACCESS_NOTIFY \1'
 
-CLI_REGISTER_MENU    'usergroup'
-CLI_REGISTER_COMMAND 'usergroup list'  'USERGROUPS_LIST'
-CLI_REGISTER_COMMAND 'usergroup add ?' 'USERGROUP_ADD \1'
-CLI_REGISTER_COMMAND 'usergroup del ?' 'USERGROUP_DEL \1'
+CLI_REGISTER_MENU    'usergroup'             'Usergroup related commands'
+CLI_REGISTER_COMMAND 'usergroup list'        'USERGROUPS_LIST'
+CLI_REGISTER_COMMAND 'usergroup add <group>' 'USERGROUP_ADD \1'
+CLI_REGISTER_COMMAND 'usergroup del <group>' 'USERGROUP_DEL \1'
 
-CLI_REGISTER_MENU    'usergroup ?'
-CLI_REGISTER_COMMAND 'usergroup ? list users'        'USERGROUP_LIST_USERS \1'
-CLI_REGISTER_COMMAND 'usergroup ? add user ?'        'USERGROUP_ADD_USER \1 \2'
-CLI_REGISTER_COMMAND 'usergroup ? del user ?'        'USERGROUP_DEL_USER \1 \2'
-CLI_REGISTER_COMMAND 'usergroup ? list targets'      'USERGROUP_LIST_TARGETS \1'
-CLI_REGISTER_COMMAND 'usergroup ? access info'       'USERGROUP_ACCESS_INFO \1'
-CLI_REGISTER_COMMAND 'usergroup ? access notify'     'USERGROUP_ACCESS_NOTIFY \1'
+CLI_REGISTER_MENU    'usergroup <group>'                   'Usergroup related commands'
+CLI_REGISTER_COMMAND 'usergroup <group> list users'        'USERGROUP_LIST_USERS \1'
+CLI_REGISTER_COMMAND 'usergroup <group> add user <user>'   'USERGROUP_ADD_USER \1 \2'
+CLI_REGISTER_COMMAND 'usergroup <group> del user <user>'   'USERGROUP_DEL_USER \1 \2'
+CLI_REGISTER_COMMAND 'usergroup <group> list targets'      'USERGROUP_LIST_TARGETS \1'
+CLI_REGISTER_COMMAND 'usergroup <group> access info'       'USERGROUP_ACCESS_INFO \1'
+CLI_REGISTER_COMMAND 'usergroup <group> access notify'     'USERGROUP_ACCESS_NOTIFY \1'
 
-CLI_REGISTER_MENU    'target'
-CLI_REGISTER_COMMAND 'target list'        'TARGETS_LIST'
-CLI_REGISTER_COMMAND 'target list ?'      'TARGETS_LIST \1'
-CLI_REGISTER_COMMAND 'target add ?'       'TARGET_ADD \1'
-CLI_REGISTER_COMMAND 'target add ? key ?' 'TARGET_ADD \1 \2'
-CLI_REGISTER_COMMAND 'target del ?'       'TARGET_DEL \1'
+CLI_REGISTER_MENU    'target'                                                      'Target related commands'
+CLI_REGISTER_COMMAND 'target list'                                                 'TARGETS_LIST'
+CLI_REGISTER_COMMAND 'target list <pattern>'                                       'TARGETS_LIST \1'
+CLI_REGISTER_COMMAND 'target add [<login>@]<target>'                               'TARGET_ADD \1'
+CLI_REGISTER_COMMAND 'target add [<login>@]<target> with proxy [<login>@]<target>' 'TARGET_ADD \1 \2'
+CLI_REGISTER_COMMAND 'target del <target>'                                         'TARGET_DEL \1'
+CLI_REGISTER_COMMAND 'target alias list'                                           'TARGET_LIST_ALIASES'
+CLI_REGISTER_COMMAND 'target alias del <alias>'                                    'TARGET_DEL_ALIAS \1'
 
-CLI_REGISTER_MENU    'target alias'
-CLI_REGISTER_COMMAND 'target alias list'  'TARGET_LIST_ALIASES'
-CLI_REGISTER_COMMAND 'target alias del ?' 'TARGET_DEL_ALIAS \1'
-
-CLI_REGISTER_MENU    'target ssh'
+CLI_REGISTER_MENU    'target ssh'                 'Target\'s ssh related commands'
 CLI_REGISTER_COMMAND 'target ssh test all'        'TARGET_SSH_TEST_ALL'
 CLI_REGISTER_COMMAND 'target ssh install key all' 'TARGET_SSH_INSTALL_ALL_KEYS'
 CLI_REGISTER_COMMAND 'target ssh edit config'     'TARGET_SSH_EDIT_CONFIG all'
 CLI_REGISTER_COMMAND 'target ssh display config'  'TARGET_SSH_DISPLAY_GLOBAL_CONFIG'
 
-CLI_REGISTER_MENU    'target ?'
-CLI_REGISTER_COMMAND 'target ? rename ?'        'TARGET_RENAME \1 \2'
-CLI_REGISTER_COMMAND 'target ? realname'        'TARGET_REAL \1'
-CLI_REGISTER_COMMAND 'target ? add alias ?'     'TARGET_ADD_ALIAS \1 \2'
-CLI_REGISTER_COMMAND 'target ? del alias ?'     'TARGET_DEL_ALIAS \2'
-CLI_REGISTER_COMMAND 'target ? list aliases'    'TARGET_LIST_ALIASES \1'
+CLI_REGISTER_MENU    'target <target>'                       'Target related commands'
+CLI_REGISTER_COMMAND 'target <target> rename <new-name>'     'TARGET_RENAME \1 \2'
+CLI_REGISTER_COMMAND 'target <target> realname'              'TARGET_REAL \1'
+CLI_REGISTER_COMMAND 'target <target> add alias <alias>'     'TARGET_ADD_ALIAS \1 \2'
+CLI_REGISTER_COMMAND 'target <target> del alias <alias>'     'TARGET_DEL_ALIAS \2'
+CLI_REGISTER_COMMAND 'target <target> list aliases'          'TARGET_LIST_ALIASES \1'
 
-CLI_REGISTER_COMMAND 'target ? display conf'     'TARGET_DISPLAY_CONF \1'
-CLI_REGISTER_COMMAND 'target ? set conf ? ?'     'TARGET_SET_CONF \1 \2 \3'
-CLI_REGISTER_COMMAND 'target ? del conf ?'       'TARGET_SET_CONF \1 \2'
+CLI_REGISTER_COMMAND 'target <target> display conf'                'TARGET_DISPLAY_CONF \1'
+CLI_REGISTER_COMMAND 'target <target> set conf <variable> <value>' 'TARGET_SET_CONF \1 \2 \3'
+CLI_REGISTER_COMMAND 'target <target> del conf <variable>'         'TARGET_SET_CONF \1 \2'
 
-CLI_REGISTER_COMMAND 'target ? ssh test'                'TARGET_SSH_TEST \1'
-CLI_REGISTER_COMMAND 'target ? ssh install key'         'TARGET_SSH_INSTALL_KEY \1'
-CLI_REGISTER_COMMAND 'target ? ssh use default key'     'TARGET_SSH_USE_DEFAULT_KEY \1'
-CLI_REGISTER_COMMAND 'target ? ssh list logins'         'TARGET_SSH_LIST_LOGINS \1'
-CLI_REGISTER_COMMAND 'target ? ssh add login ?'         'TARGET_SSH_ADD_LOGIN \1 \2'
-CLI_REGISTER_COMMAND 'target ? ssh del login ?'         'TARGET_SSH_DEL_LOGIN \1 \2'
-CLI_REGISTER_COMMAND 'target ? ssh edit config'         'TARGET_SSH_EDIT_CONFIG \1'
-CLI_REGISTER_COMMAND 'target ? ssh display config'      'TARGET_SSH_DISPLAY_CONFIG \1'
-CLI_REGISTER_COMMAND 'target ? ssh display full config' 'TARGET_SSH_DISPLAY_FULL_CONFIG \1'
+CLI_REGISTER_MENU    'target <target> ssh'                     'Target\'s ssh related commands'
+CLI_REGISTER_COMMAND 'target <target> ssh test'                'TARGET_SSH_TEST \1'
+CLI_REGISTER_COMMAND 'target <target> ssh install key'         'TARGET_SSH_INSTALL_KEY \1'
+CLI_REGISTER_COMMAND 'target <target> ssh use default key'     'TARGET_SSH_USE_DEFAULT_KEY \1'
+CLI_REGISTER_COMMAND 'target <target> ssh list logins'         'TARGET_SSH_LIST_LOGINS \1'
+CLI_REGISTER_COMMAND 'target <target> ssh add login <login>'   'TARGET_SSH_ADD_LOGIN \1 \2'
+CLI_REGISTER_COMMAND 'target <target> ssh del login <login>'   'TARGET_SSH_DEL_LOGIN \1 \2'
+CLI_REGISTER_COMMAND 'target <target> ssh edit config'         'TARGET_SSH_EDIT_CONFIG \1'
+CLI_REGISTER_COMMAND 'target <target> ssh display config'      'TARGET_SSH_DISPLAY_CONFIG \1'
+CLI_REGISTER_COMMAND 'target <target> ssh display full config' 'TARGET_SSH_DISPLAY_FULL_CONFIG \1'
 
-CLI_REGISTER_MENU    'target ? access'
-CLI_REGISTER_COMMAND 'target ? access info'                     'TARGET_ACCESS_INFO \1'
-CLI_REGISTER_COMMAND 'target ? access list users'               'TARGET_ACCESS_LIST_USERS \1'
-CLI_REGISTER_COMMAND 'target ? access add user ?'               'TARGET_ACCESS_ADD_USER \1 \2'
-CLI_REGISTER_COMMAND 'target ? access del user ?'               'TARGET_ACCESS_DEL_USER \1 \2'
-CLI_REGISTER_COMMAND 'target ? access list usergroups'          'TARGET_ACCESS_LIST_USERGROUPS \1'
-CLI_REGISTER_COMMAND 'target ? access add usergroup ?'          'TARGET_ACCESS_ADD_USERGROUP \1 \2'
-CLI_REGISTER_COMMAND 'target ? access del usergroup ?'          'TARGET_ACCESS_DEL_USERGROUP \1 \2'
-CLI_REGISTER_COMMAND 'target ? ssh edit config'                 'TARGET_SSH_EDIT_CONFIG \1'
-CLI_REGISTER_COMMAND 'target ? ssh display config'              'TARGET_SSH_DISPLAY_CONFIG \1'
-CLI_REGISTER_COMMAND 'target ? ssh display full config'         'TARGET_SSH_DISPLAY_FULL_CONFIG \1'
-CLI_REGISTER_COMMAND 'target ? access with ? list users'        'TARGET_ACCESS_LIST_USERS \1 \2'
-CLI_REGISTER_COMMAND 'target ? access with ? add user ?'        'TARGET_ACCESS_ADD_USER \1 \2 \3'
-CLI_REGISTER_COMMAND 'target ? access with ? del user ?'        'TARGET_ACCESS_DEL_USER \1 \2 \3'
-CLI_REGISTER_COMMAND 'target ? access with ? list usergroups'   'TARGET_ACCESS_LIST_USERGROUPS \1 \2'
-CLI_REGISTER_COMMAND 'target ? access with ? add usergroup ?'   'TARGET_ACCESS_ADD_USERGROUP \1 \2 \3'
-CLI_REGISTER_COMMAND 'target ? access with ? del usergroup ?'   'TARGET_ACCESS_DEL_USERGROUP \1 \2 \3'
-CLI_REGISTER_COMMAND 'target ? ssh edit config for ?'           'TARGET_SSH_EDIT_CONFIG \1 \2'
-CLI_REGISTER_COMMAND 'target ? ssh display config for ?'        'TARGET_SSH_DISPLAY_CONFIG \1 \2'
-CLI_REGISTER_COMMAND 'target ? ssh display full config for ?'   'TARGET_SSH_DISPLAY_FULL_CONFIG \1 \2'
+CLI_REGISTER_MENU    'target [<login>@]<target> access'                           'Target\'s access related commands'
+CLI_REGISTER_COMMAND 'target [<login>@]<target> access info'                      'TARGET_ACCESS_INFO \1'
+CLI_REGISTER_COMMAND 'target [<login>@]<target> access list users'                'TARGET_ACCESS_LIST_USERS \1'
+CLI_REGISTER_COMMAND 'target [<login>@]<target> access add user <user>'           'TARGET_ACCESS_ADD_USER \1 \2'
+CLI_REGISTER_COMMAND 'target [<login>@]<target> access del user <user>'           'TARGET_ACCESS_DEL_USER \1 \2'
+CLI_REGISTER_COMMAND 'target [<login>@]<target> access list usergroups'           'TARGET_ACCESS_LIST_USERGROUPS \1'
+CLI_REGISTER_COMMAND 'target [<login>@]<target> access add usergroup <group>'     'TARGET_ACCESS_ADD_USERGROUP \1 \2'
+CLI_REGISTER_COMMAND 'target [<login>@]<target> access del usergroup <group>'     'TARGET_ACCESS_DEL_USERGROUP \1 \2'
+CLI_REGISTER_COMMAND 'target [<login>@]<target> ssh edit config'                  'TARGET_SSH_EDIT_CONFIG \1'
+CLI_REGISTER_COMMAND 'target [<login>@]<target> ssh display config'               'TARGET_SSH_DISPLAY_CONFIG \1'
+CLI_REGISTER_COMMAND 'target [<login>@]<target> ssh display full config'          'TARGET_SSH_DISPLAY_FULL_CONFIG \1'
+CLI_REGISTER_COMMAND 'target <target> access with <login> list users'             'TARGET_ACCESS_LIST_USERS \1 \2'
+CLI_REGISTER_COMMAND 'target <target> access with <login> add user <user>'        'TARGET_ACCESS_ADD_USER \1 \2 \3'
+CLI_REGISTER_COMMAND 'target <target> access with <login> del user <user>'        'TARGET_ACCESS_DEL_USER \1 \2 \3'
+CLI_REGISTER_COMMAND 'target <target> access with <login> list usergroups'        'TARGET_ACCESS_LIST_USERGROUPS \1 \2'
+CLI_REGISTER_COMMAND 'target <target> access with <login> add usergroup <group>'  'TARGET_ACCESS_ADD_USERGROUP \1 \2 \3'
+CLI_REGISTER_COMMAND 'target <target> access with <login> del usergroup <group>'  'TARGET_ACCESS_DEL_USERGROUP \1 \2 \3'
+CLI_REGISTER_COMMAND 'target <target> ssh edit config for <login>'                'TARGET_SSH_EDIT_CONFIG \1 \2'
+CLI_REGISTER_COMMAND 'target <target> ssh display config for <login>'             'TARGET_SSH_DISPLAY_CONFIG \1 \2'
+CLI_REGISTER_COMMAND 'target <target> ssh display full config for <login>'        'TARGET_SSH_DISPLAY_FULL_CONFIG \1 \2'
 
 
 
@@ -180,3 +187,5 @@ if [ "${SSHGATE_TEST:-}" != 'sshGateTest' ]; then
     && MAIL_SEND "${SSHGATE_MAIL_SUBJECT} (${SSHKEY_USER})" "${SSHGATE_MAIL_TO}"
   [ $? -eq 2 ] && NOTICE "No modification noticed. Repport e-mail will not be sent"
 fi
+
+__SSHGATE_CLI__='Loaded' # mainly for tests

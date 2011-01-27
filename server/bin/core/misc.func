@@ -1,0 +1,205 @@
+#
+# Copyright (c) 2010 Linagora
+# Patrick Guiran <pguiran@linagora.com>
+# http://github.com/Tauop/sshGate
+#
+# sshGate is free software, you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of
+# the License, or (at your option) any later version.
+#
+# sshGate is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# README ---------------------------------------------------------------------
+#
+# Collection of misc functions
+#
+# ----------------------------------------------------------------------------
+
+if [ "${__SSHGATE_CORE__}" != 'Loaded' ]; then
+  echo "ERROR: Only sshgate.core can load user.func."; exit 1;
+fi
+
+if [ "${__MISC_FUNC__:-}" != 'Loaded' ]; then
+  __MISC_FUNC__='Loaded'
+
+  # usage: BUILD_AUTHORIZED_KEYS
+  # desc: update the authorized_key2 of the sshGate account
+  # important: need to be root to be able to update authorized_keys2 and chown files
+  BUILD_AUTHORIZED_KEYS () {
+    local home_dir= authorized_keys2= user_key= real_target=
+
+    home_dir=$( SSHGATE_ACCOUNT_HOMEDIR )
+    if [ -z "${home_dir}" ]; then
+      ERROR "Can't find home directory of ${SSHGATE_GATE_ACCOUNT} user"
+      return 1;
+    fi
+
+    authorized_keys2="${home_dir}/.ssh/authorized_keys2"
+
+    [ ! -d "${home_dir}/.ssh/" ] && mkdir "${home_dir}/.ssh"
+
+    # reset the authorized_keys2 file
+    echo -n '' > "${authorized_keys2}"
+
+    for user in $( USERS_LIST ); do
+      user_key=$( cat ` private_USER_SSHKEY_FILE "${user}" ` )
+      echo "command=\"/bin/sh ${SSHGATE_DIR_BIN}/sshgate.sh ${user}\" ${user_key}" >> "${authorized_keys2}"
+    done
+
+    chown "${SSHGATE_GATE_ACCOUNT}" "${authorized_keys2}"
+    chmod u+r "${authorized_keys2}"
+    return 0;
+  }
+
+  # usage: BUILD_KNOWN_HOSTS
+  # desc: force re-write of sshgate account ~/.ssh/known_hosts file
+  # important: need to be root
+  BUILD_KNOWN_HOSTS () {
+    local home_dir= target= target_ip= alias=
+    home_dir=$( SSHGATE_ACCOUNT_HOMEDIR )
+    if [ -z "${home_dir}" ]; then
+      ERROR "Can't find home directory of ${SSHGATE_GATE_ACCOUNT} user"
+      return 1;
+    fi
+
+    echo -n '' > "${home_dir}/.ssh/known_hosts"
+    for target in $( TARGETS_LIST ); do
+      target=$( GET_HOST "${target}" )
+      echo -n "- ${target} ... "
+      target_ip=$( private_TARGET_GET_IP "${target}" )
+      target_port=$( private_TARGET_SSH_GET_CONFIG_FILE "${target}" $(GET_LOGIN "${target}") | grep 'Port' \
+                     | sed -e 's/^[^0-9]*\([0-9]*\)[^0-9]*$/\1/' )
+      target_port="${target_port:-22}"
+      private_ADD_TARGET_TO_KNOWN_HOST "${target}"    "${target_port}" "${home_dir}/.ssh/known_hosts"
+      if [ $? -ne 0 ]; then
+        # don't try for ip and alias if we failed here
+        echo 'KO'
+        continue
+      fi
+      private_ADD_TARGET_TO_KNOWN_HOST "${target_ip}" "${target_port}" "${home_dir}/.ssh/known_hosts"
+      echo 'OK'
+# TODO: seems to be useless now
+#      for alias in $( TARGET_LIST_ALIASES "${target}" ); do
+#        echo -n "  . ${alias} ... "
+#        private_ADD_TARGET_TO_KNOWN_HOST "${alias}" "${target_port}" "${home_dir}/.ssh/known_hosts"
+#        echo 'OK'
+#      done
+    done
+
+    return 0;
+  }
+
+  # usage: private_TARGET_GET_IP <target>
+  # desc: get the IP of a target
+  # note: if the target has a proxy, it takes the IP from the proxy
+  private_TARGET_GET_IP () {
+    local target= proxy= ssh_conf_file=
+
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
+    target=$( GET_HOST "$1" )
+    target=$( TARGET_REAL "$1" )
+    proxy=$( TARGET_GET_CONF "${target}" SSH_PROXY )
+    if [ -z "${proxy}" ]; then
+      host "${target}" | grep 'address' | head -n 1 | sed -e 's/^.* \([^ ]*\)$/\1/'
+    else
+      ssh_conf_file=$( TARGET_SSH_GET_CONFIG "${proxy}" )
+      ssh -o "ConnectTimeout 5" \
+          -o "BatchMode yes"    \
+          -F "${ssh_conf_file}" \
+          "${proxy}"            \
+          "host '${target}' | grep 'address' | head -n 1 | sed -e 's/^.* \([^ ]*\)$/\1/'"
+     rm -f "${ssh_conf_file}"
+    fi
+    return 0;
+  }
+
+  # usage: private_ADD_TARGET_TO_KNOWN_HOST <target> <target_port> [ <file> ]
+  # desc: force re-write of sshgate account ~/.ssh/authorized_keys2 file
+  # note: if <file> is not specified, determine it with SSHGATE_ACCOUNT_HOMEDIR
+  private_ADD_TARGET_TO_KNOWN_HOST () {
+    local target= target_port= target_real= file= proxy= ssh_conf_file=
+
+    if [ $# -ne 2 -a $# -ne 3 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
+    target="$1"; target_port="$2"
+    target_real=$( TARGET_REAL "${target}" )
+
+    [ $# -eq 3 ] && file="$3"
+    [ -z "${file}"   ] && file="$(SSHGATE_ACCOUNT_HOMEDIR)/.ssh/known_hosts"
+    [ ! -f "${file}" ] && touch "${file}"
+
+    [ -n "${target_real}" ] && proxy=$( TARGET_GET_CONF "${target}" SSH_PROXY )
+
+    if [ -z "${proxy}" ]; then
+      ssh-keyscan -p "${target_port}" -t dsa,rsa    "${target}"    >> "${file}" 2>/dev/null
+      [ $? -ne 0 ] && return 1
+      ssh-keyscan -p "${target_port}" -H -t dsa,rsa "${target}"    >> "${file}" 2>/dev/null
+      [ $? -ne 0 ] && return 1
+    else
+      ssh_conf_file=$( TARGET_SSH_GET_CONFIG "${target}" )
+      ssh -o "ConnectTimeout 5" \
+          -o "BatchMode yes"    \
+          -F "${ssh_conf_file}" \
+          "${proxy}"            \
+          "ssh-keyscan -p ${target_port} -t dsa,rsa '${target}' 2>/dev/null" >> "${file}"
+      if [ $? -ne 0 ]; then
+        rm -f "${ssh_conf_file}"
+        return 1
+      fi
+      ssh -o "ConnectTimeout 5" \
+          -o "BatchMode yes"    \
+          -F "${ssh_conf_file}" \
+          "${proxy}"            \
+          "ssh-keyscan -p ${target_port} -H -t dsa,rsa '${target}' 2>/dev/null" >> "${file}"
+      if [ $? -ne 0 ]; then
+        rm -f "${ssh_conf_file}"
+        return 1
+      fi
+      rm -f "${ssh_conf_file}"
+    fi
+
+    chown "${SSHGATE_GATE_ACCOUNT}" "${file}"
+    return 0;
+  }
+
+  # usage: private_DELETE_TARGET_FROM_KNOWN_HOST <target> [ <file> ]
+  # desc: delete the public host sshkey of the <target> from the known_hosts file
+  # note: if <file> is not specified, determine it with SSHGATE_ACCOUNT_HOMEDIR
+  private_DELETE_TARGET_FROM_KNOWN_HOST() {
+    local target= target_port= target_hash= file= tmp_file=
+    if [ $# -eq 0 -o $# -gt 2 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
+    target="$1"
+    [ $# -eq 2 ] && file="$2"
+    [ -z "${file}" ] && file="$(SSHGATE_ACCOUNT_HOMEDIR)/.ssh/known_hosts"
+    tmp_file="/tmp/file.$( RANDOM )"
+
+    target_port=$( private_TARGET_SSH_GET_CONFIG_FILE "${target}" $(GET_LOGIN "${target}") | grep 'Port' \
+                   | sed -e 's/^[^0-9]*\([0-9]*\)[^0-9]*$/\1/' )
+
+    private_ADD_TARGET_TO_KNOWN_HOST "${target}" "${target_port}" "${tmp_file}"
+    target_hash=$( < "${tmp_file}" grep -v "${target}" | cut -d' ' -f 1)
+
+    grep -v "^${target}"      < "${file}"     > "${tmp_file}"
+    grep -v "^${target_hash}" < "${tmp_file}" > "${file}"
+
+    chown "${SSHGATE_GATE_ACCOUNT}" "${file}"
+
+    rm -f "${tmp_file}"
+  }
+
+fi # if [ "${__MISC_FUNC__:-}" != 'Loaded' ]; then
