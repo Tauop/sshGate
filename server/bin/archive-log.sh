@@ -18,20 +18,45 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-# %% __SSHGATE_CONF__ %% <-- WARNING: don't remove. used by install.sh
+if [ $# -eq 1 ]; then
+  month_ago="$1"
+fi
 
-archive="${SSHGATE_DIR_ARCHIVE}/$( date +%Y%m --date '-1 month' )_log.tar"
-tmp_file="/tmp/files.${RANDOM}"
+load() {
+  local var= value= file=
 
-find "${SSHGATE_DIR_LOG}" -name "$( date +%Y%m --date '-1 month' )*" >  "${tmp_file}"
+  var="$1"; file="$2"
+  value=$( eval "echo \"\${${var}:-}\"" )
+
+  [ -n "${value}" ] && return 1;
+  if [ -f "${file}" ]; then
+    . "${file}"
+  else
+    echo "ERROR: Unable to load ${file}"
+    exit 2
+  fi
+  return 0;
+}
+
+
+load SSHGATE_DIRECTORY       '/etc/sshgate.conf'
+load SCRIPT_HELPER_DIRECTORY '/etc/ScriptHelper.conf'
+
+load __SSHGATE_SETUP__       "${SSHGATE_DIRECTORY}/data/sshgate.setup"
+load __LIB_RANDOM__          "${SCRIPT_HELPER_DIRECTORY}/random.lib.sh"
+
+archive="${SSHGATE_DIR_ARCHIVE}/$( date +%Y%m --date "-${month_ago} month" )_log.tar"
+tmp_file="/tmp/files.$(RANDOM)"
+
+find "${SSHGATE_DIR_LOG}" -name "$( date +%Y%m --date "-${month_ago} month" )*" >  "${tmp_file}"
 find "${SSHGATE_DIR_LOG}" -name 'global.log'                         >> "${tmp_file}"
 
 tar cf "${archive}" "${SSHGATE_DIR_LOG}/sshgate.log"
 cat "${tmp_file}" | xargs tar rf "${archive}"
 gzip "${archive}"
 
-cat "${tmp_file}" | xargs rm -f
-rm -f "${SSHGATE_DIR_LOG}/sshgate.log"
+#cat "${tmp_file}" | xargs rm -f
+#rm -f "${SSHGATE_DIR_LOG}/sshgate.log"
 rm -f "${tmp_file}"
 
 exit 0;
