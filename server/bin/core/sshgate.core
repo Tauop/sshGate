@@ -124,12 +124,10 @@ if [ "${__SSHGATE_CORE__:-}" != 'Loaded' ]; then
       login=$( TARGET_GET_CONF "${target}" DEFAULT_SSH_LOGIN )
       if [ -z "${login}" ]; then
         login=$( TARGET_SSH_LIST_LOGINS "${target}" | grep "${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}" )
-        
       fi
     fi
     [ -n "${login}" ] && echo "${login}" || echo "${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}"
 
-    echo "${login}"
     return 0;
   }
 

@@ -108,7 +108,7 @@ CLI_REGISTER_COMMAND 'target del <target>'                                      
 CLI_REGISTER_COMMAND 'target alias list'                                           'TARGET_LIST_ALIASES'
 CLI_REGISTER_COMMAND 'target alias del <alias>'                                    'TARGET_DEL_ALIAS \1'
 
-CLI_REGISTER_MENU    'target ssh'                 'Target\'s ssh related commands'
+CLI_REGISTER_MENU    'target ssh'                 "Targets ssh related commands"
 CLI_REGISTER_COMMAND 'target ssh test all'        'TARGET_SSH_TEST_ALL'
 CLI_REGISTER_COMMAND 'target ssh install key all' 'TARGET_SSH_INSTALL_ALL_KEYS'
 CLI_REGISTER_COMMAND 'target ssh edit config'     'TARGET_SSH_EDIT_CONFIG all'
@@ -125,7 +125,7 @@ CLI_REGISTER_COMMAND 'target <target> display conf'                'TARGET_DISPL
 CLI_REGISTER_COMMAND 'target <target> set conf <variable> <value>' 'TARGET_SET_CONF \1 \2 \3'
 CLI_REGISTER_COMMAND 'target <target> del conf <variable>'         'TARGET_SET_CONF \1 \2'
 
-CLI_REGISTER_MENU    'target <target> ssh'                     'Target\'s ssh related commands'
+CLI_REGISTER_MENU    'target <target> ssh'                     "Targets ssh related commands"
 CLI_REGISTER_COMMAND 'target <target> ssh test'                'TARGET_SSH_TEST \1'
 CLI_REGISTER_COMMAND 'target <target> ssh install key'         'TARGET_SSH_INSTALL_KEY \1'
 CLI_REGISTER_COMMAND 'target <target> ssh use default key'     'TARGET_SSH_USE_DEFAULT_KEY \1'
@@ -136,7 +136,7 @@ CLI_REGISTER_COMMAND 'target <target> ssh edit config'         'TARGET_SSH_EDIT_
 CLI_REGISTER_COMMAND 'target <target> ssh display config'      'TARGET_SSH_DISPLAY_CONFIG \1'
 CLI_REGISTER_COMMAND 'target <target> ssh display full config' 'TARGET_SSH_DISPLAY_FULL_CONFIG \1'
 
-CLI_REGISTER_MENU    'target [<login>@]<target> access'                           'Target\'s access related commands'
+CLI_REGISTER_MENU    'target [<login>@]<target> access'                           'Targets access related commands'
 CLI_REGISTER_COMMAND 'target [<login>@]<target> access info'                      'TARGET_ACCESS_INFO \1'
 CLI_REGISTER_COMMAND 'target [<login>@]<target> access list users'                'TARGET_ACCESS_LIST_USERS \1'
 CLI_REGISTER_COMMAND 'target [<login>@]<target> access add user <user>'           'TARGET_ACCESS_ADD_USER \1 \2'
