@@ -173,6 +173,7 @@ DOTHIS 'Reload configuration'
     CONF_LOAD
   else
     CONF_SET_FILE "/etc/sshgate.conf"
+    CONF_SAVE SSHGATE_VERSION "${this_version}"
     CONF_LOAD
   fi
   # load sshGate setup for constants
@@ -273,7 +274,7 @@ if [ "${SSHGATE_USE_REMOTE_ADMIN_CLI}" = 'Y' -a "${action}" = 'install' ]; then
     [ "${sudo_no_passwd}" = 'Y' ] && sudo_no_passwd='NOPASSWD:' || sudo_no_passwd=''
     grep -v "^${SSHGATE_GATE_ACCOUNT} " < /etc/sudoers > "${file}"
     mv "${file}" /etc/sudoers
-    echo "${SSHGATE_GATE_ACCOUNT} ALL=(root) ${sudo_no_passwd}${SSHGATE_DIR_BIN}/sshgate" >> /etc/sudoers
+    echo "${SSHGATE_GATE_ACCOUNT} ALL=(root) ${sudo_no_passwd}${SSHGATE_DIR_BIN}/sshgate-cli" >> /etc/sudoers
     chmod 0440 /etc/sudoers
     rm -f "${file}"
   OK
