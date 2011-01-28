@@ -35,6 +35,7 @@ GET_MIGRATIONS() {
     migrations="${migrations} UPDATE_ACCESS_FILENAMES"
     migrations="${migrations} ADD_DEFAULT_LOGIN_TO_TARGET_LOGINS_LIST"
     migrations="${migrations} REMOVE_DISABLED_TARGET_VARIABLES"
+    migrations="${migrations} MOVE_CONF_TO_DATA"
   fi
 
   echo "${migrations}"
@@ -80,3 +81,6 @@ REMOVE_DISABLED_TARGET_VARIABLES () {
   return 0;
 }
 
+MOVE_CONF_TO_DATA () {
+  mv "${SSHGATE_DIRECTORY}/conf" "${SSHGATE_DIRECTORY}/data"
+}
