@@ -165,7 +165,10 @@ if [ "${__USER_FUNC__:-}" != 'Loaded' ]; then
       private_MAIL_APPEND "User '${user}' configuration: ${var} removed"
     fi
 
-    [ -f "${file}" ] && chmod a+r "${file}" # ensure dans file permissions are good
+    if [ -f "${file}" ]; then
+      chmod a+r "${file}" # ensure dans file permissions are good
+      chown "${SSHGATE_GATE_ACCOUNT}" "${file}"
+    fi
     return 0;
   }
 
@@ -188,7 +191,10 @@ if [ "${__USER_FUNC__:-}" != 'Loaded' ]; then
     file="${SSHGATE_DIR_USERS}/${user}.properties"
     CONF_DEL --conf-file "${file}" "${var}"
     [ ! -s "${file}" ] && rm -f "${file}"
-    [ -f "${file}" ] && chmod a+r "${file}" # ensure dans file permissions are good
+    if [ -f "${file}" ]; then
+      chmod a+r "${file}" # ensure dans file permissions are good
+      chown "${SSHGATE_GATE_ACCOUNT}" "${file}"
+    fi
 
     private_MAIL_APPEND "User '${user}' configuration: ${var} removed"
     return 0;
