@@ -67,7 +67,10 @@ user_id=`id -u`
 [ "${user_id}" != "0" ] \
   && KO "You must execute $0 with root privileges"
 
-CLI_REGISTER_HELP '/tmp/sshgate-cli-help.txt' SSHGATE_GET_HELP
+CLI_REGISTER_HELP '/tmp/sshgate-cli-help.txt' \
+                  SSHGATE_GET_HELP            \
+                  SSHGATE_DISPLAY_HELP        \
+                  SSHGATE_DISPLAY_HELP_FOR
 
 CLI_REGISTER_MENU    'user'                                        'User related commands'
 CLI_REGISTER_COMMAND 'user list'                                   'USERS_LIST'
@@ -75,7 +78,7 @@ CLI_REGISTER_COMMAND 'user list <pattern>'                         'USERS_LIST \
 CLI_REGISTER_COMMAND 'user add <user> key <sshkey> mail <email>'   'USER_ADD \1 \2 \3'
 CLI_REGISTER_COMMAND 'user del <user>'                             'USER_DEL \1'
 
-CLI_REGISTER_MENU    'user <user>'                                  'User related commands'
+CLI_REGISTER_MENU    'user <user>'
 CLI_REGISTER_COMMAND 'user <user> display conf'                     'USER_DISPLAY_CONF \1'
 CLI_REGISTER_COMMAND 'user <user> set conf <variable> <value>'      'USER_SET_CONF \1 \2 \3'
 CLI_REGISTER_COMMAND 'user <user> del conf <variable>'              'USER_SET_CONF \1 \2'
@@ -91,7 +94,7 @@ CLI_REGISTER_COMMAND 'usergroup list'        'USERGROUPS_LIST'
 CLI_REGISTER_COMMAND 'usergroup add <group>' 'USERGROUP_ADD \1'
 CLI_REGISTER_COMMAND 'usergroup del <group>' 'USERGROUP_DEL \1'
 
-CLI_REGISTER_MENU    'usergroup <group>'                   'Usergroup related commands'
+CLI_REGISTER_MENU    'usergroup <group>'
 CLI_REGISTER_COMMAND 'usergroup <group> list users'        'USERGROUP_LIST_USERS \1'
 CLI_REGISTER_COMMAND 'usergroup <group> add user <user>'   'USERGROUP_ADD_USER \1 \2'
 CLI_REGISTER_COMMAND 'usergroup <group> del user <user>'   'USERGROUP_DEL_USER \1 \2'
@@ -114,7 +117,7 @@ CLI_REGISTER_COMMAND 'target ssh install key all' 'TARGET_SSH_INSTALL_ALL_KEYS'
 CLI_REGISTER_COMMAND 'target ssh edit config'     'TARGET_SSH_EDIT_CONFIG all'
 CLI_REGISTER_COMMAND 'target ssh display config'  'TARGET_SSH_DISPLAY_GLOBAL_CONFIG'
 
-CLI_REGISTER_MENU    'target <target>'                       'Target related commands'
+CLI_REGISTER_MENU    'target <target>'
 CLI_REGISTER_COMMAND 'target <target> rename <new-name>'     'TARGET_RENAME \1 \2'
 CLI_REGISTER_COMMAND 'target <target> realname'              'TARGET_REAL \1'
 CLI_REGISTER_COMMAND 'target <target> add alias <alias>'     'TARGET_ADD_ALIAS \1 \2'
@@ -158,7 +161,7 @@ CLI_REGISTER_COMMAND 'target <target> ssh display config for <login>'           
 CLI_REGISTER_COMMAND 'target <target> ssh display full config for <login>'        'TARGET_SSH_DISPLAY_FULL_CONFIG \1 \2'
 
 
-
+CLI_REGISTER_MENU 'build' 'Special internal build command'
 CLI_REGISTER_COMMAND 'build authorized_keys' 'BUILD_AUTHORIZED_KEYS'
 CLI_REGISTER_COMMAND 'build known_hosts'     'BUILD_KNOWN_HOSTS'
 
