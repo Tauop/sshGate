@@ -47,7 +47,7 @@ if [ "${__TARGET_FUNC__:-}" != 'Loaded' ]; then
   # note: if no <login> is given, use ${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}
   # important: need to be root to be able to chown ssh priv key
   TARGET_ADD () {
-    local target= privsshkey= tmp_file= proxy= reply= target_privsshkey= target_pubsshkey=
+    local target= privsshkey= tmp_file= proxy= proxy_login= reply= target_privsshkey= target_pubsshkey=
     if [ $# -lt 1 -a $# -gt 3 ]; then
       BAD_ARGUMENTS ; return 1;
     fi
@@ -64,7 +64,9 @@ if [ "${__TARGET_FUNC__:-}" != 'Loaded' ]; then
     fi
 
     if [ $# -eq 2 ]; then
-      proxy=$( TARGET_REAL "$2" )
+      proxy=$( GET_HOST "$2" )
+      proxy_login=$( GET_LOGIN "$2" )
+      proxy=$( TARGET_REAL "${proxy}" )
       if [ -z "${proxy}" ]; then
         ERROR "Proxy target host '${proxy}' doesn't exist"; return 1;
       fi
@@ -72,7 +74,11 @@ if [ "${__TARGET_FUNC__:-}" != 'Loaded' ]; then
 
 
     # check that the host exists (DNS/IP)
-    ping -c 1 "${target}" >/dev/null 2>/dev/null
+    if [ -z "${proxy}" ]; then
+      ping -c 1 "${target}" >/dev/null 2>/dev/null
+    else
+      TARGET_SSH_RUN_COMMAND "${login}@${proxy}" "ping -c 1 '${target}' >/dev/null 2>/dev/null"
+    fi
     if [ $? -ne 0 ]; then
       echo "Warning: Unable to ping ${target} !";
       ASK --yesno reply 'Continue [Y] ? '
@@ -97,7 +103,9 @@ if [ "${__TARGET_FUNC__:-}" != 'Loaded' ]; then
     target_privsshkey="${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGET_PRIVATE_SSHKEY_FILENAME}"
     target_pubsshkey="${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGET_PUBLIC_SSHKEY_FILENAME}"
 
+    # create the target now
     mkdir -p "${SSHGATE_DIR_TARGETS}/${target}"
+    [ -n "${proxy}" ] && TARGET_SET_CONF "${target}" SSH_PROXY "${proxy_login}@${proxy}"
 
     if [ -n "${privsshkey}" ]; then
       mv "${privsshkey}" "${target_privsshkey}"
@@ -115,7 +123,7 @@ if [ "${__TARGET_FUNC__:-}" != 'Loaded' ]; then
     fi
 
     TARGET_SSH_ADD_LOGIN "${target}" "${login}"
-    private_ADD_TARGET_TO_KNOWN_HOST "${target}" "22"
+    private_ADD_TARGET_TO_KNOWN_HOST "${target}"
     if [ $? -ne 0 ]; then
       echo "NOTICE: Can't add identity of host in know_hosts file. Use 'build known_hosts' to add it manually"
       echo "NOTICE: Public ssh key of '${target}' can't be installed on '${login}@${target}'. Install it manually"
@@ -450,6 +458,7 @@ if [ "${__TARGET_FUNC__:-}" != 'Loaded' ]; then
       echo " IdentityFile ${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}" >> "${tmpfile}"
       echo " IdentitiesOnly yes"                                         >> "${tmpfile}"
       echo " StrictHostKeyChecking yes"                                  >> "${tmpfile}"
+      echo " HashKnownHosts no"                                          >> "${tmpfile}"
       echo " UserKnownHostsFile ${known_hosts_file}"                     >> "${tmpfile}"
       if [ -r "${SSHGATE_DIR_DATA}/${SSHGATE_TARGETS_SSH_CONFIG_FILENAME}.all" ]; then
         cat "${SSHGATE_DIR_DATA}/${SSHGATE_TARGETS_SSH_CONFIG_FILENAME}.all" >> "${tmpfile}"
@@ -662,10 +671,39 @@ if [ "${__TARGET_FUNC__:-}" != 'Loaded' ]; then
     return 0;
   }
 
-  # usage: TARGET_SSH_INSTALL_ALL_KEYS
+  # usage: TARGET_SSH_RUN_COMMAND [<login>@]<target> <remote-command>
+  # desc: Execute a command on the remote target host
+  # note: if <login> isn't given, use the target's default ssh login
+  TARGET_SSH_RUN_COMMAND () {
+    local target= login= remote_command= ssh_conf_file= result=
+     if [ $# -ne 2 ]; then
+       BAD_ARGUMENTS ; return 1;
+     fi
+
+     target=$( GET_HOST "$1" )
+     login=$( GET_LOGIN "$1" )
+     remote_command="$2"
+     if [ -z "${target}" ]; then
+       ERROR "Target host '${target}' doesn't exist"; return 1;
+     fi
+
+     ssh_conf_file=$( TARGET_SSH_GET_CONFIG "${target}" "${login}" )
+     [ $? -ne 0 ] && return 1;
+     ssh -o "ConnectTimeout 5" \
+         -F "${ssh_conf_file}" \
+         "${login}@${target}"  \
+         "${remote_command}" 2>/dev/null
+     result=$?
+     rm -f "${ssh_conf_file}"
+     return ${result}
+  }
+
+  # usage: TARGET_SSH_INSTALL_KEY [<login>@]<target>
+  # usage: TARGET_SSH_INSTALL_KEY <target> [<login>]
   # desc: Try to install public sshkey on all targets
-  # note: you may have access to the <target_host> with the sshkey of the
+  # note: you may have access to the <target> with the sshkey of the
   #       root account, or with the your sshkey and sshagent forwarding.
+  # note: if <login> isn't specified, use the target's default ssh login
   TARGET_SSH_INSTALL_KEY () {
     local target= login= sshkey_file= ssh_conf_file=
     if [ $# -ne 1 -a $# -ne 2 ]; then
@@ -689,22 +727,16 @@ if [ "${__TARGET_FUNC__:-}" != 'Loaded' ]; then
       ERROR "Unable to find private ssh key of '${target}'" ; return 1;
     fi
 
-    ssh_conf_file=$( TARGET_SSH_GET_CONFIG "${target}" "${login}" )
-
-    cat "${sshkey_file}" \
-      | ssh -o "ConnectTimeout 5"                          \
-            -F "${ssh_conf_file}"                          \
-            "${login}@${target}"                           \
-            "umask 077; test -d .ssh || mkdir .ssh ; cat >> .ssh/authorized_keys" 2>/dev/null
+    cat "${sshkey_file}"          \
+      | TARGET_SSH_RUN_COMMAND "$1" "umask 077; test -d .ssh || mkdir .ssh ; cat >> .ssh/authorized_keys"
     if [ $? -ne 0 ]; then
       echo "NOTICE: Public ssh key of '${target}' can't be installed on '${login}@${target}'. Install it manually"
     fi
 
-    rm -f "${ssh_conf_file}"
     return 0
   }
 
-  # usage: TARGET_SSH_INSTALL_KEY <target_host> <login>
+  # usage: TARGET_SSH_INSTALL_ALL_KEYS
   # desc: Try to install the public sshkey on the target
   # note: you may have access to the <target_host> with the sshkey of the
   #       root account, or with the your sshkey and sshagent forwarding.

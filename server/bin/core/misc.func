@@ -73,10 +73,6 @@ if [ "${__MISC_FUNC__:-}" != 'Loaded' ]; then
     for target in $( TARGETS_LIST ); do
       target=$( GET_HOST "${target}" )
       echo -n "- ${target} ... "
-      target_ip=$( private_TARGET_GET_IP "${target}" )
-      target_port=$( private_TARGET_SSH_GET_CONFIG_FILE "${target}" $(GET_LOGIN "${target}") | grep 'Port' \
-                     | sed -e 's/^[^0-9]*\([0-9]*\)[^0-9]*$/\1/' )
-      target_port="${target_port:-22}"
       private_ADD_TARGET_TO_KNOWN_HOST "${target}"    "${target_port}" "${home_dir}/.ssh/known_hosts"
       if [ $? -ne 0 ]; then
         # don't try for ip and alias if we failed here
@@ -85,12 +81,6 @@ if [ "${__MISC_FUNC__:-}" != 'Loaded' ]; then
       fi
       private_ADD_TARGET_TO_KNOWN_HOST "${target_ip}" "${target_port}" "${home_dir}/.ssh/known_hosts"
       echo 'OK'
-# TODO: seems to be useless now
-#      for alias in $( TARGET_LIST_ALIASES "${target}" ); do
-#        echo -n "  . ${alias} ... "
-#        private_ADD_TARGET_TO_KNOWN_HOST "${alias}" "${target_port}" "${home_dir}/.ssh/known_hosts"
-#        echo 'OK'
-#      done
     done
 
     return 0;
@@ -112,62 +102,45 @@ if [ "${__MISC_FUNC__:-}" != 'Loaded' ]; then
     if [ -z "${proxy}" ]; then
       host "${target}" | grep 'address' | head -n 1 | sed -e 's/^.* \([^ ]*\)$/\1/'
     else
-      ssh_conf_file=$( TARGET_SSH_GET_CONFIG "${proxy}" )
-      ssh -o "ConnectTimeout 5" \
-          -o "BatchMode yes"    \
-          -F "${ssh_conf_file}" \
-          "${proxy}"            \
+      TARGET_SSH_RUN_COMMAND "${proxy}" \
           "host '${target}' | grep 'address' | head -n 1 | sed -e 's/^.* \([^ ]*\)$/\1/'"
-     rm -f "${ssh_conf_file}"
     fi
     return 0;
   }
 
-  # usage: private_ADD_TARGET_TO_KNOWN_HOST <target> <target_port> [ <file> ]
+  # usage: private_ADD_TARGET_TO_KNOWN_HOST <target> [ <file> ]
   # desc: force re-write of sshgate account ~/.ssh/authorized_keys2 file
   # note: if <file> is not specified, determine it with SSHGATE_ACCOUNT_HOMEDIR
   private_ADD_TARGET_TO_KNOWN_HOST () {
-    local target= target_port= target_real= file= proxy= ssh_conf_file=
+    local target= target_ip= target_port= target_real= file= proxy= ssh_conf_file=
 
-    if [ $# -ne 2 -a $# -ne 3 ]; then
+    if [ $# -ne 1 -a $# -ne 2 ]; then
       BAD_ARGUMENTS ; return 1;
     fi
 
-    target="$1"; target_port="$2"
-    target_real=$( TARGET_REAL "${target}" )
+    target_real=$( TARGET_REAL "$1" )
+    if [ -z "${target_real}" ]; then
+      ERROR "Target host '${target}' doesn't exist"
+    fi
 
-    [ $# -eq 3 ] && file="$3"
+    [ $# -eq 2 ] && file="$2"
     [ -z "${file}"   ] && file="$(SSHGATE_ACCOUNT_HOMEDIR)/.ssh/known_hosts"
     [ ! -f "${file}" ] && touch "${file}"
 
-    [ -n "${target_real}" ] && proxy=$( TARGET_GET_CONF "${target}" SSH_PROXY )
+    target_ip=$( private_TARGET_GET_IP "${target_real}" )
+    target_port=$( private_TARGET_SSH_GET_CONFIG_FILE "${target_real}" $(GET_LOGIN "${target}") \
+                   | grep 'Port' | sed -e 's/^[^0-9]*\([0-9]*\)[^0-9]*$/\1/' )
+    target_port="${target_port:-22}"
+
+    [ -n "${target_real}" ] && proxy=$( TARGET_GET_CONF "${target_real}" SSH_PROXY )
 
     if [ -z "${proxy}" ]; then
-      ssh-keyscan -p "${target_port}" -t dsa,rsa    "${target}"    >> "${file}" 2>/dev/null
-      [ $? -ne 0 ] && return 1
-      ssh-keyscan -p "${target_port}" -H -t dsa,rsa "${target}"    >> "${file}" 2>/dev/null
+      ssh-keyscan -p "${target_port}" -t dsa,rsa    "${target_real},${target_ip}"    >> "${file}" 2>/dev/null
       [ $? -ne 0 ] && return 1
     else
-      ssh_conf_file=$( TARGET_SSH_GET_CONFIG "${target}" )
-      ssh -o "ConnectTimeout 5" \
-          -o "BatchMode yes"    \
-          -F "${ssh_conf_file}" \
-          "${proxy}"            \
-          "ssh-keyscan -p ${target_port} -t dsa,rsa '${target}' 2>/dev/null" >> "${file}"
-      if [ $? -ne 0 ]; then
-        rm -f "${ssh_conf_file}"
-        return 1
-      fi
-      ssh -o "ConnectTimeout 5" \
-          -o "BatchMode yes"    \
-          -F "${ssh_conf_file}" \
-          "${proxy}"            \
-          "ssh-keyscan -p ${target_port} -H -t dsa,rsa '${target}' 2>/dev/null" >> "${file}"
-      if [ $? -ne 0 ]; then
-        rm -f "${ssh_conf_file}"
-        return 1
-      fi
-      rm -f "${ssh_conf_file}"
+      TARGET_SSH_RUN_COMMAND "${proxy}" \
+          "ssh-keyscan -p ${target_port} -t dsa,rsa '${target_real},${target_ip}' 2>/dev/null" >> "${file}"
+      [ $? -ne 0 ] && return 1
     fi
 
     chown "${SSHGATE_GATE_ACCOUNT}" "${file}"
@@ -178,28 +151,20 @@ if [ "${__MISC_FUNC__:-}" != 'Loaded' ]; then
   # desc: delete the public host sshkey of the <target> from the known_hosts file
   # note: if <file> is not specified, determine it with SSHGATE_ACCOUNT_HOMEDIR
   private_DELETE_TARGET_FROM_KNOWN_HOST() {
-    local target= target_port= target_hash= file= tmp_file=
+    local target= file= tmp_file=
     if [ $# -eq 0 -o $# -gt 2 ]; then
       BAD_ARGUMENTS ; return 1;
     fi
 
-    target="$1"
+    target=$( GET_HOST "$1" )
     [ $# -eq 2 ] && file="$2"
     [ -z "${file}" ] && file="$(SSHGATE_ACCOUNT_HOMEDIR)/.ssh/known_hosts"
     tmp_file="/tmp/file.$( RANDOM )"
 
-    target_port=$( private_TARGET_SSH_GET_CONFIG_FILE "${target}" $(GET_LOGIN "${target}") | grep 'Port' \
-                   | sed -e 's/^[^0-9]*\([0-9]*\)[^0-9]*$/\1/' )
+    [ -e "${file}"     ] && grep -v "^${target}"      < "${file}"     > "${tmp_file}"
+    [ -e "${tmp_file}" ] && mv "${tmp_file}" "${file}"
+    [ -e "${file}"     ] && chown "${SSHGATE_GATE_ACCOUNT}" "${file}"
 
-    private_ADD_TARGET_TO_KNOWN_HOST "${target}" "${target_port}" "${tmp_file}"
-    target_hash=$( < "${tmp_file}" grep -v "${target}" | cut -d' ' -f 1)
-
-    grep -v "^${target}"      < "${file}"     > "${tmp_file}"
-    grep -v "^${target_hash}" < "${tmp_file}" > "${file}"
-
-    chown "${SSHGATE_GATE_ACCOUNT}" "${file}"
-
-    rm -f "${tmp_file}"
   }
 
 fi # if [ "${__MISC_FUNC__:-}" != 'Loaded' ]; then

@@ -98,6 +98,7 @@ Host *
  IdentityFile ${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}
  IdentitiesOnly yes
  StrictHostKeyChecking yes
+ HashKnownHosts no
  UserKnownHostsFile $(SSHGATE_ACCOUNT_HOMEDIR)/.ssh/known_hosts
 ConnectTimeout 10
 
@@ -117,6 +118,7 @@ Host *
  IdentityFile ${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}
  IdentitiesOnly yes
  StrictHostKeyChecking yes
+ HashKnownHosts no
  UserKnownHostsFile $(SSHGATE_ACCOUNT_HOMEDIR)/.ssh/known_hosts
 ConnectTimeout 10
 
@@ -134,6 +136,7 @@ Host ${hostname}
  ProxyCommand ssh -F ssh_conf_file ${user_unix_test_account}@${alias} nc %h %p
 ConnectTimeout 30
 ForwardX11 yes
+sshGate >  target ${hostname} del conf SSH_PROXY
 sshGate >  target ${hostname} ssh del login root
 sshGate >  target ${hostname} ssh list logins
 ${user_unix_test_account}
