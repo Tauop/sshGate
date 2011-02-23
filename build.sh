@@ -43,16 +43,20 @@ fi
 . "${SCRIPT_HELPER_DIRECTORY}/ask.lib.sh"
 . "${SCRIPT_HELPER_DIRECTORY}/exec.lib.sh"
 
+# ----------------------------------------------------------------------------
 version=
 ASK version "sshgate version ?"
 
+# build are used for testing :-) (can be empty)
 build=
-ASK build "sshGate build number ?"
+ASK --allow-empty build "sshGate build number ?"
 
 include_script_helper='N'
 if [ "${action}" = 'all' -o "${action}" = 'server' ]; then
   ASK --yesno include_script_helper 'Include ScriptHelper in package ?'
 fi
+
+# ----------------------------------------------------------------------------
 
 if [ "${action}" = 'all' -o "${action}" = 'client' ]; then
   DOTHIS 'Build sshgate-client package'
