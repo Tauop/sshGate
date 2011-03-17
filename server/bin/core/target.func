@@ -187,10 +187,7 @@ if [ "${__TARGET_FUNC__:-}" != 'Loaded' ]; then
     TARGET_ADD_ALIAS "${new_name}" "${target}"
     echo "Target alias '${target}' created"
 
-    target_port=$( private_TARGET_SSH_GET_CONFIG_FILE "${target}" $(GET_LOGIN "${target}") | grep 'Port' \
-                   | sed -e 's/^[^0-9]*\([0-9]*\)[^0-9]*$/\1/' )
-    target_port="${target_port:-22}"
-    private_ADD_TARGET_TO_KNOWN_HOST "${new_name}" "${target_port}"
+    private_ADD_TARGET_TO_KNOWN_HOST "${new_name}"
     private_MAIL_APPEND "Target ${target} renamed to ${new_name}"
 
     return 0;

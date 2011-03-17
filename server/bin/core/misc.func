@@ -62,7 +62,7 @@ if [ "${__MISC_FUNC__:-}" != 'Loaded' ]; then
   # desc: force re-write of sshgate account ~/.ssh/known_hosts file
   # important: need to be root
   BUILD_KNOWN_HOSTS () {
-    local home_dir= target= target_ip= alias=
+    local home_dir= target= alias=
     home_dir=$( SSHGATE_ACCOUNT_HOMEDIR )
     if [ -z "${home_dir}" ]; then
       ERROR "Can't find home directory of ${SSHGATE_GATE_ACCOUNT} user"
@@ -73,13 +73,12 @@ if [ "${__MISC_FUNC__:-}" != 'Loaded' ]; then
     for target in $( TARGETS_LIST ); do
       target=$( GET_HOST "${target}" )
       echo -n "- ${target} ... "
-      private_ADD_TARGET_TO_KNOWN_HOST "${target}"    "${target_port}" "${home_dir}/.ssh/known_hosts"
+      private_ADD_TARGET_TO_KNOWN_HOST "${target}" "${home_dir}/.ssh/known_hosts"
       if [ $? -ne 0 ]; then
         # don't try for ip and alias if we failed here
         echo 'KO'
         continue
       fi
-      private_ADD_TARGET_TO_KNOWN_HOST "${target_ip}" "${target_port}" "${home_dir}/.ssh/known_hosts"
       echo 'OK'
     done
 
