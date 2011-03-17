@@ -60,9 +60,11 @@ load() {
 }
 
 load SSHGATE_DIRECTORY       '/etc/sshgate.conf'
+load SCRIPT_HELPER_DIRECTORY '/etc/scripthealper.conf'
 
 load __SSHGATE_SETUP__ "${SSHGATE_DIRECTORY}/data/sshgate.setup"
 load __SSHGATE_CORE__  "${SSHGATE_DIR_CORE}/sshgate.core"
+load __LIB_ASK__       "${SCRIPT_HELPER_DIRECTORY}/ask.lib.sh"
 
 # one little function --------------------------------------------------------
 mLOG () { local file=$1; shift; echo "$(date +'[%D %T]') $*" >> ${file}; }
@@ -129,19 +131,9 @@ if [ "${SSHGATE_USERS_MUST_ACCEPT_CGU}" = 'Y' -a -f "${SSHGATE_CGU_FILE}" ]; the
   if [ "${has_accept_cgu}" != 'true' ]; then
     cat "${SSHGATE_CGU_FILE}"
     echo
-    retry=0
-    while true ; do
-      read -p "-> 'yes' / 'no' ? " var
-      [ "${var}" = 'no' ] && exit 0;
-      if [ "${var}" = 'yes' ]; then
-        USER_SET_CONF "${SSHKEY_USER}" HAS_ACCEPT_CGU 'true'
-        break;
-      fi
-      echo 'Invalid answer.'
-      echo 'Type exactly "yes" or "no"'
-      retry=$(( retry + 1 ))
-      [ ${retry} -eq 3 ] && exit 1;
-    done
+    ASK --yesno "-> 'yes' / 'no' ?" var
+    [ "${var}" = 'N' ] && exit 1;
+    USER_SET_CONF "${SSHKEY_USER}" HAS_ACCEPT_CGU 'true'
   fi
 fi
 
