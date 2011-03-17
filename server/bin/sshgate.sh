@@ -27,9 +27,6 @@
 # - TARGET_HOST_COMMAND : ssh command which will be exec on the ${TARGET_HOST}
 # - TARGET_LOGIN : login to use when connecting to the ${TARGET_HOST}
 # - ORIGINAL_TARGET_HOST : copy of TARGET_HOST used by error messages
-# - GLOG_FILE : Global ${TARGET_HOST} log file
-# - SLOG_FILE : Session log file (one per session/user/host)
-# - SSHGATE_LOG_FILE : Global sshGate log file
 # ----------------------------------------------------------------------------
 
 if [ $# -ne 1 -o -z "${1:-}" ]; then
@@ -39,10 +36,8 @@ fi
 
 # GLOBAL configuration -------------------------------------------------------
 SSHKEY_USER="$1"
-SFTP_SERVER=/usr/libexec/openssh/sftp-server
 
 # Load libraries -------------------------------------------------------------
-
 load() {
   local var= value= file=
 
@@ -70,9 +65,7 @@ load __LIB_ASK__       "${SCRIPT_HELPER_DIRECTORY}/ask.lib.sh"
 mLOG () { local file=$1; shift; echo "$(date +'[%D %T]') $*" >> ${file}; }
 
 # determine action type (ssh or scp) and build TARGET_HOST -------------------
-do_ssh='false'
-
-if [ "${SSH_ORIGINAL_COMMAND}" != "${SSH_ORIGINAL_COMMAND#${SFTP_SERVER} }" \
+if [ "${SSH_ORIGINAL_COMMAND}" != "${SSH_ORIGINAL_COMMAND#/usr/libexec/openssh/sftp-server }" \
   -o "${SSH_ORIGINAL_COMMAND}" != "${SSH_ORIGINAL_COMMAND#scp }" ]; then
   # SSH_ORIGNAL_COMMAND ends with the name of the target host
   TARGET_HOST=${SSH_ORIGINAL_COMMAND##* }
@@ -89,16 +82,17 @@ if [ "${SSH_ORIGINAL_COMMAND}" != "${SSH_ORIGINAL_COMMAND#${SFTP_SERVER} }" \
     SSH_ORIGINAL_COMMAND="${SSH_ORIGINAL_COMMAND%% ${TARGET_HOST}}"
     SSH_ORIGINAL_COMMAND="${SSH_ORIGINAL_COMMAND} ${TARGET_SCP_DIR}"
   fi
+  action_type='scp'
 else
   # SSH_ORIGINAL_COMMAND starts with the name of the target host
   TARGET_HOST="${SSH_ORIGINAL_COMMAND%% *}"
   TARGET_HOST_COMMAND="${SSH_ORIGINAL_COMMAND##${TARGET_HOST}}"
   TARGET_HOST_COMMAND="${TARGET_HOST_COMMAND## }"
-  do_ssh='true'
+  action_type='ssh'
 fi
 
 # public commands ------------------------------------------------------------
-if [ "${SSHGATE_ALLOW_REMOTE_COMMAND}" = 'Y' -a "${do_ssh}" = 'true' ]; then
+if [ "${SSHGATE_ALLOW_REMOTE_COMMAND}" = 'Y' -a "${action_type}" = 'ssh' ]; then
   if [ "${TARGET_HOST}" = 'cmd' -o "${TARGET_HOST}" = 'cli' ]; then
     # inpired from ScriptHelper/cli.lib.sh
     # we don't want sshgate.sh to be dependant on ScriptHelper
@@ -139,7 +133,6 @@ fi
 
 
 # If user don't specify a target host, ask for the target host ---------------
-
 if [ -z "${TARGET_HOST}" ]; then
   echo "NOTICE: No target host given"
   read -p "Target host ? " TARGET_HOST
@@ -157,8 +150,6 @@ if [ -z "${TARGET_HOST}" ]; then
   exit 1;
 fi
 
-GLOG_FILE=$( TARGET_LOG_FILE "${TARGET_HOST}" )
-
 # check ACL ------------------------------------------------------------------
 if [ $( HAS_ACCESS "${SSHKEY_USER}" "${TARGET_HOST}" "${TARGET_LOGIN}" ) = 'false' ]; then
   echo "ERROR: The '${ORIGINAL_TARGET_HOST}' doesn't exist or you don't have access to it (or with login '${TARGET_LOGIN}')"
@@ -166,28 +157,16 @@ if [ $( HAS_ACCESS "${SSHKEY_USER}" "${TARGET_HOST}" "${TARGET_LOGIN}" ) = 'fals
 fi
 
 # Do the stuff ;-) -----------------------------------------------------------
-mLOG ${GLOG_FILE} "New session $$. Connection from ${SSH_CONNECTION%% *} with SSH_ORIGINAL_COMMAND = ${SSH_ORIGINAL_COMMAND:-}"
-
-if [ "${do_ssh:-}" = 'true' ]; then
-  SLOG_FILE=$( TARGET_SESSION_LOG_FILE "${TARGET_HOST}" "${SSHKEY_USER}" )
-  mLOG ${GLOG_FILE} "Creating session log file ${SLOG_FILE}"
-  mLOG ${SSHGATE_LOG_FILE} "[SSSH] ${SSHKEY_USER} -> ${TARGET_LOGIN}@${TARGET_HOST} ${TARGET_HOST_COMMAND}"
 
   SSH_CONFIG_FILE=$( TARGET_SSH_GET_CONFIG "${TARGET_HOST}" "${TARGET_LOGIN}" )
   ssh -F "${SSH_CONFIG_FILE}" ${TARGET_HOST} "${TARGET_HOST_COMMAND}" | tee "${SLOG_FILE}"
   RETURN_VALUE=$?
   rm -f "${SSH_CONFIG_FILE}"
-
-  mLOG ${GLOG_FILE} "Session $$ ended. logfile = ${SLOG_FILE}"
 else
-  mLOG ${SSHGATE_LOG_FILE} "[SCP] ${SSHKEY_USER} -> ${TARGET_LOGIN}@${TARGET_HOST} ${SSH_ORIGINAL_COMMAND}"
-
   SSH_CONFIG_FILE=$( TARGET_SSH_GET_CONFIG "${TARGET_HOST}" "${TARGET_LOGIN}" )
   ssh -F "${SSH_CONFIG_FILE}" ${TARGET_HOST} "${SSH_ORIGINAL_COMMAND}"
   RETURN_VALUE=$?
   rm -f "${SSH_CONFIG_FILE}"
-
-  mLOG ${GLOG_FILE} "Transfert $$ completed."
 fi
 
 exit ${RETURN_VALUE}
