@@ -181,7 +181,9 @@ if [ "${__TARGET_FUNC__:-}" != 'Loaded' ]; then
     fi
 
     mv "${SSHGATE_DIR_TARGETS}/${target}" "${SSHGATE_DIR_TARGETS}/${new_name}"
-    [ -d "${SSHGATE_DIR_LOG}/${target}/" ] && mv "${SSHGATE_DIR_LOG}/${target}" "${SSHGATE_DIR_LOG}/${new_name}"
+    if [ -d "${SSHGATE_DIR_LOGS_TARGETS}/${target}/" ]; then
+      mv "${SSHGATE_DIR_LOGS_TARGETS}/${target}" "${SSHGATE_DIR_LOGS_TARGETS}/${new_name}"
+    fi
     echo "Target renamed : ${target} -> ${new_name}"
 
     TARGET_ADD_ALIAS "${new_name}" "${target}"
@@ -1179,49 +1181,6 @@ if [ "${__TARGET_FUNC__:-}" != 'Loaded' ]; then
     private_ACL_FILE_DEL "${usergroup}" "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USERGROUP_ACCESS_FILENAME}.${login}"
     private_MAIL_APPEND "User Group ${usergroup} access to Target ${login}@${target} revoked"
 
-    return 0;
-  }
-
-  # usage: TARGET_LOG_FILE <target_host>
-  # desc: echo-return the target global log file
-  # note: create the target main directory in ${SSHGATGE_DIR_LOG} if needed
-  TARGET_LOG_FILE () {
-    local target= dir=
-    if [ $# -ne 1 ]; then
-      BAD_ARGUMENTS ; return 1;
-    fi
-
-    target=$( TARGET_REAL "$1" )
-    if [ -z "${target}" ]; then
-      echo ''; return 1;
-    fi
-
-    dir="${SSHGATE_DIR_LOG}/${target}"
-    [ ! -d "${dir}/" ] && mkdir -p "${dir}/"
-
-    touch "${dir}/global.log"
-    echo "${dir}/global.log"
-    return 0;
-  }
-
-  # usage: TARGET_SESSION_LOG_FILE <target_host> <username>
-  # desc: echo-return the target session log file path
-  TARGET_SESSION_LOG_FILE () {
-    local user= target= f=
-
-    if [ $# -ne 2 ]; then
-      BAD_ARGUMENTS ; return 1;
-    fi
-
-    target="$1"; user="$2"
-    target=$( TARGET_REAL "${target}" )
-    if [ -z "${target}" -o -z "${user}" ]; then
-      echo ''; return 1;
-    fi
-
-    f="${SSHGATE_DIR_LOG}/${target}/$(date +%Y%m%d%H%M%S).${user}.$$"
-    touch "$f"
-    echo "$f"
     return 0;
   }
 

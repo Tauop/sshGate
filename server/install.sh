@@ -18,6 +18,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+# load dependencies
 load() {
   local var= value= file=
 
@@ -164,9 +165,23 @@ if [ "${configure}" = 'yes' ]; then
 fi # end of : if [ "${configure}" = 'yes' ]; then
 
 # ----------------------------------------------------------------------------
+BR ; BR
 
-BR
-BR
+if [ "${action}" = 'update' ]; then
+  migrations=$( GET_MIGRATIONS "${installed_version}" "${this_version}" )
+  if [ -n "${migrations}" ]; then
+    DOTHIS 'Make sshGate version migrations'
+      for migration in ${migrations}; do
+        [ -n "${migration}" ] && eval "${migration}"
+        if [ $? -ne 0 ]; then
+          KO "An error occured will upgrading sshGate"
+          exit 1
+        fi
+      done
+    OK
+  fi
+fi
+
 DOTHIS 'Reload configuration'
   # reset loaded configuration and reload it
   if [ "${configure}" = 'yes' ]; then
@@ -180,17 +195,6 @@ DOTHIS 'Reload configuration'
   load __SSHGATE_SETUP__ './data/sshgate.setup'
 OK
 
-if [ "${action}" = 'update' ]; then
-  migrations=$( GET_MIGRATIONS "${installed_version}" "${this_version}" )
-  if [ -n "${migrations}" ]; then
-    DOTHIS 'Make sshGate version migrations'
-      for migration in ${migrations}; do
-        [ -n "${migration}" ] && eval "${migration}"
-      done
-    OK
-  fi
-fi
-
 
 DOTHIS 'Installing sshGate'
   if [ "${action}" = 'install' ]; then
@@ -200,7 +204,8 @@ DOTHIS 'Installing sshGate'
     MK "${SSHGATE_DIR_USERS}"
     MK "${SSHGATE_DIR_TARGETS}"
     MK "${SSHGATE_DIR_USERS_GROUPS}"
-    MK "${SSHGATE_DIR_LOG}"
+    MK "${SSHGATE_DIR_LOGS_TARGETS}"
+    MK "${SSHGATE_DIR_LOGS_USERS}"
     MK "${SSHGATE_DIR_ARCHIVE}"
 
     grep "${SSHGATE_GATE_ACCOUNT}" /etc/passwd >/dev/null 2>/dev/null

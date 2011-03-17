@@ -88,9 +88,11 @@ mDOTHIS 'Setup sshGate data directory'
   SSHGATE_DIR_USERS="${SSHGATE_DIRECTORY}/users"
   SSHGATE_DIR_TARGETS="${SSHGATE_DIRECTORY}/targets"
   SSHGATE_DIR_USERS_GROUPS="${SSHGATE_DIRECTORY}/users.groups"
-  SSHGATE_DIR_LOG="${SSHGATE_DIRECTORY}/log"
+  SSHGATE_DIR_LOGS="${SSHGATE_DIRECTORY}/logs"
+  SSHGATE_DIR_LOGS_TARGETS="${SSHGATE_DIR_LOGS}/targets-logs"
+  SSHGATE_DIR_LOGS_USERS="${SSHGATE_DIR_LOGS}/users-logs"
   SSHGATE_DIR_ARCHIVE="${SSHGATE_DIRECTORY}/archives"
-  SSHGATE_LOG_FILE="${SSHGATE_DIR_LOG}/sshgate.log"
+  SSHGATE_LOGS_CURRENT_SESSION_FILE="${SSHGATE_DIR_LOGS}/current_session.log"
 
   # get from install.sh
   MK () { [ ! -d "$1/" ] && mkdir -p "$1"; }
@@ -101,7 +103,8 @@ mDOTHIS 'Setup sshGate data directory'
   MK "${SSHGATE_DIR_USERS}"
   MK "${SSHGATE_DIR_TARGETS}"
   MK "${SSHGATE_DIR_USERS_GROUPS}"
-  MK "${SSHGATE_DIR_LOG}"
+  MK "${SSHGATE_DIR_LOGS_TARGETS}"
+  MK "${SSHGATE_DIR_LOGS_USERS}"
   MK "${SSHGATE_DIR_ARCHIVE}"
 mOK
 
@@ -185,7 +188,7 @@ else
       MK "${SSHGATE_DIR_USERS}"
       MK "${SSHGATE_DIR_TARGETS}"
       MK "${SSHGATE_DIR_USERS_GROUPS}"
-      MK "${SSHGATE_DIR_LOG}"
+      MK "${SSHGATE_DIR_LOGS}"
       MK "${SSHGATE_DIR_ARCHIVE}"
       cp "${sshkey_priv_unix_test_file}" "${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}"
       cp "${sshkey_pub_unix_test_file}"  "${SSHGATE_TARGET_DEFAULT_PUBLIC_SSHKEY_FILE}"

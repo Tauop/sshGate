@@ -22,6 +22,7 @@ if [ $# -eq 1 ]; then
   month_ago="$1"
 fi
 
+# load dependencies
 load() {
   local var= value= file=
 
@@ -48,15 +49,15 @@ load __LIB_RANDOM__          "${SCRIPT_HELPER_DIRECTORY}/random.lib.sh"
 archive="${SSHGATE_DIR_ARCHIVE}/$( date +%Y%m --date "-${month_ago} month" )_log.tar"
 tmp_file="/tmp/files.$(RANDOM)"
 
-find "${SSHGATE_DIR_LOG}" -name "$( date +%Y%m --date "-${month_ago} month" )*" >  "${tmp_file}"
-find "${SSHGATE_DIR_LOG}" -name 'global.log'                         >> "${tmp_file}"
+find "${SSHGATE_DIR_LOGS_TARGETS}" -name "$( date +%Y%m --date "-${month_ago} month" )*" >  "${tmp_file}"
+find "${SSHGATE_DIR_LOGS_TARGETS}" -name 'global.log'                                    >> "${tmp_file}"
 
-tar cf "${archive}" "${SSHGATE_DIR_LOG}/sshgate.log"
+tar cf "${archive}" "${SSHGATE_DIR_LOGS}/sshgate.log"
 cat "${tmp_file}" | xargs tar rf "${archive}"
 gzip "${archive}"
 
 #cat "${tmp_file}" | xargs rm -f
-#rm -f "${SSHGATE_DIR_LOG}/sshgate.log"
+#rm -f "${SSHGATE_DIR_LOGS}/sshgate.log"
 rm -f "${tmp_file}"
 
 exit 0;
