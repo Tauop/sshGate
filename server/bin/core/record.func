@@ -1,0 +1,188 @@
+#
+# Copyright (c) 2010 Linagora
+# Patrick Guiran <pguiran@linagora.com>
+# http://github.com/Tauop/sshGate
+#
+# sshGate is free software, you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of
+# the License, or (at your option) any later version.
+#
+# sshGate is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# README ---------------------------------------------------------------------
+#
+# Collection of all targets sessions/logs related functions
+#
+# ----------------------------------------------------------------------------
+
+if [ "${__SSHGATE_CORE__}" != 'Loaded' ]; then
+  echo "ERROR: Only sshgate.core can load user.func."; exit 1;
+fi
+
+if [ "${__RECORD_FUNC__:-}" != 'Loaded' ]; then
+  __RECORD_FUNC__='Loaded'
+
+  # usage: private_TARGET_SESSION_GET_LOG_FILE <target_host>
+  # desc: echo-return the target global log file
+  # note: create the target main directory in ${SSHGATGE_DIR_LOG} if needed
+  # note: as it's a private methods, we don't print any error
+  private_SESSION_TARGET_GET_LOG_FILE () {
+    local target= item=
+    if [ $# -ne 1 ]; then
+      echo ''; return 1;
+    fi
+
+    target=$( TARGET_REAL "$1" )
+    if [ -z "${target}" ]; then
+      echo ''; return 1;
+    fi
+
+    item="${SSHGATE_DIR_LOGS_TARGETS}/${target}"
+    if [ ! -d "${item}/" ]; then
+      mkdir -p "${item}/"
+      chown -R "${SSHGATE_GATE_ACCOUNT}" "${item}/"
+    fi
+
+    item="${item}/global.log"
+    touch "${item}"
+    chown "${SSHGATE_GATE_ACCOUNT}" "${item}"
+
+    echo "${item}"
+    return 0;
+  }
+
+  # usage: USER_SESSION_GET_LOG_FILE <user>
+  # desc: echo-return the user log file
+  # note: create the log file if needed
+  # note: as it's a private method, we don't print any error
+  private_SESSION_USER_GET_LOG_FILE () {
+    local user= item=
+
+    if [ $# -ne 1 ]; then
+      echo ''; return 1;
+    fi
+
+    user="${1:-}"
+    if [ -z "${user}" -o ! -f "${SSHGATE_DIR_USERS}/${user}" ]; then
+      echo ''; return 1;
+    fi
+
+    item="${SSHGATE_DIR_LOGS_USERS}/${user}.log"
+    touch "${item}"
+    chwon "${SSHGATE_GATE_ACCOUNT}" "${item}"
+    echo "${item}"
+    return 0;
+  }
+
+  # --------------------------------------------------------------------------
+
+  # usage: private_SESSION_CURRENT_ADD <pid> <username> <target>
+  # desc: add session state information
+  private_SESSION_STATE_ADD () {
+    local session_file= pid= username= target=
+    if [ $# -ne 3 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
+    session_file="${SSHGATE_LOGS_CURRENT_SESSION_FILE}"
+
+    MUTEX_GET "${session_file}"
+    echo "${1:-}:${2:-}:${3:-}:${4:-}" >> "${session_file}"
+    MUTEX_RELEASE "${session_file}"
+
+    return 0;
+  }
+
+  # usage: private_SESSION_STATE_REMOVE <pid>
+  # desc: remove session state information
+  private_SESSION_STATE_REMOVE () {
+    local session_file= pid= nb=
+    if [ $# -ne 3 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
+    session_file="${SSHGATE_LOGS_CURRENT_SESSION_FILE}"
+
+    MUTEX_GET "${session_file}"
+      grep -v "^${pid}:" < "${session_file}" > "${session_file}.tmp"
+      mv "${session_file}.tmp" "${session_file}"
+      nb=$( wc -l < "${session_file}" | cut -d' ' -f1 )
+      [ "${nb}" = '0' ] && rm -f "${session_file}"
+    MUTEX_RELEASE "${session_file}"
+
+    return 0;
+  }
+
+  # --------------------------------------------------------------------------
+
+  # usage: private_SESSION_WRITE_EVENT <start-or-end> <pid> <username> <target> <information>
+  # desc: write an event into target logs and user logs
+  private_SESSION_WRITE_EVENT () {
+    local log_file=
+    if [ $# -ne 5 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
+    log_file=$( private_SESSION_TARGET_GET_LOG_FILE "${4:-}" )
+    if [ -n "${log_file}" ]; then
+      MUTEX_GET "${log_file}"
+      echo "${1:-}:${2:-}:${3:-}:${5:-}" >> "${log_file}"
+      MUTEX_RELEASE "${log_file}"
+    fi
+
+    log_file=$( private_SESSION_USER_GET_LOG_FILE "${3:-}" )
+    if [ -n "${log_file}" ]; then
+      MUTEX_GET "${log_file}"
+      echo "${1:-}:${2:-}:${4:-}:${5:-}" >> "${log_file}"
+      MUTEX_RELEASE "${log_file}"
+    fi
+    return 0;
+  }
+
+  # usage: SESSION_START <pid> <username> <target> <type>
+  # desc: Log the connection start event into target logs and user logs
+  # note: <type> can be 'ssh' or 'scp', or whatever you want
+  SESSION_START () {
+    private_SESSION_WRITE_EVENT 'START' $@ ;
+    private_SESSION_STATE_ADD "${1:-}" "${2:-}" "${3:-}"
+  }
+
+  # usage: TARGET_SESSION_END <pid> <username> <target> <session-log-file>
+  # desc: Log the connection end event into target global file
+  SESSION_END () {
+    private_SESSION_WRITE_EVENT 'END' $@ ;
+    private_SESSION_STATE_REMOVE "${1:-}"
+  }
+
+  # --------------------------------------------------------------------------
+
+  # usage: SESSION_GET_TARGET_RECORD_FILE <username> <target>
+  # desc: echo-return the target session log file path
+  # note: we don't create/touch the file
+  SESSION_TARGET_GET_RECORD_FILE () {
+    local user= target= f=
+    if [ $# -ne 2 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
+    user="$2"; target="$1"
+    target=$( TARGET_REAL "${target}" )
+    if [ -z "${target}" -o -z "${user}" ]; then
+      echo ''; return 1;
+    fi
+
+    f="${SSHGATE_DIR_LOGS_TARGETS}/${target}/$( date +%Y%m%d%H%M%S ).${user}.$$"
+    echo "$f"
+    return 0;
+  }
+
+  # --------------------------------------------------------------------------
+
+fi # end of: if [ "${__RECORD_FUNC__:-}" != 'Loaded' ]; then

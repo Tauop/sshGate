@@ -53,6 +53,7 @@ if [ "${__SSHGATE_CORE__:-}" != 'Loaded' ]; then
   load __TARGET_FUNC__    "${SSHGATE_DIR_CORE}/target.func"
   load __USERGROUP_FUNC__ "${SSHGATE_DIR_CORE}/usergroup.func"
   load __MISC_FUNC__      "${SSHGATE_DIR_CORE}/misc.func"
+  load __RECORD_FUNC__    "${SSHGATE_DIR_CORE}/record.func"
 
   ERROR () { echo "ERROR: $*" 1>&2; }
   BAD_ARGUMENTS () { ERROR "Bad arguments"; }

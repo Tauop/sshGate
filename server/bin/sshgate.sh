@@ -60,6 +60,7 @@ load SCRIPT_HELPER_DIRECTORY '/etc/scripthealper.conf'
 load __SSHGATE_SETUP__ "${SSHGATE_DIRECTORY}/data/sshgate.setup"
 load __SSHGATE_CORE__  "${SSHGATE_DIR_CORE}/sshgate.core"
 load __LIB_ASK__       "${SCRIPT_HELPER_DIRECTORY}/ask.lib.sh"
+load __LIB_RECORD__    "${SCRIPT_HELPER_DIRECTORY}/record.lib.sh"
 
 # one little function --------------------------------------------------------
 mLOG () { local file=$1; shift; echo "$(date +'[%D %T]') $*" >> ${file}; }
@@ -157,16 +158,23 @@ if [ $( HAS_ACCESS "${SSHKEY_USER}" "${TARGET_HOST}" "${TARGET_LOGIN}" ) = 'fals
 fi
 
 # Do the stuff ;-) -----------------------------------------------------------
+SESSION_START "$$" "${SSHKEY_USER}" "${TARGET_HOST}" "${action_type}"
 
+if [ "${action_type:-}" = 'ssh' ]; then
+  SESSION_RECORD_FILE=$( SESSION_TARGET_GET_RECORD_FILE "${SSHKEY_USER}" "${TARGET_HOST}" )
   SSH_CONFIG_FILE=$( TARGET_SSH_GET_CONFIG "${TARGET_HOST}" "${TARGET_LOGIN}" )
-  ssh -F "${SSH_CONFIG_FILE}" ${TARGET_HOST} "${TARGET_HOST_COMMAND}" | tee "${SLOG_FILE}"
+
+  RECORD --file "${SESSION_RECORD_FILE}" "ssh -F '${SSH_CONFIG_FILE}' ${TARGET_HOST} '${TARGET_HOST_COMMAND}'"
   RETURN_VALUE=$?
   rm -f "${SSH_CONFIG_FILE}"
 else
   SSH_CONFIG_FILE=$( TARGET_SSH_GET_CONFIG "${TARGET_HOST}" "${TARGET_LOGIN}" )
+
   ssh -F "${SSH_CONFIG_FILE}" ${TARGET_HOST} "${SSH_ORIGINAL_COMMAND}"
   RETURN_VALUE=$?
   rm -f "${SSH_CONFIG_FILE}"
 fi
+
+SESSION_END "$$" "${SSHKEY_USER}" "${TARGET_HOST}" "${SESSION_RECORD_FILE:-}"
 
 exit ${RETURN_VALUE}
