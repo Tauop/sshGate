@@ -72,11 +72,11 @@ CLI_REGISTER_HELP '/tmp/sshgate-cli-help.txt' \
                   SSHGATE_DISPLAY_HELP        \
                   SSHGATE_DISPLAY_HELP_FOR
 
-CLI_REGISTER_MENU    'user'                                        'User related commands'
-CLI_REGISTER_COMMAND 'user list'                                   'USERS_LIST'
-CLI_REGISTER_COMMAND 'user list <pattern>'                         'USERS_LIST \1'
-CLI_REGISTER_COMMAND 'user add <user> key <sshkey> mail <email>'   'USER_ADD \1 \2 \3'
-CLI_REGISTER_COMMAND 'user del <user>'                             'USER_DEL \1'
+CLI_REGISTER_MENU    'user'                           'User related commands'
+CLI_REGISTER_COMMAND 'user list'                      'USERS_LIST'
+CLI_REGISTER_COMMAND 'user list <pattern>'            'USERS_LIST \1'
+CLI_REGISTER_COMMAND 'user add <user> mail <email>'   'USER_ADD \1 \2'
+CLI_REGISTER_COMMAND 'user del <user>'                'USER_DEL \1'
 
 CLI_REGISTER_MENU    'user <user>'
 CLI_REGISTER_COMMAND 'user <user> display conf'                     'USER_DISPLAY_CONF \1'

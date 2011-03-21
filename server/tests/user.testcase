@@ -23,12 +23,14 @@ mDOTHIS 'Generate user tests'
 cat >"${expected_test_file}" <<EOF
 sshGate >  user list
 
-sshGate >  user add pguiran key ${sshkey_pub_test_file} mail pguiran@linagora.com
+sshGate >  user add pguiran mail pguiran@linagora.com
+$(cat "${sshkey_pub_test_file}" | while read line ; do echo "<<-${line}"; done; echo "->>" )
 sshGate >  user list
 pguiran
 sshGate >  user list *gui*
 pguiran
-sshGate >  user add scourtois key ${sshkey_pub_test_file} mail simon@courtois.fr
+sshGate >  user add scourtois mail simon@courtois.fr
+$(cat "${sshkey_pub_test_file}" | while read line ; do echo "<<-${line}"; done; echo "->>" )
 sshGate >  user list sco*
 scourtois
 sshGate >  user pguiran display conf

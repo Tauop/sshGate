@@ -40,20 +40,17 @@ if [ "${__USER_FUNC__:-}" != 'Loaded' ]; then
     return 0;
   }
 
-  # usage: USER_ADD <user> <public_sshkey_file> <mail>
+  # usage: USER_ADD <user> <mail>
   # desc: Add a new user
   USER_ADD () {
-    local user= userkey= usermail=
-    if [ $# -ne 3 ]; then
+    local user= userkey= usermail= tmpfile=
+    if [ $# -ne 2 ]; then
       BAD_ARGUMENTS ; return 1;
     fi
 
-    user="$1"; userkey="$2"; usermail="$3"
-    if [ -z "${user}" -o -z "${userkey}" -o -z "${usermail}" ]; then
+    user="$1"; usermail="$2"
+    if [ -z "${user}" -o -z "${usermail}" ]; then
       BAD_ARGUMENTS ; return 1;
-    fi
-    if [ ! -r "${userkey}" ]; then
-      ERROR "Can't read user ssh key" ; return 1;
     fi
 
     echo "${user}" | grep ' ' >/dev/null
@@ -70,7 +67,15 @@ if [ "${__USER_FUNC__:-}" != 'Loaded' ]; then
       ERROR "Invalid user e-mail" ; return 1;
     fi
 
-    cp "${userkey}" "${SSHGATE_DIR_USERS}/${user}"
+    tmpfile="/tmp/file.$( RANDOM )"
+    touch "${tmpfile}"
+    echo "# Put the SSH public key for '${user}' here. Then save & quit from the editor" >> "${tmpfile}"
+    echo "# line begins by '#' will be removed"                                          >> "${tmpfile}"
+    eval " ${SSHGATE_EDITOR} '${tmpfile}'"
+
+    grep -v '^#' < "${tmpfile}" > "${SSHGATE_DIR_USERS}/${user}"
+    rm -f "${tmpfile}" > /dev/null
+
     private_MAIL_APPEND "User ${user} added"
     USER_SET_CONF "${user}" MAIL "${usermail}"
 
