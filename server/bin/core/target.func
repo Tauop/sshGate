@@ -93,7 +93,7 @@ if [ "${__TARGET_FUNC__:-}" != 'Loaded' ]; then
       tmp_file="/tmp/sshkey.$(RANDOM)"
 
       echo "# Put the private sshkey for '${target}' here. Then save & quit from the editor" >> "${privsshkey}"
-      echo "# Allow line begins by '#' will be removed"                                      >> "${privsshkey}"
+      echo "# line begins by '#' will be removed"                                            >> "${privsshkey}"
       eval " ${SSHGATE_EDITOR} '${privsshkey}'"
 
       grep -v '^#' < "${privsshkey}" > "${tmp_file}"
