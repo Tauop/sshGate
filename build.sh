@@ -60,7 +60,7 @@ fi
 
 if [ "${action}" = 'all' -o "${action}" = 'client' ]; then
   DOTHIS 'Build sshgate-client package'
-    dir=/tmp/sshGate-client_${version}
+    dir=/tmp/sshGate-client-${version}
     [ -n "${build}" ] && dir="${dir}-${build}"
 
     [ -d ${dir}/ ] && CMD rm -rf ${dir}/
@@ -86,7 +86,7 @@ fi
 
 if [ "${action}" = 'all' -o "${action}" = 'server' ]; then
   DOTHIS 'Build sshgate-server package'
-    dir=/tmp/sshGate-server_${version}
+    dir=/tmp/sshGate-server-${version}
     [ -n "${build}" ] && dir="${dir}-${build}"
 
     [ -d ${dir}/ ] && CMD rm -rf ${dir}/
