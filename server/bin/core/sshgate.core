@@ -136,7 +136,7 @@ if [ "${__SSHGATE_CORE__:-}" != 'Loaded' ]; then
   # usage: SSHGATE_ACCOUNT_HOMEDIR
   # desc: Echo-return the home directory of the SSHGATE_GATE_ACCOUNT user
   SSHGATE_ACCOUNT_HOMEDIR() {
-    cat /etc/passwd | grep "^${SSHGATE_GATE_ACCOUNT}:" | cut -d':' -f6
+    < /etc/passwd grep "^${SSHGATE_GATE_ACCOUNT}:" | cut -d':' -f6
   }
 
   # usage: GET_LOGIN <string>
