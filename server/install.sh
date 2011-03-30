@@ -208,14 +208,15 @@ DOTHIS 'Installing sshGate'
     MK "${SSHGATE_DIR_LOGS_USERS}"
     MK "${SSHGATE_DIR_ARCHIVE}"
 
-    grep "${SSHGATE_GATE_ACCOUNT}" /etc/passwd >/dev/null 2>/dev/null
+    grep "^${SSHGATE_GATE_ACCOUNT}:" /etc/passwd >/dev/null 2>/dev/null
     if [ $? -ne 0 ]; then
       useradd "${SSHGATE_GATE_ACCOUNT}"
       home_dir=$( cat /etc/passwd | grep "^${SSHGATE_GATE_ACCOUNT}:" | cut -d':' -f6 )
 
-      MK "${home_dir}"
+      MK "${home_dir}/.ssh/"
       chmod 755 "${home_dir}"
       chown "${SSHGATE_GATE_ACCOUNT}" "${home_dir}"
+      chown "${SSHGATE_GATE_ACCOUNT}" "${home_dir}/.ssh"
     fi
   fi
 
