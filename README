@@ -9,29 +9,19 @@ ACL checks and can log what users do on a given target host.
                        /-------->     . . .
          user ----> sshGate ----> target host 1
                       |-> ACL
-                      |-> private sshkeys
-
+                      |-> targets private sshkeys
+                      |-> users public sshkeys
 
 sshGate is under GPLv2 license.
 
 == Description of content
 
 build.sh : used to build sshGate-server and/or sshGate-client .tar.gz package(s).
-
-lib/ : sshGate project makes some use of ScriptHelper project
+server/ : server sources
+client/ : client sources
+lib/ : sshGate project depends on ScriptHelper project
        (for more information : http://github.com/Tauop/ScriptHelper).
 
-server/ : server sources
-  - install.sh : helps to install sshGate-server.
-  - sshgate.conf : configuration file
-  - sshgate.func : main code of sshGate admin (used by 'sshgate' CLI).
-  - sshgate : CLI for sshGate administration.
-  - sshgate.sh : script that will be used on user connection (ACL, ...)
-
-client/ : client sources
-  - install.sh : helps user to configure the ssh client
-  - sshg : script to make SSH through the sshGate-server
-  - scpg : script to make SCP through the sshGate-server
 
 == Documentation == 
 
