@@ -39,6 +39,9 @@ load SSHGATE_DIRECTORY       '/etc/sshgate.conf'
 load __SSHGATE_SETUP__ "${SSHGATE_DIRECTORY}/data/sshgate.setup"
 load __SSHGATE_CORE__  "${SSHGATE_DIR_CORE}/sshgate.core"
 
+# help is only needed for the CLI
+load __HELP_FUNC__     "${SSHGATE_DIR_CORE}/help.func"
+
 load __LIB_ASK__       "${SCRIPT_HELPER_DIRECTORY}/ask.lib.sh"
 load __LIB_MAIL__      "${SCRIPT_HELPER_DIRECTORY}/mail.lib.sh"
 load __LIB_CLI__       "${SCRIPT_HELPER_DIRECTORY}/cli.lib.sh"

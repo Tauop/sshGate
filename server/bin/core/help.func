@@ -1,0 +1,89 @@
+#
+# Copyright (c) 2010 Linagora
+# Patrick Guiran <pguiran@linagora.com>
+# http://github.com/Tauop/sshGate
+#
+# sshGate is free software, you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of
+# the License, or (at your option) any later version.
+#
+# sshGate is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# README ---------------------------------------------------------------------
+#
+# Collection of all sshgate's help related functions
+#
+# ----------------------------------------------------------------------------
+
+if [ "${__SSHGATE_CORE__}" != 'Loaded' ]; then
+  echo "ERROR: Only sshgate.core can load user.func."; exit 1;
+fi
+
+if [ "${__HELP_FUNC__:-}" != 'Loaded' ]; then
+  __HELP_FUNC__='Loaded'
+
+  SSHGATE_GET_HELP() {
+    local type="$1" cli_command="$2" func= help= help_menu= sed_code=
+    if [ "${type}" = 'command' ]; then
+      help="$4"
+      if [ -z "${help}" ]; then
+        func="${3%% *}"
+        sed_code="${sed_code} /usage: ${func} / {  :next n; s/^ *# *desc: *\(.*\) *$/\1/p; t; b next; };"
+        sed_code="${sed_code} /usage: ${func}\$/ { :next n; s/^ *# *desc: *\(.*\) *$/\1/p; t; b next; };"
+        help=$( find "${SSHGATE_DIR_CORE}/" -type f -exec cat {} \; | sed -n -e "${sed_code}" )
+      fi
+      printf "%s\t%s\t%s" "${type}" "${cli_command}" "${help}"
+    else
+      help="$3"
+      if [ -n "${help}" ]; then
+        cli_command=$( private_PURIFY_CLI_COMMAND "${cli_command}" )
+        help_menu=$( echo "${cli_command}" | sed -e 's/?//g;s/  */ /g;' )
+        printf "%s\t%s\t%s\t%s" "${type}" "${help_menu}" "${cli_command}" "${help}"
+      fi
+    fi
+
+    return 0;
+  }
+
+  SSHGATE_DISPLAY_HELP() {
+    local line= cmd= help=
+    grep $'^menu\t' < "${__CLI_HELP_FILE__}"  \
+      | cut -d $'\t' -f 2,4 | tr $'\t' ':'    \
+      | ( while read line ; do
+          cmd="${line%:*}"
+          help="${line#${cmd}:}"
+          printf " %-20s\t-- %s\n" "${cmd}" "${help}"
+        done;
+        printf " %-20s\t-- %s \n" "all" "Display all commands"
+        ) | sort -u
+    return 0
+  }
+
+  SSHGATE_DISPLAY_HELP_FOR() {
+    local cli_cmd= line= cmd= help=
+
+    cli_cmd=$( grep $'^menu\t' < "${__CLI_HELP_FILE__}" \
+      | cut -d $'\t' -f 2,3 | tr $'\t' ':'              \
+      | grep "^$*:" | head -n 1 | cut -d ':' -f2 )
+    cli_cmd=$( echo "${cli_cmd}[: ]" | sed -e 's/?/[^ ]*/g')
+
+    grep $'^command' < "${__CLI_HELP_FILE__}" \
+      | cut -d $'\t' -f 2- | tr $'\t' ':'     \
+      | grep "^${cli_cmd}"                    \
+      | while read line ; do
+          [ -z "${line}" ] && continue;
+          cmd="${line%:*}"
+          help="${line#"${cmd}":}"
+          printf " %-20s\t-- %s\n" "${cmd}" "${help}"
+        done
+    return 0
+  }
+
+fi # if [ "${__HELP_FUNC__}" != 'Loaded' ]; then
