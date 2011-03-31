@@ -67,14 +67,7 @@ if [ "${__USER_FUNC__:-}" != 'Loaded' ]; then
       ERROR "Invalid user e-mail" ; return 1;
     fi
 
-    tmpfile="/tmp/file.$( RANDOM )"
-    touch "${tmpfile}"
-    echo "# Put the SSH public key for '${user}' here. Then save & quit from the editor" >> "${tmpfile}"
-    echo "# line begins by '#' will be removed"                                          >> "${tmpfile}"
-    eval " ${SSHGATE_EDITOR} '${tmpfile}'"
-
-    grep -v '^#' < "${tmpfile}" > "${SSHGATE_DIR_USERS}/${user}"
-    rm -f "${tmpfile}" > /dev/null
+    private_USER_SSHKEY_EDIT "${user}"
 
     private_MAIL_APPEND "User ${user} added"
     USER_SET_CONF "${user}" MAIL "${usermail}"
@@ -379,29 +372,54 @@ if [ "${__USER_FUNC__:-}" != 'Loaded' ]; then
     return 0;
   }
 
-  # usage: DISPLAY_USER_SSHKEY_FILE <user>
-  # desc: Display the public sshkey of a user
-  # note: if called without argument, display the public sshkey of all users
-  DISPLAY_USER_SSHKEY_FILE () {
-    local user= f=
+  # usage: private_USER_SSHKEY_EDIT <user>
+  # desc: edit the public sshkey file of <user>
+  USER_SSHKEY_EDIT () {
+    local user= tmpfile=
     if [ $# -ne 1 ]; then
       BAD_ARGUMENTS ; return 1;
     fi
+
     user="$1"
-    if [ "${user}" != 'all' ]; then
-      f=$( private_USER_SSHKEY_FILE "${user}" )
-      if [ -n "$f" ]; then
-        echo "# public sshkey ${user}"
-        cat "$f";
-      else
-        ERROR "Unknown user $user" ; return 1;
-      fi
-    else
-      for user in $( USERS_LIST ); do
-        echo "# public sshkey ${user}"
-        cat $( private_USER_SSHKEY_FILE "${user}" )
-      done
+    if [ -z "${user}" ]; then
+      ERROR "User name is empty"; return 1;
     fi
+
+    touch "${SSHGATE_DIR_USERS}/${user}"
+    if [ $? -ne 0 ]; then
+      ERROR "Can't write into user file"; return 1;
+    fi
+
+    tmpfile="/tmp/file.$( RANDOM )"
+    touch "${tmpfile}"
+    echo "# Put the SSH public key for '${user}' here. Then save & quit from the editor" >> "${tmpfile}"
+    echo "# line begins by '#' will be removed"                                          >> "${tmpfile}"
+    eval " ${SSHGATE_EDITOR} '${tmpfile}'"
+
+    grep -v '^#' < "${tmpfile}" > "${SSHGATE_DIR_USERS}/${user}"
+    rm -f "${tmpfile}" > /dev/null 2>/dev/null
+
+    return 0;
+  }
+
+  # usage: DISPLAY_USER_SSHKEY_FILE <user>
+  # usage: USER_SSHKEY_DISPLAY <user>
+  # desc: Display the public sshkey of a user
+  USER_SSHKEY_DISPLAY () {
+    local user=
+
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
+    user="$1"
+    if [ ! -f "${SSHGATE_DIR_USERS}/${user}" ]; then
+      ERROR "User '${user}' doesn't exist"; return 1;
+    fi
+
+    echo "# public sshkey ${user}"
+    cat "${SSHGATE_DIR_USERS}/${user}";
+
     return 0;
   }
 

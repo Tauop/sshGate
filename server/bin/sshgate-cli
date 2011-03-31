@@ -91,6 +91,8 @@ CLI_REGISTER_COMMAND 'user <user> has access <target>'              'HAS_ACCESS 
 CLI_REGISTER_COMMAND 'user <user> has access <target> with <login>' 'HAS_ACCESS \1 \2 \3'
 CLI_REGISTER_COMMAND 'user <user> access info'                      'USER_ACCESS_INFO \1'
 CLI_REGISTER_COMMAND 'user <user> access notify'                    'USER_ACCESS_NOTIFY \1'
+CLI_REGISTER_COMMAND 'user <user> edit sshkey'                      'USER_SSHKEY_EDIT \1'
+CLI_REGISTER_COMMAND 'user <user> display sshkey'                   'USER_SSHKEY_DISPLAY \1'
 
 CLI_REGISTER_MENU    'usergroup'             'Usergroup related commands'
 CLI_REGISTER_COMMAND 'usergroup list'        'USERGROUPS_LIST'
