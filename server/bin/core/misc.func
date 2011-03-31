@@ -29,35 +29,6 @@ fi
 if [ "${__MISC_FUNC__:-}" != 'Loaded' ]; then
   __MISC_FUNC__='Loaded'
 
-  # usage: BUILD_AUTHORIZED_KEYS
-  # desc: update the authorized_key2 of the sshGate account
-  # important: need to be root to be able to update authorized_keys2 and chown files
-  BUILD_AUTHORIZED_KEYS () {
-    local home_dir= authorized_keys2= user_key= real_target=
-
-    home_dir=$( SSHGATE_ACCOUNT_HOMEDIR )
-    if [ -z "${home_dir}" ]; then
-      ERROR "Can't find home directory of ${SSHGATE_GATE_ACCOUNT} user"
-      return 1;
-    fi
-
-    authorized_keys2="${home_dir}/.ssh/authorized_keys2"
-
-    [ ! -d "${home_dir}/.ssh/" ] && mkdir "${home_dir}/.ssh"
-
-    # reset the authorized_keys2 file
-    echo -n '' > "${authorized_keys2}"
-
-    for user in $( USERS_LIST ); do
-      user_key=$( cat ` private_USER_SSHKEY_FILE "${user}" ` )
-      echo "command=\"/bin/sh ${SSHGATE_DIR_BIN}/sshgate.sh ${user}\" ${user_key}" >> "${authorized_keys2}"
-    done
-
-    chown "${SSHGATE_GATE_ACCOUNT}" "${authorized_keys2}"
-    chmod u+r "${authorized_keys2}"
-    return 0;
-  }
-
   # usage: BUILD_KNOWN_HOSTS
   # desc: force re-write of sshgate account ~/.ssh/known_hosts file
   # important: need to be root

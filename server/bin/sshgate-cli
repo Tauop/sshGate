@@ -80,6 +80,7 @@ CLI_REGISTER_COMMAND 'user list'                      'USERS_LIST'
 CLI_REGISTER_COMMAND 'user list <pattern>'            'USERS_LIST \1'
 CLI_REGISTER_COMMAND 'user add <user> mail <email>'   'USER_ADD \1 \2'
 CLI_REGISTER_COMMAND 'user del <user>'                'USER_DEL \1'
+CLI_REGISTER_MENU    'user build auth_keys'           'USER_AUTH_KEYS_BUILD'
 
 CLI_REGISTER_MENU    'user <user>'
 CLI_REGISTER_COMMAND 'user <user> display conf'                     'USER_DISPLAY_CONF \1'
@@ -93,6 +94,7 @@ CLI_REGISTER_COMMAND 'user <user> access info'                      'USER_ACCESS
 CLI_REGISTER_COMMAND 'user <user> access notify'                    'USER_ACCESS_NOTIFY \1'
 CLI_REGISTER_COMMAND 'user <user> edit sshkey'                      'USER_SSHKEY_EDIT \1'
 CLI_REGISTER_COMMAND 'user <user> display sshkey'                   'USER_SSHKEY_DISPLAY \1'
+CLI_REGISTER_COMMAND 'user <user> update auth_keys'                 'USER_AUTH_KEYS_UPDATE \1'
 
 CLI_REGISTER_MENU    'usergroup'             'Usergroup related commands'
 CLI_REGISTER_COMMAND 'usergroup list'        'USERGROUPS_LIST'
@@ -158,7 +160,6 @@ CLI_REGISTER_COMMAND 'target [<login>@]<target> ssh display full config'        
 
 
 CLI_REGISTER_MENU 'build' 'Special internal build command'
-CLI_REGISTER_COMMAND 'build authorized_keys' 'BUILD_AUTHORIZED_KEYS'
 CLI_REGISTER_COMMAND 'build known_hosts'     'BUILD_KNOWN_HOSTS'
 
 

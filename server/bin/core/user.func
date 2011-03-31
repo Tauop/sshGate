@@ -399,6 +399,9 @@ if [ "${__USER_FUNC__:-}" != 'Loaded' ]; then
     grep -v '^#' < "${tmpfile}" > "${SSHGATE_DIR_USERS}/${user}"
     rm -f "${tmpfile}" > /dev/null 2>/dev/null
 
+    private_USER_AUTH_KEYS_DEL "${user}" || return 1;
+    private_USER_AUTH_KEYS_ADD "${user}" || return 1;
+
     return 0;
   }
 
@@ -419,6 +422,112 @@ if [ "${__USER_FUNC__:-}" != 'Loaded' ]; then
 
     echo "# public sshkey ${user}"
     cat "${SSHGATE_DIR_USERS}/${user}";
+
+    return 0;
+  }
+
+  # usage: private_USER_AUTH_KEYS_ADD <user>
+  # desc: Add a user public sshkey file into authorized_keys
+  private_USER_AUTH_KEYS_ADD () {
+    local user= authorized_keys2= file= user_key=
+
+    if [ $# -ne 1 -a $# -ne 2 ]; then
+      BAD_ARGUMENTS; return 1;
+    fi
+
+    user="$1"
+    if [ ! -f "${SSHGATE_DIR_USERS}/${user}" -o -z "${user}" ]; then
+      ERROR "user '${user}' doesn't exist"; return 1;
+    fi
+
+    [ $# -eq 2 ] && authorized_keys2="$2" || authorized_keys2="$( SSHGATE_ACCOUNT_HOMEDIR )/authorized_keys2"
+    touch "${authorized_keys2}" 2>/dev/null
+    if [ $? -ne 0 ]; then
+      ERROR "Can't write into authorized_keys2 file '${authorized_keys2}'"
+      return 1;
+    fi
+
+    user_key=$( cat "${SSHGATE_DIR_USERS}/${user}" )
+    echo "command=\"/bin/sh ${sshgate_dir_bin}/sshgate.sh ${user}\" ${user_key}" >> "${authorized_keys2}"
+
+    chown "${SSHGATE_GATE_ACCOUNT}" "${authorized_keys2}"
+    chmod u+r "${authorized_keys2}"
+    return 0;
+  }
+
+  # usage: private_USER_AUTH_KEYS_DEL <user> [<authorized_keys2-file>]
+  # desc: remove a user public sshkey file from the authorized_keys2 file
+  private_USER_AUTH_KEYS_DEL () {
+    local user= authorized_keys2= file= tmp_file=
+
+    if [ $# -ne 1 -a $# -ne 2 ]; then
+      bad_arguments ; return 1;
+    fi
+
+    user="$1"
+    if [ ! -f "${SSHGATE_DIR_USERS}/${user}" -o -z "${user}" ]; then
+      ERROR "User '${user}' doesn't exist"; return 1;
+    fi
+
+    [ $# -eq 2 ] && authorized_keys2="$2" || authorized_keys2="$( SSHGATE_ACCOUNT_HOMEDIR )/authorized_keys2"
+    touch "${authorized_keys2}" 2>/dev/null
+    if [ $? -ne 0 ]; then
+      ERROR "Can't write into authorized_keys2 file '${authorized_keys2}'"
+      return 1;
+    fi
+
+    tmp_file="/tmp/file.$( RANDOM )"
+    touch "${tmp_file}" 2>/dev/null
+    if [ $? -ne 0 ]; then
+      ERROR "Can't write into temporary file '${tmpfile}'"; return 1
+    fi
+
+    grep -v "^command=\"/bin/sh ${sshgate_dir_bin}/sshgate.sh ${user}\" " < "${authorized_keys2}" > "${tmp_file}"
+    mv "${tmp_file}" "${authorized_keys2}"
+
+    chown "${SSHGATE_GATE_ACCOUNT}" "${authorized_keys2}"
+    chmod u+r "${authorized_keys2}"
+    return 0;
+  }
+
+  # usage: USER_AUTH_KEYS_UPDATE <user>
+  # desc: update the user public sshkey in the authorized_keys2 file
+  USER_AUTH_KEYS_UPDATE () {
+    local user=
+
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
+    user="$1"
+    if [ ! -f "${SSHGATE_DIR_USERS}/${user}" ]; then
+      ERROR "User '${user}' doesn't exist"; return 1;
+    fi
+
+    private_USER_AUTH_KEYS_DEL "${user}" || return 1;
+    private_USER_AUTH_KEYS_ADD "${user}" || return 1;
+
+    return 0;
+  }
+
+  # usage: USERS_AUTH_KEYS_BUILD
+  # desc: re-build the whole authorized_keys2 file
+  USERS_AUTH_KEYS_BUILD () {
+    local user= authorized_keys2=
+
+    authorized_keys2="$( SSHGATE_ACCOUNT_HOMEDIR )/authorized_keys2"
+    touch "${authorized_keys2}" 2>/dev/null
+    if [ $? -ne 0 ]; then
+      ERROR "Can't write into authorized_keys2 file '${authorized_keys2}'"
+      return 1;
+    fi
+
+    for user in $( USERS_LIST ); do
+      private_USER_AUTH_KEYS_ADD "${user}" "${authorized_keys2}" || return 1;
+    done
+
+    chown "${SSHGATE_GATE_ACCOUNT}" "${authorized_keys2}"
+    chmod u+r "${authorized_keys2}"
 
     return 0;
   }
