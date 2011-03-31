@@ -1,18 +1,18 @@
-= README =
+== README ==
 
 config-sshgate.sh will help the user to update his ~/.ssh/config to
 setup a "sshgate" host, which will be used by 'sshg' and 'scpg' script.
 
 'sshg' and 'scpg' scripts may be put into the /usr/local/bin/ directory.
 
-= INSTALL =
+== Install ==
 
 Just run the install.sh script and answer to questions.
 
 Be careful, some answer depends on the sshGate server installation/configuration.
 See your admins for more information
 
-= DETAILS =
+== Details ==
 
 'sshg' is quite simple. It's an equivalent of 'ssh sshgate <target_host>'
 

@@ -1,0 +1,75 @@
+== Welcome to sshGate server ==
+
+sshGate is a tool which helps to configure an OpenSSH server in order to have
+a SSH proxy. sshGate uses the double SSH method to be able to connect to
+a target host. In fact, sshGate has private ssh-keys of target hosts, makes
+ACL checks and can log what users do on a given target host.
+
+                        /-------> target host N
+                       /-------->     . . .
+         user ----> sshGate ----> target host 1
+                      |-> ACL
+                      |-> targets private sshkeys
+                      |-> users public sshkeys
+
+sshGate is under GPLv2 license.
+
+Full project is located at http://github.com/Tauop/sshGate
+
+== Install & upgrade ==
+
+Just run the ./install.sh script and answer to questions.
+It you make a upgrade, the installed configuration can be re-used, and
+data migration can be performed.
+
+== Configuration ==
+
+The configuration file is /etc/sshgate.conf. It set main settings,
+and can override internal settings too.
+
+Main settings :
+- SSHGATE_VERSION : version of sshGate (do not edit)
+- SSHGATE_BUILD : the build number of sshGate (do not edit)
+- SSHGATE_DIRECTORY : root directory of sshGate program
+- SCRIPT_HELPER_DIRECTORY : ScriptHelper dependance directory
+- SSHGATE_GATE_ACCOUNT : the unix account used by sshGate
+- SSHGATE_ALLOW_REMOTE_COMMAND : Do we allow remote command like "sshg 'cmd list targets'" ? default: Y
+- SSHGATE_USE_REMOTE_ADMIN_CLI : Do we allow remote administration CLI ? default: Y
+- SSHGATE_USERS_MUST_ACCEPT_CGU : Do users have to accept CGU at the first connection ? default: Y
+- SSHGATE_EDITOR : editor program to use by sshGate. default: ${EDITOR}
+- SSHGATE_TARGETS_SCP_PATH : default SCP path when it's not specified. default: ~/
+- SSHGATE_TARGET_DEFAULT_SSH_LOGIN : default ssh login to use when connecting to target host. default: root
+- SSHGATE_MAIL_SEND : Is sshGate mail notification activated ? default: false
+- SSHGATE_MAIL_TO : mail to this mail adresse if [SSHGATE_MAIL_SEND] is 'true'
+- SSHGATE_MAIL_SUBJECT : E-mail subject to use
+
+other settings which can be override in /etc/sshgate.conf
+- SSHGATE_DIR_DATA : sshGate data root directory
+- SSHGATE_DIR_BIN : binaries of sshGate. default = [SSHGATE_DIRECTORY]/bin
+- SSHGATE_DIR_CORE : all sshGate 'func' and 'core' files (internal sshGate library)
+- SSHGATE_DIR_TEST : sshGate test files
+- SSHGATE_DIR_USERS : users data (ssh keys and properties)
+- SSHGATE_DIR_TARGETS : targets data (ssh keys, properties, access, logins, ...)
+- SSHGATE_DIR_USERS_GROUPS : usergroups data
+- SSHGATE_DIR_LOGS : logs root directory
+- SSHGATE_DIR_LOGS_TARGETS : targets logs directory
+- SSHGATE_DIR_LOGS_USERS : users logs directory
+- SSHGATE_DIR_ARCHIVE : logs archives directory
+- SSHGATE_TARGET_PRIVATE_SSHKEY_FILENAME : filename of the target private ssh key
+- SSHGATE_TARGET_PUBLIC_SSHKEY_FILENAME : filename of the target public ssh key
+- SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE : path to the default target private ssh key file
+- SSHGATE_TARGET_DEFAULT_PUBLIC_SSHKEY_FILE : path to the default target public ssh key file
+- SSHGATE_TARGETS_USER_ACCESS_FILENAME : name of the target users access file
+- SSHGATE_TARGETS_USERGROUP_ACCESS_FILENAME : name of the target usergroup access file
+- SSHGATE_TARGETS_SSH_CONFIG_FILENAME : name of the target ssh configuration file
+- SSHGATE_TARGETS_SSH_LOGINS_FILENAME : name of the target ssh login list file
+- SSHGATE_LOGS_CURRENT_SESSION_FILE : path to the current session log file
+- SSHGATE_CGU_FILE : path to the CGU file
+
+== Details on data ==
+
+Here is the list of all files dealt by sshGate server. For directories,
+which can be configured, [CONSTANT]/ notation is used.
+
+To be continued :-)
+
