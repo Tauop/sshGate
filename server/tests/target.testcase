@@ -86,14 +86,14 @@ sshGate >  target ssh edit config
 ->>
 sshGate >  target ssh display config
 ConnectTimeout 10
-sshGate >  target ${hostname} ssh edit config for root
+sshGate >  target root@${hostname} ssh edit config
 <<-ConnectTimeout 30
 <<-ForwardX11 yes
 ->>
-sshGate >  target ${hostname} ssh display config for root
+sshGate >  target root@${hostname} ssh display config
 ConnectTimeout 30
 ForwardX11 yes
-sshGate >  target ${hostname} ssh display full config for root
+sshGate >  target root@${hostname} ssh display full config
 Host *
  IdentityFile ${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}
  IdentitiesOnly yes
@@ -113,7 +113,7 @@ sshGate >  target ${hostname} set conf SSH_PROXY ${user_unix_test_account}@${ali
 sshGate >  target ${hostname} display conf
 DEFAULT_SSH_LOGIN="${user_unix_test_account}"
 SSH_PROXY="${user_unix_test_account}@${alias}"
-sshGate >  target ${hostname} ssh display full config for root
+sshGate >  target root@${hostname} ssh display full config
 Host *
  IdentityFile ${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}
  IdentitiesOnly yes

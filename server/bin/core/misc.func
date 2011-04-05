@@ -26,13 +26,13 @@ if [ "${__SSHGATE_CORE__}" != 'Loaded' ]; then
   echo "ERROR: Only sshgate.core can load user.func."; exit 1;
 fi
 
-if [ "${__MISC_FUNC__:-}" != 'Loaded' ]; then
-  __MISC_FUNC__='Loaded'
+if [ "${__TARGET_KNOWN_HOSTS_FUNC__:-}" != 'Loaded' ]; then
+  __TARGET_KNOWN_HOSTS_FUNC__='Loaded'
 
-  # usage: BUILD_KNOWN_HOSTS
+  # usage: private_BUILD_KNOWN_HOSTS
   # desc: force re-write of sshgate account ~/.ssh/known_hosts file
   # important: need to be root
-  BUILD_KNOWN_HOSTS () {
+  private_BUILD_KNOWN_HOSTS () {
     local home_dir= target= alias=
     home_dir=$( SSHGATE_ACCOUNT_HOMEDIR )
     if [ -z "${home_dir}" ]; then
@@ -44,7 +44,7 @@ if [ "${__MISC_FUNC__:-}" != 'Loaded' ]; then
     for target in $( TARGETS_LIST ); do
       target=$( GET_HOST "${target}" )
       echo -n "- ${target} ... "
-      private_ADD_TARGET_TO_KNOWN_HOST "${target}" "${home_dir}/.ssh/known_hosts"
+      private_TARGET_KNOWN_HOSTS_ADD "${target}" "${home_dir}/.ssh/known_hosts"
       if [ $? -ne 0 ]; then
         # don't try for ip and alias if we failed here
         echo 'KO'
@@ -56,33 +56,11 @@ if [ "${__MISC_FUNC__:-}" != 'Loaded' ]; then
     return 0;
   }
 
-  # usage: private_TARGET_GET_IP <target>
-  # desc: get the IP of a target
-  # note: if the target has a proxy, it takes the IP from the proxy
-  private_TARGET_GET_IP () {
-    local target= proxy= ssh_conf_file=
-
-    if [ $# -ne 1 ]; then
-      BAD_ARGUMENTS ; return 1;
-    fi
-
-    target=$( GET_HOST "$1" )
-    target=$( TARGET_REAL "$1" )
-    proxy=$( TARGET_GET_CONF "${target}" SSH_PROXY )
-    if [ -z "${proxy}" ]; then
-      host "${target}" | grep 'address' | head -n 1 | sed -e 's/^.* \([^ ]*\)$/\1/'
-    else
-      TARGET_SSH_RUN_COMMAND "${proxy}" \
-          "host '${target}' | grep 'address' | head -n 1 | sed -e 's/^.* \([^ ]*\)$/\1/'"
-    fi
-    return 0;
-  }
-
-  # usage: private_ADD_TARGET_TO_KNOWN_HOST <target> [ <file> ]
+  # usage: private_TARGET_KNOWN_HOSTS_ADD <target> [ <file> ]
   # desc: force re-write of sshgate account ~/.ssh/authorized_keys2 file
   # note: if <file> is not specified, determine it with SSHGATE_ACCOUNT_HOMEDIR
-  private_ADD_TARGET_TO_KNOWN_HOST () {
-    local target= target_ip= target_port= target_real= file= proxy= ssh_conf_file=
+  private_TARGET_KNOWN_HOSTS_ADD () {
+    local target= target_port= target_real= target_ssh_config= file= proxy=
 
     if [ $# -ne 1 -a $# -ne 2 ]; then
       BAD_ARGUMENTS ; return 1;
@@ -90,26 +68,26 @@ if [ "${__MISC_FUNC__:-}" != 'Loaded' ]; then
 
     target_real=$( TARGET_REAL "$1" )
     if [ -z "${target_real}" ]; then
-      ERROR "Target host '${target}' doesn't exist"
+      ERROR "Target host '${target}' doesn't exist"; return 1;
     fi
 
     [ $# -eq 2 ] && file="$2"
     [ -z "${file}"   ] && file="$(SSHGATE_ACCOUNT_HOMEDIR)/.ssh/known_hosts"
     [ ! -f "${file}" ] && touch "${file}"
 
-    target_ip=$( private_TARGET_GET_IP "${target_real}" )
-    target_port=$( private_TARGET_SSH_GET_CONFIG_FILE "${target_real}" $(GET_LOGIN "${target}") \
-                   | grep 'Port' | sed -e 's/^[^0-9]*\([0-9]*\)[^0-9]*$/\1/' )
+    target_ssh_config="${SSHGATE_DIR_TARGETS}/${target_real}/${SSHGATE_TARGETS_SSH_CONFIG_FILENAME}.$( GET_LOGIN "${target}" )"
+    if [ -r "${target_ssh_config}" ]; then
+      target_port=$( < "${target_ssh_config}" grep 'Port' | sed -e 's/^[^0-9]*\([0-9]*\)[^0-9]*$/\1/' )
+    fi
     target_port="${target_port:-22}"
 
-    [ -n "${target_real}" ] && proxy=$( TARGET_GET_CONF "${target_real}" SSH_PROXY )
-
+    proxy=$( TARGET_GET_CONF "${target_real}" SSH_PROXY )
     if [ -z "${proxy}" ]; then
-      ssh-keyscan -p "${target_port}" -t dsa,rsa    "${target_real},${target_ip}"    >> "${file}" 2>/dev/null
+      ssh-keyscan -H -p "${target_port}" -t dsa,rsa "${target_real}" 2>/dev/null >> "${file}"
       [ $? -ne 0 ] && return 1
     else
       TARGET_SSH_RUN_COMMAND "${proxy}" \
-          "ssh-keyscan -p ${target_port} -t dsa,rsa '${target_real},${target_ip}' 2>/dev/null" >> "${file}"
+          "ssh-keyscan -H -p ${target_port} -t dsa,rsa '${target_real}' 2>/dev/null;" >> "${file}"
       [ $? -ne 0 ] && return 1
     fi
 
@@ -117,24 +95,62 @@ if [ "${__MISC_FUNC__:-}" != 'Loaded' ]; then
     return 0;
   }
 
-  # usage: private_DELETE_TARGET_FROM_KNOWN_HOST <target> [ <file> ]
+  # usage: private_TARGET_KNOWN_HOSTS_DEL <target> [ <file> ]
   # desc: delete the public host sshkey of the <target> from the known_hosts file
   # note: if <file> is not specified, determine it with SSHGATE_ACCOUNT_HOMEDIR
-  private_DELETE_TARGET_FROM_KNOWN_HOST() {
-    local target= file= tmp_file=
+  private_TARGET_KNOWN_HOSTS_DEL() {
+    local target= target_real= target_login= file= target_ssh_config= target_port= proxy=
     if [ $# -eq 0 -o $# -gt 2 ]; then
       BAD_ARGUMENTS ; return 1;
     fi
 
-    target=$( GET_HOST "$1" )
+    target="$1"
     [ $# -eq 2 ] && file="$2"
+
+    target_login=$( GET_LOGIN "${target}" )
+    target_real=$( TARGET_REAL "${target}" )
+    if [ -z "${target_real}" ]; then
+      ERROR "Target host '${target}' doesn't exist"; return 1;
+    fi
+
     [ -z "${file}" ] && file="$(SSHGATE_ACCOUNT_HOMEDIR)/.ssh/known_hosts"
-    tmp_file="/tmp/file.$( RANDOM )"
+    [ ! -f "${file}" ] && return 0;
 
-    [ -e "${file}"     ] && grep -v "^${target}"      < "${file}"     > "${tmp_file}"
-    [ -e "${tmp_file}" ] && mv "${tmp_file}" "${file}"
-    [ -e "${file}"     ] && chown "${SSHGATE_GATE_ACCOUNT}" "${file}"
+    target_ssh_config="${SSHGATE_DIR_TARGETS}/${target_real}/${SSHGATE_TARGETS_SSH_CONFIG_FILENAME}.${target_login}"
+    if [ -r "${target_ssh_config}" ]; then
+      target_port=$( < "${target_ssh_config}" grep 'Port' | sed -e 's/^[^0-9]*\([0-9]*\)[^0-9]*$/\1/' )
+    fi
+    target_port="${target_port:-22}"
 
+    proxy=$( TARGET_GET_CONF "${target_real}" SSH_PROXY )
+    if [ -z "${proxy}" ]; then
+      ssh-keygen -R "${target_real}" -f "${file}" 2>/dev/null
+      [ $? -ne 0 ] && return 1
+      rm -f "${file}.old" 2>/dev/null
+      [ -e "${file}"     ] && chown "${SSHGATE_GATE_ACCOUNT}" "${file}"
+    else
+      TARGET_SSH_RUN_COMMAND "${proxy}" \
+          "ssh-keyscan -R '${target_real}' -f '${file}' 2>/dev/null;
+           rm -f '${file}.old' 2>/dev/null;
+           [ -e '${file}' ] && chown '${SSHGATE_GATE_ACCOUNT}' '${file}'"
+      [ $? -ne 0 ] && return 1
+    fi
+    return 0;
   }
 
-fi # if [ "${__MISC_FUNC__:-}" != 'Loaded' ]; then
+  # usage: TARGET_SSH_UPDATE_KNOWN_HOSTS <target>
+  # desc: update known_hosts file entry for <target>
+  TARGET_SSH_UPDATE_KNOWN_HOSTS () {
+    local target=
+
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
+    private_TARGET_KNOWN_HOSTS_DEL "${target}"      \
+      && private_TARGET_KNOWN_HOSTS_ADD "${target}" \
+      && return 0;
+    return 0;
+  }
+
+fi # end of: if [ "${__TARGET_KNOWN_HOSTS_FUNC__:-}" != 'Loaded' ]; then

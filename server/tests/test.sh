@@ -149,17 +149,18 @@ mDOTHIS 'Create and setup temporary Unix account'
   # need to read lines prefixed by "<<-" from ${expected_test_file}/${input_test_file}.
   # it ends when ASK read '->>' string
   SSHGATE_EDITOR='input="";
-                  while [ "${input}" != "->>" ]; do
+                  while true; do
                     ASK --no-print --no-echo --allow-empty input
                     input="${input#"<<-"}"
                     if [ "${input}" != "${input#"<<="}" ]; then
                       echo "${input#"<<="}"; break;
                     fi
                     [ "${input}" != "->>" ] && echo "${input}"
+                    [ "${input}" = "->>" ] && break;
                   done >>'
 
   # install unix user sshkey to sshGate default key so that we can call TARGET_ADD
-  # and TARGET_SSH_INSTALL_KEY without problems
+  # and TARGET_SSHKEY_INSTALL without problems
   SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE="${SSHGATE_DIR_DATA}/${SSHGATE_TARGET_PRIVATE_SSHKEY_FILENAME}"
   SSHGATE_TARGET_DEFAULT_PUBLIC_SSHKEY_FILE="${SSHGATE_DIR_DATA}/${SSHGATE_TARGET_PUBLIC_SSHKEY_FILENAME}"
   cp "${sshkey_priv_unix_test_file}" "${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}"

@@ -49,11 +49,14 @@ if [ "${__SSHGATE_CORE__:-}" != 'Loaded' ]; then
   load __LIB_ASK__       "${SCRIPT_HELPER_DIRECTORY}/ask.lib.sh"
 
   # load sub-core libraries
-  load __USER_FUNC__      "${SSHGATE_DIR_CORE}/user.func"
-  load __TARGET_FUNC__    "${SSHGATE_DIR_CORE}/target.func"
-  load __USERGROUP_FUNC__ "${SSHGATE_DIR_CORE}/usergroup.func"
-  load __MISC_FUNC__      "${SSHGATE_DIR_CORE}/misc.func"
-  load __RECORD_FUNC__    "${SSHGATE_DIR_CORE}/record.func"
+  load __USER_FUNC__               "${SSHGATE_DIR_CORE}/user.func"
+  load __TARGET_FUNC__             "${SSHGATE_DIR_CORE}/target.func"
+  load __TARGET_SSH_FUNC__         "${SSHGATE_DIR_CORE}/target-ssh.func"
+  load __TARGET_SSHKEY_FUNC__      "${SSHGATE_DIR_CORE}/target-sshkey.func"
+  load __TARGET_ACCESS_FUNC__      "${SSHGATE_DIR_CORE}/target-access.func"
+  load __TARGET_KNOWN_HOSTS_FUNC__ "${SSHGATE_DIR_CORE}/target-known_hosts.func"
+  load __USERGROUP_FUNC__          "${SSHGATE_DIR_CORE}/usergroup.func"
+  load __RECORD_FUNC__             "${SSHGATE_DIR_CORE}/record.func"
 
   ERROR () { echo "ERROR: $*" 1>&2; }
   BAD_ARGUMENTS () { ERROR "Bad arguments"; }
@@ -121,7 +124,7 @@ if [ "${__SSHGATE_CORE__:-}" != 'Loaded' ]; then
   # desc: Tell if a user has access to a taret host
   # note: Echo-return 'true' if the user is allowed to access to the target host, 'false' otherwise
   # note: if no <login> is given, use ${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}
-  HAS_ACCESS() {
+  HAS_ACCESS () {
     local user= target= login= is_admin= is_restricted=
 
     if [ $# -ne 2 -a $# -ne 3 ]; then

@@ -1,0 +1,200 @@
+#
+# Copyright (c) 2010 Linagora
+# Patrick Guiran <pguiran@linagora.com>
+# http://github.com/Tauop/sshGate
+#
+# sshGate is free software, you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of
+# the License, or (at your option) any later version.
+#
+# sshGate is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# README ---------------------------------------------------------------------
+#
+# Collection of all sshkey of target related functions
+#
+# ----------------------------------------------------------------------------
+
+if [ "${__SSHGATE_CORE__}" != 'Loaded' ]; then
+  echo "ERROR: Only sshgate.core can load user.func."; exit 1;
+fi
+
+if [ "${__TARGET_SSHKEY_FUNC__:-}" != 'Loaded' ]; then
+  __TARGET_SSHKEY_FUNC__='Loaded'
+
+  # usage: TARGET_SSHKEY_EDIT <target_host>
+  # desc: edit the private sshkey of a target
+  TARGET_SSHKEY_EDIT () {
+    local target= privkey= pubkey= tmpfile=
+
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+    target="$1"
+
+    ASK --yesno reply 'Use the sshGate default sshkey for this target host [Y] ? '
+    [ "${reply}" = 'Y' ] && return 0;
+
+    privkey="${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGET_PRIVATE_SSHKEY_FILENAME}"
+    pubkey="${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGET_PUBLIC_SSHKEY_FILENAME}"
+    tmpfile="/tmp/file.$(RANDOM)"
+
+    touch "${privkey}" "${pubkey}" "${tmpfile}" 2>/dev/null
+    if [ $? -ne 0 ]; then
+      ERROR "Can't write sshkey files"; return 1;
+    fi
+
+    echo "# Put the private sshkey for '${target}' here. Then save & quit from the editor" >> "${tmpfile}"
+    echo "# line begins by '#' will be removed"                                            >> "${tmpfile}"
+    eval " ${SSHGATE_EDITOR} '${tmpfile}'"
+    if [ $? -ne 0 ]; then
+      ERROR "Can't edit sshkey file"; return 1;
+    fi
+
+    grep -v '^#' < "${tmpfile}" > "${privkey}"
+    chown "${SSHGATE_GATE_ACCOUNT}" "${privkey}"
+    chmod 400 "${privkey}"
+
+    # try to generate the public key, to check that the key doesn't have passphrase
+    ssh-keygen -y -f "${privkey}" > "${tmpfile}"
+    if [ $? -ne 0 ]; then
+      rm -rf "${tmpfile}" "${privkey}" "${pubkey}"
+      ERROR "Unable to generate public ssh key." ; return 1;
+    fi
+
+    tr -d $'\n' < "${tmpfile}" > "${pubkey}"
+    echo " sshGate key"       >> "${pubkey}"
+
+    chown "${SSHGATE_GATE_ACCOUNT}" "${pubkey}"
+
+    rm -f "${tmpfile}"
+    return 0;
+  }
+
+  # usage: DISPLAY_TARGET_PUBLIC_SSHKEY <target_host>
+  # desc: Display public sshkey of a target
+  TARGET_SSHKEY_DISPLAY () {
+    local target=
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+    target=$( TARGET_REAL "$1" )
+    if [ -z "${target}" ]; then
+      ERROR "Target host '${target}' doesn't exist"; return 1;
+    fi
+    cat $( private_TARGET_PUBLIC_SSHKEY_FILE "${target}" )
+    return 0;
+  }
+
+  # usage: TARGET_SSHKEY_USE_DEFAULT <target_host>
+  # desc: Set default sshkey for a target host
+  # note: you may have access to the <target_host> with the sshkey of the
+  #       root account, or with the your sshkey and sshagent forwarding.
+  TARGET_SSHKEY_USE_DEFAULT () {
+    local target=
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
+    target=$( TARGET_REAL "$1" )
+    if [ -z "${target}" ]; then
+      ERROR "Target host '${target}' doesn't exist" ; return 1;
+    fi
+
+    sshkey_file=$( private_TARGET_PUBLIC_SSHKEY_FILE "${target}" )
+    [ "${sshkey_file}" != "${SSHGATE_TARGET_DEFAULT_PUBLIC_SSHKEY_FILE}" ] && rm -f "${sshkey_file}"
+
+    sshkey_file=$( private_TARGET_PRIVATE_SSHKEY_FILE "${target}" )
+    [ "${sshkey_file}" != "${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}" ] && rm -f "${sshkey_file}"
+
+    return 0;
+  }
+
+  # usage: TARGET_SSHKEY_INSTALL [<login>@]<target>
+  # usage: TARGET_SSHKEY_INSTALL <target> [<login>]
+  # desc: Try to install public sshkey on all targets
+  # note: you may have access to the <target> with the sshkey of the
+  #       root account, or with the your sshkey and sshagent forwarding.
+  # note: if <login> isn't specified, use the target's default ssh login
+  TARGET_SSHKEY_INSTALL () {
+    local target= login= sshkey_file= ssh_conf_file=
+    if [ $# -ne 1 -a $# -ne 2 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
+    if [ $# -eq 1 ]; then
+      target=$( GET_HOST "$1" )
+      login=$( GET_LOGIN "$1" )
+    else
+      target="$1"; login="$2"
+    fi
+
+    target=$( TARGET_REAL "${target}" )
+    if [ -z "${target}" ]; then
+      ERROR "Target host '${target}' doesn't exist" ; return 1;
+    fi
+
+    sshkey_file=$( private_TARGET_PUBLIC_SSHKEY_FILE "${target}" )
+    if [ -z "${sshkey_file}" ]; then
+      ERROR "Unable to find private ssh key of '${target}'" ; return 1;
+    fi
+
+    cat "${sshkey_file}"          \
+      | TARGET_SSH_RUN_COMMAND "$1" "umask 077; test -d .ssh || mkdir .ssh ; cat >> .ssh/authorized_keys"
+    if [ $? -ne 0 ]; then
+      echo "NOTICE: Public ssh key of '${target}' can't be installed on '${login}@${target}'. Install it manually"
+    fi
+
+    return 0
+  }
+
+  # usage: TARGET_SSHKEY_INSTALL_ALL
+  # desc: Try to install the public sshkey on the target
+  # note: you may have access to the <target_host> with the sshkey of the
+  #       root account, or with the your sshkey and sshagent forwarding.
+  TARGET_SSHKEY_INSTALL_ALL () {
+    echo "= Install sshkey on all targets ="
+    for target in $( TARGETS_LIST ); do
+      for login in $( TARGET_SSH_LIST_LOGINS "${target}" ); do
+        echo -n ".  ${login}@${target}  ... "
+        TARGET_SSHKEY_INSTALL "${login}@${target}"
+        [ $? eq 0 ] && echo 'OK' || echo 'KO'
+      done
+    done
+    return 0;
+  }
+
+  # usage: private_TARGET_PRIVATE_SSHKEY_FILE <target_host>
+  # desc: echo-return the path to the private ssh key of the target host
+  private_TARGET_PRIVATE_SSHKEY_FILE () {
+    local target= f=
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+    target="$1"
+    f="${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGET_PRIVATE_SSHKEY_FILENAME}"
+    [ ! -r "$f" -o -z "${target}" ] && f="${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}"
+    echo "$f"
+  }
+
+  # usage: private_TARGET_PUBLIC_SSHKEY_FILE <target_host>
+  # desc: echo-return the path to the public ssh key of the target host
+  private_TARGET_PUBLIC_SSHKEY_FILE () {
+    local target= f=
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+    target="$1"
+    f="${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGET_PUBLIC_SSHKEY_FILENAME}"
+    [ ! -r "$f" -o -z "${target}" ] && f="${SSHGATE_TARGET_DEFAULT_PUBLIC_SSHKEY_FILE}"
+    echo "$f"
+  }
+
+fi # end of: if [ "${__TARGET_SSHKEY_FUNC__:-}" != 'Loaded' ]; then

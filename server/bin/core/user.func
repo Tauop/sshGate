@@ -67,12 +67,12 @@ if [ "${__USER_FUNC__:-}" != 'Loaded' ]; then
       ERROR "Invalid user e-mail" ; return 1;
     fi
 
-    private_USER_SSHKEY_EDIT "${user}"
+    USER_SSHKEY_EDIT "${user}"
+    private_USER_AUTH_KEYS_ADD "${user}"
 
     private_MAIL_APPEND "User ${user} added"
     USER_SET_CONF "${user}" MAIL "${usermail}"
 
-    BUILD_AUTHORIZED_KEYS
     return 0
   }
 
@@ -101,11 +101,12 @@ if [ "${__USER_FUNC__:-}" != 'Loaded' ]; then
       private_ACL_FILE_DEL "${user}" "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USER_ACCESS_FILENAME}.${login}"
     done
 
+    private_USER_AUTH_KEYS_DEL "${user}"
+
     rm -f "${SSHGATE_DIR_USERS}/${user}"
     rm -f "${SSHGATE_DIR_USERS}/${user}.properties"
     private_MAIL_APPEND "User ${user} removed"
 
-    BUILD_AUTHORIZED_KEYS
     return 0
   }
 
@@ -372,7 +373,7 @@ if [ "${__USER_FUNC__:-}" != 'Loaded' ]; then
     return 0;
   }
 
-  # usage: private_USER_SSHKEY_EDIT <user>
+  # usage: USER_SSHKEY_EDIT <user>
   # desc: edit the public sshkey file of <user>
   USER_SSHKEY_EDIT () {
     local user= tmpfile=

@@ -1,0 +1,448 @@
+#
+# Copyright (c) 2010 Linagora
+# Patrick Guiran <pguiran@linagora.com>
+# http://github.com/Tauop/sshGate
+#
+# sshGate is free software, you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of
+# the License, or (at your option) any later version.
+#
+# sshGate is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# README ---------------------------------------------------------------------
+#
+# Collection of all ssh on target related functions
+#
+# ----------------------------------------------------------------------------
+
+if [ "${__SSHGATE_CORE__}" != 'Loaded' ]; then
+  echo "ERROR: Only sshgate.core can load user.func."; exit 1;
+fi
+
+if [ "${__TARGET_SSH_FUNC__:-}" != 'Loaded' ]; then
+  __TARGET_SSH_FUNC__='Loaded'
+
+  # usage: TARGET_SSH_EDIT_CONFIG <target> [ <login> ]
+  # usage: TARGET_SSH_EDIT_CONFIG [<login>@<target>]
+  # desc: Edit the ssh configuration file of the <target> for <login>
+  # note: if <login> is not given, try to use default ssh login of the target
+  #       host, or the sshGate target's default ssh login
+  # note: if <target> is egal to "all", edit the global ssh configuration for
+  #       "Host *". In this case, we don't care about <login>.
+  TARGET_SSH_EDIT_CONFIG () {
+    local target= login= file= tmpfile= bckfile=
+    if [ $# -eq 0 -o $# -gt 2 ]; then
+      BAD_ARGUMENTS; return 1;
+    fi
+
+    if [ "$1" != 'all' ]; then
+      if [ $# -eq 1 ]; then
+        target=$( GET_HOST "$1" )
+        login=$( GET_LOGIN "$1" )
+      else
+        target="$1"; login="$2"
+      fi
+
+      target=$( TARGET_REAL "${target}" )
+      if [ -z "${target}" ]; then
+        ERROR "Target host '${target} doesn't exist"; return 1;
+      fi
+
+      [ -z "${login}" ] && login=$( GET_LOGIN "${target}" )
+      if [ "${login}" != "${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}" ]; then
+        # check that the login exist for the target host
+        TARGET_SSH_LIST_LOGINS "${target}" | grep "^${login}\$" >/dev/null
+        if [ $? -ne 0 ]; then
+          ERROR "Login '${login}' doesn't exist for the target host '${target}'"
+          return 1;
+        fi
+      fi
+
+      file="${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_SSH_CONFIG_FILENAME}.${login}"
+    else
+      file="${SSHGATE_DIR_DATA}/${SSHGATE_TARGETS_SSH_CONFIG_FILENAME}.all"
+    fi # end of : if [ "${target}" != 'all' ]; then
+
+    touch "${file}" 2>/dev/null
+    if [ $? -ne 0 ]; then
+      ERROR "Can't write into the ssh config file"; return 1
+    fi
+
+    # backup configuration
+    bckfile="${file}.bak"
+    cp "${file}" "${bckfile}" 2>/dev/null
+    if [ $? -ne 0 ]; then
+      ERROR "Can't backup the ssh config file"; return 1
+    fi
+
+    # edit the file
+    eval "${SSHGATE_EDITOR} '${file}'"
+    if [ $? -ne 0 ]; then
+      ERROR "Failed to edit the configuration file";
+      mv -f "${bckfile}" "${file}"
+      return 1;
+    fi
+
+    tmpfile="/tmp/ssh_config.${login}.$( RANDOM )"
+    # filter out some options and warn if they are used
+    for opt in 'BatchMode'                \
+               'CheckHostIP'              \
+               'ControlMaster'            \
+               'ControlPath'              \
+               'ForwardAgent'             \
+               'IdentityFile'             \
+               'PreferredAuthentications' \
+               'ProxyCommand'             \
+               'StrictHostKeyChecking'    \
+               'User'                     \
+               'UserKnownHostsFile' ; do
+      grep "^[[:space:]]*${opt}[[:space:]]" < "${file}" >/dev/null
+      if [ $? -eq 0 ]; then
+        echo "WARNING: ssh options '${opt}' was removed from editable configuration file. It's not allowed or deal by sshGate"
+        grep -v "^[[:space:]]*${opt}[[:space:]]" < "${file}" > "${tmpfile}"
+        mv "${tmpfile}" "${file}"
+      fi
+    done
+
+    # cleanup
+    rm -f "${tmpfile}" "${bckfile}"
+
+    # permissions
+    chown "${SSHGATE_GATE_ACCOUNT}" "${file}"
+    chmod ug+r "${file}"
+
+    return 0;
+  }
+
+  # usage: TARGET_SSH_GET_CONFIG <target> [ <login> ]
+  # usage: TARGET_SSH_GET_CONFIG [<login>@]<target>
+  # desc: Get generated ssh configuration file used to connect to the target
+  # note: if <login> is not given, try to use default ssh login of the target
+  #       host, or the sshGate target's default ssh login
+  TARGET_SSH_GET_CONFIG () {
+    local target= login= proxy= proxy_host= proxy_login= tmpfile= known_hosts_file= sshkey_file=
+    if [ $# -eq 0 -o $# -gt 2 ]; then
+      BAD_ARGUMENTS; return 1;
+    fi
+
+    if [ $# -eq 1 ]; then
+      target=$( GET_HOST "$1" )
+      login=$( GET_LOGIN "$1" )
+    else
+      target="$1"; login="$2"
+    fi
+
+    target=$( TARGET_REAL "${target}" )
+    if [ -z "${target}" ]; then
+      ERROR "Target host '${target} doesn't exist"; return 1;
+    fi
+
+    [ -z "${login}" ] && login=$( GET_LOGIN "${target}" )
+    if [ "${login}" != "${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}" ]; then
+      # check that the login exist for the target host
+      TARGET_SSH_LIST_LOGINS "${target}" | grep "^${login}\$" >/dev/null
+      if [ $? -ne 0 ]; then
+        ERROR "Login '${login}' doesn't exist for the target host '${target}'"
+        return 1;
+      fi
+    fi
+
+    known_hosts_file="$( SSHGATE_ACCOUNT_HOMEDIR )/.ssh/known_hosts"
+    sshkey_file=$( private_TARGET_PRIVATE_SSHKEY_FILE "${target}" )
+    tmpfile="/tmp/ssh_config.$( RANDOM )"
+
+    touch "${tmpfile}" 2>/dev/null
+    if [ $? -ne 0 ]; then
+      ERROR "Can't write to temporary file"; return 1;
+    fi
+
+    proxy=$( TARGET_GET_CONF "${target}" SSH_PROXY )
+    if [ -n "${proxy}" ]; then
+      proxy_host=$( GET_HOST "${proxy}" )
+      proxy_host=$( TARGET_REAL "${proxy_host}" )
+      proxy_login=$( GET_LOGIN "${proxy}" )
+      if [ -z "${proxy_host}" ]; then
+        ERROR "Target '${target}' was declared to need proxy target '${proxy_host}' whereas '${proxy_host}' doesn't exist";
+        return 1;
+      else
+        rm -f "${tmpfile}" # we don't use previous 'touched' file
+        tmpfile=$( TARGET_SSH_GET_CONFIG "${proxy_host}" "${proxy_login}" )
+      fi
+    else
+      # no proxy, but have to get the global ssh configuration
+      echo "Host *"                                                      >> "${tmpfile}"
+      echo " IdentityFile ${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}" >> "${tmpfile}"
+      echo " IdentitiesOnly yes"                                         >> "${tmpfile}"
+      echo " StrictHostKeyChecking yes"                                  >> "${tmpfile}"
+      echo " HashKnownHosts no"                                          >> "${tmpfile}"
+      echo " UserKnownHostsFile ${known_hosts_file}"                     >> "${tmpfile}"
+      if [ -r "${SSHGATE_DIR_DATA}/${SSHGATE_TARGETS_SSH_CONFIG_FILENAME}.all" ]; then
+        cat "${SSHGATE_DIR_DATA}/${SSHGATE_TARGETS_SSH_CONFIG_FILENAME}.all" >> "${tmpfile}"
+      fi
+    fi # end of : if [ -n "${proxy}" ]; then
+
+    echo                                           >> "${tmpfile}"
+    echo "Host ${target}"                          >> "${tmpfile}"
+    echo " IdentityFile ${sshkey_file}"            >> "${tmpfile}"
+    echo " IdentitiesOnly yes"                     >> "${tmpfile}"
+    echo " StrictHostKeyChecking yes"              >> "${tmpfile}"
+    echo " User ${login}"                          >> "${tmpfile}"
+    if [ -n "${proxy}" ]; then
+      echo " ProxyCommand ssh -F ${tmpfile} ${proxy} nc %h %p" >> "${tmpfile}"
+    fi
+    if [ -r "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_SSH_CONFIG_FILENAME}.${login}" ]; then
+      cat "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_SSH_CONFIG_FILENAME}.${login}" >> "${tmpfile}"
+    fi
+
+    echo "${tmpfile}"
+    return 0;
+  }
+
+  # usage: TARGET_SSH_DISPLAY_GLOBAL_CONFIG
+  # desc: Display global ssh configuration file used, which declare options for "Host *"
+  TARGET_SSH_DISPLAY_GLOBAL_CONFIG () {
+    local file="${SSHGATE_DIR_DATA}/${SSHGATE_TARGETS_SSH_CONFIG_FILENAME}.all"
+    [ -f "${file}" ] && cat "${file}"
+    return 0;
+  }
+
+  # usage: TARGET_SSH_DISPLAY_CONFIG <target> [ <login> ]
+  # usage: TARGET_SSH_DISPLAY_CONFIG [<login>@]<target>
+  # desc: Display simple ssh configuration file used to connect to <target> with <login>
+  # note: if <login> is not given, try to use default ssh login of the target
+  #       host, or the sshGate target's default ssh login
+  TARGET_SSH_DISPLAY_CONFIG () {
+    local target= login=
+    if [ $# -eq 0 -o $# -gt 2 ]; then
+      BAD_ARGUMENTS; return 1;
+    fi
+
+    if [ $# -eq 1 ]; then
+      target=$( GET_HOST "$1" );
+      login=$( GET_LOGIN "$1" );
+    else
+      target="$1"; login="$2"
+    fi
+
+    target=$( TARGET_REAL "${target}" )
+    if [ -z "${target}" ]; then
+      ERROR "Target host '${target} doesn't exist"; return 1;
+    fi
+
+    [ -z "${login}" ] && login=$( GET_LOGIN "${target}" )
+    if [ "${login}" != "${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}" ]; then
+      # check that the login exist for the target host
+      TARGET_SSH_LIST_LOGINS "${target}" | grep "^${login}\$" >/dev/null
+      if [ $? -ne 0 ]; then
+        ERROR "Login '${login}' doesn't exist for the target host '${target}'"
+        return 1;
+      fi
+    fi
+
+    if [ -r "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_SSH_CONFIG_FILENAME}.${login}" ]; then
+      cat "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_SSH_CONFIG_FILENAME}.${login}"
+    fi
+    return 0;
+  }
+
+  # usage: TARGET_SSH_DISPLAY_FULL_CONFIG <target> [ <login> ]
+  # usage: TARGET_SSH_DISPLAY_FULL_CONFIG [<login>@]<target>
+  # desc: Display full generated ssh configuration file used to connect to the target
+  # note: if <login> is not given, try to use default ssh login of the target
+  #       host, or the sshGate target's default ssh login
+  TARGET_SSH_DISPLAY_FULL_CONFIG () {
+    local target= login= file=
+    if [ $# -eq 0 -o $# -gt 2 ]; then
+      BAD_ARGUMENTS; return 1;
+    fi
+
+    if [ $# -eq 1 ]; then
+      target=$( GET_HOST "$1" )
+      login=$( GET_LOGIN "$1" )
+    else
+      target="$1"; login="$2"
+    fi
+
+    target=$( TARGET_REAL "${target}" )
+    if [ -z "${target}" ]; then
+      ERROR "Target host '${target} doesn't exist"; return 1;
+    fi
+
+    [ -z "${login}" ] && login=$( GET_LOGIN "${target}" )
+    if [ "${login}" != "${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}" ]; then
+      # check that the login exist for the target host
+      TARGET_SSH_LIST_LOGINS "${target}" | grep "^${login}\$" >/dev/null
+      if [ $? -ne 0 ]; then
+        ERROR "Login '${login}' doesn't exist for the target host '${target}'"
+        return 1;
+      fi
+    fi
+
+    file=$( TARGET_SSH_GET_CONFIG "${target}" "${login}" )
+    # sed is needed to remove reference of the temporary generated file
+    cat "${file}" | sed -e "s|${file}|ssh_conf_file|g";
+    rm -f "${file}"
+    return 0;
+  }
+
+  # usage: TARGET_SSH_LIST_LOGINS <target>
+  # desc: List all avariable ssh logins of target
+  TARGET_SSH_LIST_LOGINS () {
+    local target= file=
+    if [ $# -ne 1 ]; then
+     BAD_ARGUMENTS ; return 1;
+    fi
+
+    target=$( TARGET_REAL "$1" )
+    if [ -z "${target}" ]; then
+      ERROR "Target host '${target}' doesn't exist" ; return 1;
+    fi
+
+    file="${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_SSH_LOGINS_FILENAME}"
+    ( [ -f "${file}" ] && cat "${file}";
+      TARGET_GET_CONF "${target}" DEFAULT_SSH_LOGIN ) | grep -v '^$' | sort -u
+    return 0;
+  }
+
+  # usage: TARGET_SSH_ADD_LOGIN <target> <login>
+  # desc: Add a ssh login to the target
+  TARGET_SSH_ADD_LOGIN () {
+    local target= file= login=
+    if [ $# -ne 2 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
+    target="$1"; login="$2"
+    target=$( TARGET_REAL "${target}" )
+    if [ -z "${target}" ]; then
+      ERROR "Target host '${target}' doesn't exist" ; return 1;
+    fi
+
+    file="${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_SSH_LOGINS_FILENAME}"
+    if [ ! -f "${file}" ]; then
+      touch "${file}"
+    else
+      grep "^${login}$" < "${file}" >/dev/null
+      if [ $? -eq 0 ]; then
+        ERROR "Login '${login}' already exists for target '${target}'"; return 1;
+      fi
+    fi # end of : if [ ! -f "${file}" ]; then
+
+    echo "${login}" >> "${file}"
+    # create empty access files
+    touch "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USER_ACCESS_FILENAME}.${login}"
+    touch "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USERGROUP_ACCESS_FILENAME}.${login}"
+
+    return 0;
+  }
+
+  # usage: TARGET_SSH_DEL_LOGIN <target> <login>
+  # desc: Remove a ssh l_DELogin from the target
+  TARGET_SSH_DEL_LOGIN () {
+    local target= login= file= tmp_file=
+    if [ $# -ne 2 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
+    target="$1"; login="$2"
+    [ "${login}" = "${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}" ] && return 0;
+
+    target=$( TARGET_REAL "${target}" )
+    if [ -z "${target}" ]; then
+      ERROR "Target host '${target}' doesn't exist" ; return 1;
+    fi
+
+    file="${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_SSH_LOGINS_FILENAME}"
+    tmp_file="/tmp/file.$( RANDOM )"
+
+    [ ! -e "${file}" ] && return 0;
+    grep -v  "^${login}$" < "${file}" > "${tmp_file}"
+    mv "${tmp_file}" "${file}"
+
+    # delete access files
+    rm -f "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USER_ACCESS_FILENAME}.${login}"
+    rm -f "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USERGROUP_ACCESS_FILENAME}.${login}"
+
+    return 0;
+  }
+
+  # usage: TARGET_SSH_RUN_COMMAND [<login>@]<target> <remote-command>
+  # desc: Execute a command on the remote target host
+  # note: if <login> isn't given, use the target's default ssh login
+  TARGET_SSH_RUN_COMMAND () {
+    local target= login= remote_command= ssh_conf_file= result=
+     if [ $# -ne 2 ]; then
+       BAD_ARGUMENTS ; return 1;
+     fi
+
+     target=$( GET_HOST "$1" )
+     login=$( GET_LOGIN "$1" )
+     remote_command="$2"
+     if [ -z "${target}" ]; then
+       ERROR "Target host '${target}' doesn't exist"; return 1;
+     fi
+
+     ssh_conf_file=$( TARGET_SSH_GET_CONFIG "${target}" "${login}" )
+     [ $? -ne 0 ] && return 1;
+     ssh -o "ConnectTimeout 5" \
+         -F "${ssh_conf_file}" \
+         "${login}@${target}"  \
+         "${remote_command}" 2>/dev/null
+     result=$?
+     rm -f "${ssh_conf_file}"
+     return ${result}
+  }
+
+  # usage: TARGET_SSH_TEST [<login>@]<target_host>
+  # desc: Test to connect to the target
+  TARGET_SSH_TEST () {
+    local target= login= ssh_conf_file= sshkey_file= reply=
+    if [ $# -eq 0 -o $# -gt 2 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
+    target=$( GET_HOST "$1" )
+    login=$( GET_LOGIN "$1" )
+    target=$( TARGET_REAL "${target}" )
+    if [ -z "${target}" ]; then
+      ERROR "Target host '${target}' doesn't exist" ; return 1;
+    fi
+
+    echo -n "-  ${login}@${target}  ... "
+    ssh_conf_file=$( TARGET_SSH_GET_CONFIG "${target}" "${login}" )
+    reply=$( ssh -o "ConnectTimeout 5"                       \
+                 -o "BatchMode yes"                          \
+                 -F "${ssh_conf_file}"                       \
+                 "${login}@${target}" "echo 'test'" 2>&1 )
+    if [ $? -eq 0 -a "${reply}" = 'test' ]; then
+      echo 'OK';
+    else
+      echo 'KO';
+      echo "     ${reply}" | sed -e $'s/\r//';
+    fi
+
+    rm -f "${ssh_conf_file}"
+    return 0;
+  }
+
+  # usage: TARGET_SSH_TEST_ALL
+  # desc: Test to connect to all target.
+  # important: this take a while to test ssh connection on all target
+  TARGET_SSH_TEST_ALL () {
+    echo "= Test all targets ssh connectivity ="
+    for target in $( TARGETS_LIST ); do
+      for login in $( TARGET_SSH_LIST_LOGINS "${target}" ); do
+        TARGET_SSH_TEST "${login}@${target}"
+      done
+    done
+  }
+
+
+fi # end of: if [ "${__TARGET_SSH_FUNC__:-}" != 'Loaded' ]; then

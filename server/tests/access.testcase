@@ -46,15 +46,15 @@ sshGate >  usergroup LRS add user scourtois
 sshGate >  usergroup OSSA add user pguiran
 sshGate >  target ${hostname} access add user pguiran
 sshGate >  target ${hostname} access add user scourtois
-sshGate >  target ${hostname} access with root add user scourtois
+sshGate >  target root@${hostname} access add user scourtois
 sshGate >  target ${hostname} access add usergroup LRS
-sshGate >  target ${hostname} access with root add usergroup OSSA
+sshGate >  target root@${hostname} access add usergroup OSSA
 sshGate >  target ${ip} access add user scourtois
-sshGate >  target ${ip} access with tauop add usergroup OSSA
+sshGate >  target tauop@${ip} access add usergroup OSSA
 sshGate >  target ${hostname} access list users
 pguiran
 scourtois
-sshGate >  target ${hostname} access with root list users
+sshGate >  target root@${hostname} access list users
 pguiran
 scourtois
 sshGate >  target ${alias} access list users
@@ -62,15 +62,15 @@ pguiran
 scourtois
 sshGate >  target ${ip} access list users
 scourtois
-sshGate >  target ${ip} access with tauop list users
+sshGate >  target tauop@${ip} access list users
 pguiran
 sshGate >  target ${hostname} access list usergroups
 LRS
 sshGate >  target root@${hostname} access list usergroups
 OSSA
-sshGate >  target ${hostname} access with root list usergroups
+sshGate >  target root@${hostname} access list usergroups
 OSSA
-sshGate >  target ${ip} access with tauop list usergroups
+sshGate >  target tauop@${ip} access list usergroups
 OSSA
 sshGate >  target ${hostname} access info
   scourtois ---> root@${hostname}
@@ -93,9 +93,9 @@ root@${hostname}
 tauop@${ip}
 sshGate >  user pguiran has access ${user_unix_test_account}@${hostname}
 true
-sshGate >  user scourtois has access ${hostname} with root
+sshGate >  user scourtois has access root@${hostname}
 true
-sshGate >  target ${hostname} access with root del usergroup OSSA
+sshGate >  target root@${hostname} access del usergroup OSSA
 sshGate >  target ${ip} access del user scourtois
 sshGate >  target ${hostname} access info
   scourtois ---> root@${hostname}

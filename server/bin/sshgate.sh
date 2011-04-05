@@ -107,9 +107,10 @@ if [ "${SSHGATE_ALLOW_REMOTE_COMMAND}" = 'Y' -a "${action_type}" = 'ssh' ]; then
     }
     is_admin=$( USER_GET_CONF "${SSHKEY_USER}" IS_ADMIN )
     code=
-    code="${code} $(BUILD_SED_CODE 'cmd list targets'   'USER_LIST_TARGETS ${SSHKEY_USER}')"
-    code="${code} $(BUILD_SED_CODE 'cmd list targets ?' 'USER_LIST_TARGETS \1')"
-    code="${code} $(BUILD_SED_CODE 'cmd sshkey ?'       'USER_SSHKEY_DISPLAY \1')"
+    code="${code} $(BUILD_SED_CODE 'cmd list targets'    'USER_LIST_TARGETS ${SSHKEY_USER}' )"
+    code="${code} $(BUILD_SED_CODE 'cmd list targets ?'  'USER_LIST_TARGETS \1'             )"
+    code="${code} $(BUILD_SED_CODE 'cmd user sshkey ?'   'USER_SSHKEY_DISPLAY \1'           )"
+    code="${code} $(BUILD_SED_CODE 'cmd target sshkey ?' 'TARGET_SSHKEY_DISPLAY \1'         )"
     if [ "${SSHGATE_USE_REMOTE_ADMIN_CLI}" = 'Y' -a "${is_admin}" = 'true' ]; then
       code="${code} $(BUILD_SED_CODE 'cli' "sudo ${SSHGATE_DIR_BIN}/sshgate-cli -u '${SSHKEY_USER}'")"
     fi
