@@ -344,6 +344,7 @@ if [ "${__USER_FUNC__:-}" != 'Loaded' ]; then
     MAIL_APPEND "Here is the list of your access of sshGate :"
     MAIL_APPEND ''
     for target in $( USER_LIST_TARGETS "${user}" ); do
+      [ -z "${target}" ] && continue;
       MAIL_APPEND " - ${target}"
       aliases=
       aliases=$( TARGET_LIST_ALIASES "${target}" )
