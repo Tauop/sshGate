@@ -58,8 +58,13 @@ if [ "${__SSHGATE_CORE__:-}" != 'Loaded' ]; then
   load __USERGROUP_FUNC__          "${SSHGATE_DIR_CORE}/usergroup.func"
   load __RECORD_FUNC__             "${SSHGATE_DIR_CORE}/record.func"
 
-  ERROR () { echo "ERROR: $*" 1>&2; }
-  BAD_ARGUMENTS () { ERROR "Bad arguments"; }
+  ERROR () {
+    echo "ERROR: $*" 1>&2;
+  }
+
+  BAD_ARGUMENTS () {
+    ERROR "Bad arguments";
+  }
 
   # usage: private_ACL_FILE_ADD <line> <file>
   private_ACL_FILE_ADD () {
@@ -117,27 +122,23 @@ if [ "${__SSHGATE_CORE__:-}" != 'Loaded' ]; then
 
   # usage: GET_HOST <string>
   # desc: Echo-return the host from a connection string
-  GET_HOST () { echo "${1#*@}"; return 0; }
+  GET_HOST () {
+    echo "${1#*@}"; return 0;
+  }
 
   # usage: HAS_ACCESS <username> [<login>@]<target_host>
-  # usage: HAS_ACCESS <username> <target_host> <login>
   # desc: Tell if a user has access to a taret host
   # note: Echo-return 'true' if the user is allowed to access to the target host, 'false' otherwise
   # note: if no <login> is given, use ${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}
   HAS_ACCESS () {
     local user= target= login= is_admin= is_restricted=
 
-    if [ $# -ne 2 -a $# -ne 3 ]; then
+    if [ $# -ne 2 ]; then
       BAD_ARGUMENTS ; return 1;
     fi
 
-    if [ $# -eq 2 ]; then
-      user="$1"
-      target=$( GET_HOST "$2" )
-      login=$( GET_LOGIN "$2" )
-    else
-      user="$1"; target="$2"; login="$3"
-    fi
+    user="$1"; target="$2"
+    login=$( GET_LOGIN "${target}" )
 
     target=$( TARGET_REAL "${target}" )
     if [ -z "${user}" -o -z "${target}" ]; then
