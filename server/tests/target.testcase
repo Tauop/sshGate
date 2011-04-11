@@ -41,14 +41,16 @@ sshGate >  target list ${hostname%??}*
 ${hostname}
 sshGate >  target alias list
 sshGate >  target ${hostname} add alias ${alias}
+sshGate >  target alias list ${hostname}
+${alias}
 sshGate >  target alias list
 ${alias}
-sshGate >  target ${hostname} list aliases
+sshGate >  target ${hostname} list alias
 ${alias}
 sshGate >  target ${alias} realname
 ${hostname}
 sshGate >  target ${hostname} del alias ${alias}
-sshGate >  target ${hostname} list aliases
+sshGate >  target ${hostname} list alias
 sshGate >  target ${ip} rename ${alias}
 Target renamed : ${ip} -> ${alias}
 Target alias '${ip}' created
@@ -75,6 +77,25 @@ sshGate >  target ssh test all
 -  ${user_unix_test_account}@${hostname}  ... OK
 -  ${user_unix_test_account}@${alias}  ... KO
      ssh: Could not resolve hostname ${alias}: Name or service not known
+sshGate >  target ${hostname} ssh edit key
+Use the sshGate default sshkey for this target host [Y] ?   Y
+<<=Y
+sshGate >  target ${hostname} ssh edit key
+Use the sshGate default sshkey for this target host [Y] ?   N
+<<=N
+$(cat "${sshkey_priv_test_file}" | while read line ; do echo "<<-${line}"; done; echo "->>" )
+sshGate >  target ${hostname} ssh display key
+# public sshkey of ${hostname}
+$( cat "${sshkey_pub_test_file}" )
+sshGate >  target ${hostname} ssh use default key
+sshGate >  target ${hostname} ssh display key
+# public sshkey of ${hostname}
+$( cat "${SSHGATE_TARGET_DEFAULT_PUBLIC_SSHKEY_FILE}" )
+sshGate >  target ${user_unix_test_account}@${hostname} ssh install key 
+sshGate >  target ssh update known_hosts
+- ${hostname} ... OK
+- ${hostname}2 ... KO
+sshGate >  target ${hostname} ssh update known_hosts
 sshGate >  target ssh display config
 sshGate >  target ssh edit config
 <<-User root
@@ -137,6 +158,8 @@ Host ${hostname}
 ConnectTimeout 30
 ForwardX11 yes
 sshGate >  target ${hostname} del conf SSH_PROXY
+sshGate >  target ${hostname} display conf
+DEFAULT_SSH_LOGIN="${user_unix_test_account}"
 sshGate >  target ${hostname} ssh del login root
 sshGate >  target ${hostname} ssh list logins
 ${user_unix_test_account}
@@ -144,6 +167,9 @@ sshGate >  target del ${ip}
 sshGate >  target alias list
 sshGate >  target list
 ${hostname}
+sshGate >  target ssh install all key
+= Install sshkey on all targets =
+.  ${user_unix_test_account}@${hostname}  ... OK
 sshGate >  target add ${ip} with proxy ${hostname}
 Use the sshGate default sshkey for this target host [Y] ?   Y
 <<=Y

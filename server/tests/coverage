@@ -1,0 +1,70 @@
+can't be tested :
+ - usergroup <group> access notify
+ - target [<login>@]<target> access info
+
+user.testcase :
+ - user list <pattern>
+ - user add <user> mail <email>
+ - user del <user>
+ - user build auth_keys
+ - user <user> display conf
+ - user <user> set conf <variable> <value>
+ - user <user> del conf <variable>
+ - user <user> edit sshkey
+ - user <user> display sshkey
+ - user <user> update auth_keys
+
+target.testcase
+ - target list <pattern>
+ - target add [<login>@]<target>
+ - target add [<login>@]<target> with proxy [<login>@]<target>
+ - target add [<login>@]<target> via [<login>@]<target>
+ - target del <target>
+ - target alias list
+ - target ssh test all
+ - target ssh install all key
+ - target ssh edit config
+ - target ssh display config
+ - target ssh update known_hosts
+ - target <target> rename <new>
+ - target <target> realname
+ - target <target> add alias <alias>
+ - target <target> del alias <alias>
+ - target <target> list alias
+ - target <target> display conf
+ - target <target> set conf <variable> <value>
+ - target <target> del conf <variable>
+ - target <target> ssh test
+ - target <target> ssh list logins
+ - target <target> ssh add login <login>
+ - target <target> ssh del login <login>
+ - target [<login>@]<target> ssh edit config
+ - target [<login>@]<target> ssh display config
+ - target [<login>@]<target> ssh display full config
+ - target <target> ssh display key
+ - target <target> ssh edit key
+ - target <target> ssh install key
+ - target <target> ssh use default key
+ - target <target> ssh update known_hosts
+
+usergroup.testcase
+ - user <user> list usergroups
+ - usergroup add <group>  
+ - usergroup del <group>  
+ - usergroup <group> list users   
+ - usergroup <group> add user <user>      
+ - usergroup <group> del user <user>      
+ - usergroup <group> list targets 
+ - usergroup <group> access info  
+
+access.testcase
+ - user <user> list targets
+ - user <user> has access <target>
+ - user <user> access info
+ - user <user> access notify
+ - target [<login>@]<target> access list users
+ - target [<login>@]<target> access add user <user>
+ - target [<login>@]<target> access del user <user>
+ - target [<login>@]<target> access list usergroups
+ - target [<login>@]<target> access add usergroup <group>
+ - target [<login>@]<target> access del usergroup <group>

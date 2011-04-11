@@ -122,8 +122,8 @@ mOK
 # --------------------------------------------------------------------------
 mDOTHIS 'Generate temporary sshkey test file'
   # generate fake ssh keys pair without passphrase
-  ssh-keygen -t rsa -b 1024 -N '' -f "${sshkey_priv_test_file}"      >/dev/null
-  ssh-keygen -t rsa -b 1024 -N '' -f "${sshkey_priv_unix_test_file}" >/dev/null
+  ssh-keygen -C "sshGate key" -t rsa -b 1024 -N '' -f "${sshkey_priv_test_file}"      >/dev/null
+  ssh-keygen -C "user@key" -t rsa -b 1024 -N '' -f "${sshkey_priv_unix_test_file}" >/dev/null
   chmod 400 "${sshkey_priv_test_file}"
   chmod 400 "${sshkey_priv_unix_test_file}"
 mOK

@@ -101,6 +101,9 @@ sshGate >  target ${hostname} access info
   scourtois ---> root@${hostname}
   pguiran,scourtois ---> ${user_unix_test_account}@${hostname}
   pguiran,scourtois --- usergroup(LRS) ---> ${user_unix_test_account}@${hostname}
+sshGate >  user scourtois list targets
+root@${hostname}
+${user_unix_test_account}@${hostname}
 sshGate >  target ${ip} access list users
 sshGate >  usergroup del LRS
 sshGate >  target ${hostname} access info

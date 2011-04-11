@@ -30,7 +30,14 @@ pguiran
 sshGate >  user list *gui*
 pguiran
 sshGate >  user add scourtois mail simon@courtois.fr
+$(echo "<<-lol"; echo "<<-rolf"; echo "->>" )
+sshGate >  user scourtois display sshkey
+# public sshkey scourtois
+lol
+rolf
+sshGate >  user scourtois edit sshkey
 $(cat "${sshkey_pub_test_file}" | while read line ; do echo "<<-${line}"; done; echo "->>" )
+sshGate >  user scourtois update auth_keys
 sshGate >  user list sco*
 scourtois
 sshGate >  user pguiran display conf
@@ -44,10 +51,18 @@ IS_ADMIN="true"
 sshGate [user scourtois]>  set conf IS_ADMIN
 sshGate [user scourtois]>  display conf
 MAIL="scourtois@linagora.com"
+sshGate [user scourtois]>  set conf IS_ADMIN false
+sshGate [user scourtois]>  display conf
+MAIL="scourtois@linagora.com"
+IS_ADMIN="false"
+sshGate [user scourtois]>  del conf IS_ADMIN
+sshGate [user scourtois]>  display conf
+MAIL="scourtois@linagora.com"
 sshGate [user scourtois]>  quit
 sshGate >  user del scourtois
 sshGate >  user list
 pguiran
+sshGate >  user build auth_keys
 sshGate >  exit
 EOF
 
