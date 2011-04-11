@@ -112,15 +112,11 @@ if [ "${configure}" = 'yes' ]; then
   ASK --yesno SSHGATE_MAIL_SEND \
       "Activate mail notification system [Yes] ?" \
       "Y"
-  [ "${SSHGATE_MAIL_SEND}" = 'N' ] && SSHGATE_MAIL_SEND='false'
   if [ "${SSHGATE_MAIL_SEND}" = 'Y' ]; then
-    SSHGATE_MAIL_SEND='true'
     ASK SSHGATE_MAIL_TO \
         "Who will receive mail notification (comma separated mails) [${SSHGATE_MAIL_TO}] ?" \
         "${SSHGATE_MAIL_TO}"
     [ -z "${SSHGATE_MAIL_TO}" ] && SSHGATE_MAIl_SEND='false'
-  else
-    SSHGATE_MAIL_SEND='false'
   fi
   CONF_SAVE SSHGATE_MAIL_SEND
   CONF_SAVE SSHGATE_MAIL_TO

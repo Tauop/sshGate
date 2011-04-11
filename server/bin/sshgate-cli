@@ -165,7 +165,7 @@ CLI_REGISTER_COMMAND 'target [<login>@]<target> access del usergroup <group>'   
 CLI_USE_READLINE --force --history-file ~/.sshgate_history
 CLI_SET_PROMPT "sshGate"
 
-[ ${SSHGATE_MAIL_SEND:-} = 'true' ] && MAIL_CREATE
+[ ${SSHGATE_MAIL_SEND:-} = 'Y' ] && MAIL_CREATE
 
 
 # during test :
@@ -181,7 +181,7 @@ if [ "${SSHGATE_TEST:-}" != 'sshGateTest' ]; then
 
   CLI_RUN
 
-  [ ${SSHGATE_MAIL_SEND:-} = 'true' ] \
+  [ ${SSHGATE_MAIL_SEND:-} = 'Y' ] \
     && MAIL_SEND "${SSHGATE_MAIL_SUBJECT} (${SSHKEY_USER})" "${SSHGATE_MAIL_TO}"
   [ $? -eq 2 ] && NOTICE "No modification noticed. Repport e-mail will not be sent"
 fi

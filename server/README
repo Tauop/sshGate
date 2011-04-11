@@ -39,8 +39,8 @@ Main settings :
 - SSHGATE_EDITOR : editor program to use by sshGate. default: ${EDITOR}
 - SSHGATE_TARGETS_SCP_PATH : default SCP path when it's not specified. default: ~/
 - SSHGATE_TARGET_DEFAULT_SSH_LOGIN : default ssh login to use when connecting to target host. default: root
-- SSHGATE_MAIL_SEND : Is sshGate mail notification activated ? default: false
-- SSHGATE_MAIL_TO : mail to this mail adresse if [SSHGATE_MAIL_SEND] is 'true'
+- SSHGATE_MAIL_SEND : Is sshGate mail notification activated ? default: N
+- SSHGATE_MAIL_TO : mail to this mail adresse if [SSHGATE_MAIL_SEND] is 'Y'
 - SSHGATE_MAIL_SUBJECT : E-mail subject to use
 
 other settings which can be override in /etc/sshgate.conf
