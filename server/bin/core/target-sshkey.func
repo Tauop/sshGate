@@ -39,12 +39,15 @@ if [ "${__TARGET_SSHKEY_FUNC__:-}" != 'Loaded' ]; then
     fi
     target="$1"
 
-    ASK --yesno reply 'Use the sshGate default sshkey for this target host [Y] ? '
-    [ "${reply}" = 'Y' ] && return 0;
-
     privkey="${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGET_PRIVATE_SSHKEY_FILENAME}"
     pubkey="${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGET_PUBLIC_SSHKEY_FILENAME}"
     tmpfile="/tmp/file.$(RANDOM)"
+
+    ASK --yesno reply 'Use the sshGate default sshkey for this target host [Y] ? '
+    if [ "${reply}" = 'Y' ]; then
+      rm -f "${privkey}" "${pubkey}" >/dev/null 2>/dev/null
+      return 0;
+    fi
 
     touch "${privkey}" "${pubkey}" "${tmpfile}" 2>/dev/null
     if [ $? -ne 0 ]; then
@@ -63,7 +66,7 @@ if [ "${__TARGET_SSHKEY_FUNC__:-}" != 'Loaded' ]; then
     chmod 400 "${privkey}"
 
     # try to generate the public key, to check that the key doesn't have passphrase
-    ssh-keygen -y -f "${privkey}" > "${tmpfile}"
+    ssh-keygen -y -N '' -f "${privkey}" > "${tmpfile}"
     if [ $? -ne 0 ]; then
       rm -rf "${tmpfile}" "${privkey}" "${pubkey}"
       ERROR "Unable to generate public ssh key." ; return 1;
@@ -89,6 +92,7 @@ if [ "${__TARGET_SSHKEY_FUNC__:-}" != 'Loaded' ]; then
     if [ -z "${target}" ]; then
       ERROR "Target host '${target}' doesn't exist"; return 1;
     fi
+    echo "# public sshkey of ${target}"
     cat $( private_TARGET_PUBLIC_SSHKEY_FILE "${target}" )
     return 0;
   }
@@ -165,7 +169,7 @@ if [ "${__TARGET_SSHKEY_FUNC__:-}" != 'Loaded' ]; then
       for login in $( TARGET_SSH_LIST_LOGINS "${target}" ); do
         echo -n ".  ${login}@${target}  ... "
         TARGET_SSHKEY_INSTALL "${login}@${target}"
-        [ $? eq 0 ] && echo 'OK' || echo 'KO'
+        [ $? -eq 0 ] && echo 'OK' || echo 'KO'
       done
     done
     return 0;
