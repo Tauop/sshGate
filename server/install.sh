@@ -116,7 +116,7 @@ if [ "${configure}" = 'yes' ]; then
     ASK SSHGATE_MAIL_TO \
         "Who will receive mail notification (comma separated mails) [${SSHGATE_MAIL_TO}] ?" \
         "${SSHGATE_MAIL_TO}"
-    [ -z "${SSHGATE_MAIL_TO}" ] && SSHGATE_MAIl_SEND='false'
+    [ -z "${SSHGATE_MAIL_TO}" ] && SSHGATE_MAIl_SEND='N'
   fi
   CONF_SAVE SSHGATE_MAIL_SEND
   CONF_SAVE SSHGATE_MAIL_TO
