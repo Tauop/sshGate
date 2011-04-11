@@ -141,10 +141,10 @@ if [ -z "${TARGET_HOST}" ]; then
 fi
 
 # Determine information for connecting to the host ---------------------------
+ORIGINAL_TARGET_HOST="${TARGET_HOST}"
 TARGET_LOGIN=$( GET_LOGIN "${TARGET_HOST}" )
 TARGET_HOST=$( GET_HOST "${TARGET_HOST}" )
 
-ORIGINAL_TARGET_HOST="${TARGET_HOST}"
 TARGET_HOST=$( TARGET_REAL "${TARGET_HOST}" )
 if [ -z "${TARGET_HOST}" ]; then
   echo "ERROR: Unknown host ${ORIGINAL_TARGET_HOST}."
@@ -152,7 +152,7 @@ if [ -z "${TARGET_HOST}" ]; then
 fi
 
 # check ACL ------------------------------------------------------------------
-if [ $( HAS_ACCESS "${SSHKEY_USER}" "${TARGET_HOST}" "${TARGET_LOGIN}" ) = 'false' ]; then
+if [ $( HAS_ACCESS "${SSHKEY_USER}" "${ORIGINAL_TARGET_HOST}" ) = 'false' ]; then
   echo "ERROR: The '${ORIGINAL_TARGET_HOST}' doesn't exist or you don't have access to it (or with login '${TARGET_LOGIN}')"
   exit 1
 fi
