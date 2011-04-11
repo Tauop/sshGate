@@ -29,33 +29,6 @@ fi
 if [ "${__TARGET_KNOWN_HOSTS_FUNC__:-}" != 'Loaded' ]; then
   __TARGET_KNOWN_HOSTS_FUNC__='Loaded'
 
-  # usage: private_BUILD_KNOWN_HOSTS
-  # desc: force re-write of sshgate account ~/.ssh/known_hosts file
-  # important: need to be root
-  private_BUILD_KNOWN_HOSTS () {
-    local home_dir= target= alias=
-    home_dir=$( SSHGATE_ACCOUNT_HOMEDIR )
-    if [ -z "${home_dir}" ]; then
-      ERROR "Can't find home directory of ${SSHGATE_GATE_ACCOUNT} user"
-      return 1;
-    fi
-
-    echo -n '' > "${home_dir}/.ssh/known_hosts"
-    for target in $( TARGETS_LIST ); do
-      target=$( GET_HOST "${target}" )
-      echo -n "- ${target} ... "
-      private_TARGET_KNOWN_HOSTS_ADD "${target}" "${home_dir}/.ssh/known_hosts"
-      if [ $? -ne 0 ]; then
-        # don't try for ip and alias if we failed here
-        echo 'KO'
-        continue
-      fi
-      echo 'OK'
-    done
-
-    return 0;
-  }
-
   # usage: private_TARGET_KNOWN_HOSTS_ADD <target> [ <file> ]
   # desc: force re-write of sshgate account ~/.ssh/authorized_keys2 file
   # note: if <file> is not specified, determine it with SSHGATE_ACCOUNT_HOMEDIR
@@ -138,19 +111,49 @@ if [ "${__TARGET_KNOWN_HOSTS_FUNC__:-}" != 'Loaded' ]; then
     return 0;
   }
 
-  # usage: TARGET_SSH_UPDATE_KNOWN_HOSTS <target>
-  # desc: update known_hosts file entry for <target>
-  TARGET_SSH_UPDATE_KNOWN_HOSTS () {
-    local target=
+  # usage: private_TARGET_SSH_BUILD_KNOWN_HOSTS
+  # desc: force re-write of sshgate account ~/.ssh/known_hosts file
+  # important: need to be root
+  private_TARGET_SSH_BUILD_KNOWN_HOSTS () {
+    local home_dir= target= alias=
+    home_dir=$( SSHGATE_ACCOUNT_HOMEDIR )
+    if [ -z "${home_dir}" ]; then
+      ERROR "Can't find home directory of ${SSHGATE_GATE_ACCOUNT} user"
+      return 1;
+    fi
 
-    if [ $# -ne 1 ]; then
+    echo -n '' > "${home_dir}/.ssh/known_hosts"
+    for target in $( TARGETS_LIST ); do
+      target=$( GET_HOST "${target}" )
+      echo -n "- ${target} ... "
+      private_TARGET_KNOWN_HOSTS_ADD "${target}" "${home_dir}/.ssh/known_hosts"
+      if [ $? -ne 0 ]; then
+        # don't try for ip and alias if we failed here
+        echo 'KO'
+        continue
+      fi
+      echo 'OK'
+    done
+
+    return 0;
+  }
+
+  # usage: TARGET_SSH_UPDATE_KNOWN_HOSTS [<target>]
+  # desc: update known_hosts file entry for all hosts or <target>
+  TARGET_SSH_UPDATE_KNOWN_HOSTS () {
+    if [ $# -gt 1 ]; then
       BAD_ARGUMENTS ; return 1;
     fi
 
-    private_TARGET_KNOWN_HOSTS_DEL "${target}"      \
-      && private_TARGET_KNOWN_HOSTS_ADD "${target}" \
-      && return 0;
-    return 0;
+    if [ $# -eq 1 ]; then
+      private_TARGET_KNOWN_HOSTS_DEL "$1"      \
+        && private_TARGET_KNOWN_HOSTS_ADD "$1" \
+        && return 0;
+    else
+      private_TARGET_SSH_BUILD_KNOWN_HOSTS "$1" && return 0
+    fi
+
+    return 1; # error
   }
 
 fi # end of: if [ "${__TARGET_KNOWN_HOSTS_FUNC__:-}" != 'Loaded' ]; then
