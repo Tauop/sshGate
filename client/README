@@ -14,7 +14,7 @@ See your admins for more information
 
 == Details ==
 
-'sshg' is quite simple. It's an equivalent of 'ssh sshgate <target_host>'
+'sshg' is quite simple. It's an equivalent of 'ssh sshgate <target_host> <cmd>'
 
 'scpg' is more complex. Here are the 'scpg - scp' equivalent syntaxes:
 
