@@ -126,7 +126,7 @@ if [ "${SSHGATE_USERS_MUST_ACCEPT_CGU}" = 'Y' -a -f "${SSHGATE_CGU_FILE}" ]; the
   if [ "${has_accept_cgu}" != 'true' ]; then
     cat "${SSHGATE_CGU_FILE}"
     echo
-    ASK --yesno "-> 'yes' / 'no' ?" var
+    ASK --yesno var "-> 'yes' / 'no' ?"
     [ "${var}" = 'N' ] && exit 1;
     USER_SET_CONF "${SSHKEY_USER}" HAS_ACCEPT_CGU 'true'
   fi
