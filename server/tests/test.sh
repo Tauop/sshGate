@@ -43,8 +43,8 @@ testcases=$( find "${SSHGATE_DIR_BIN}/tests/" -type f -iname "*.testcase" -print
 
 usage () {
   testcases=$( echo -n "${testcases}" | tr $'\n' ',' | sed -e 's/,/, /g' )
-  echo 'Usage: $0 <test-case>'
-  echo "    <test-case> : ${testcases}" | fold
+  echo "Usage: $0 <test-case>"
+  echo "    <test-case> : ${testcases}" | fold -s
   exit 1
 }
 
