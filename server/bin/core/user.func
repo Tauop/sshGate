@@ -442,7 +442,7 @@ if [ "${__USER_FUNC__:-}" != 'Loaded' ]; then
       ERROR "user '${user}' doesn't exist"; return 1;
     fi
 
-    [ $# -eq 2 ] && authorized_keys2="$2" || authorized_keys2="$( SSHGATE_ACCOUNT_HOMEDIR )/authorized_keys2"
+    [ $# -eq 2 ] && authorized_keys2="$2" || authorized_keys2="$( SSHGATE_ACCOUNT_HOMEDIR )/.ssh/authorized_keys2"
     touch "${authorized_keys2}" 2>/dev/null
     if [ $? -ne 0 ]; then
       ERROR "Can't write into authorized_keys2 file '${authorized_keys2}'"
@@ -450,7 +450,7 @@ if [ "${__USER_FUNC__:-}" != 'Loaded' ]; then
     fi
 
     user_key=$( cat "${SSHGATE_DIR_USERS}/${user}" )
-    echo "command=\"/bin/sh ${sshgate_dir_bin}/sshgate.sh ${user}\" ${user_key}" >> "${authorized_keys2}"
+    echo "command=\"/bin/sh ${SSHGATE_DIR_BIN}/sshgate.sh ${user}\" ${user_key}" >> "${authorized_keys2}"
 
     chown "${SSHGATE_GATE_ACCOUNT}" "${authorized_keys2}"
     chmod u+r "${authorized_keys2}"
@@ -471,7 +471,7 @@ if [ "${__USER_FUNC__:-}" != 'Loaded' ]; then
       ERROR "User '${user}' doesn't exist"; return 1;
     fi
 
-    [ $# -eq 2 ] && authorized_keys2="$2" || authorized_keys2="$( SSHGATE_ACCOUNT_HOMEDIR )/authorized_keys2"
+    [ $# -eq 2 ] && authorized_keys2="$2" || authorized_keys2="$( SSHGATE_ACCOUNT_HOMEDIR )/.ssh/authorized_keys2"
     touch "${authorized_keys2}" 2>/dev/null
     if [ $? -ne 0 ]; then
       ERROR "Can't write into authorized_keys2 file '${authorized_keys2}'"
@@ -484,7 +484,7 @@ if [ "${__USER_FUNC__:-}" != 'Loaded' ]; then
       ERROR "Can't write into temporary file '${tmpfile}'"; return 1
     fi
 
-    grep -v "^command=\"/bin/sh ${sshgate_dir_bin}/sshgate.sh ${user}\" " < "${authorized_keys2}" > "${tmp_file}"
+    grep -v "^command=\"/bin/sh ${SSHGATE_DIR_BIN}/sshgate.sh ${user}\" " < "${authorized_keys2}" > "${tmp_file}"
     mv "${tmp_file}" "${authorized_keys2}"
 
     chown "${SSHGATE_GATE_ACCOUNT}" "${authorized_keys2}"
@@ -517,7 +517,7 @@ if [ "${__USER_FUNC__:-}" != 'Loaded' ]; then
   USERS_AUTH_KEYS_BUILD () {
     local user= authorized_keys2=
 
-    authorized_keys2="$( SSHGATE_ACCOUNT_HOMEDIR )/authorized_keys2"
+    authorized_keys2="$( SSHGATE_ACCOUNT_HOMEDIR )/.ssh/authorized_keys2"
     touch "${authorized_keys2}" 2>/dev/null
     if [ $? -ne 0 ]; then
       ERROR "Can't write into authorized_keys2 file '${authorized_keys2}'"
