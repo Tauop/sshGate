@@ -76,7 +76,7 @@ if [ "${__RECORD_FUNC__:-}" != 'Loaded' ]; then
 
     item="${SSHGATE_DIR_LOGS_USERS}/${user}.log"
     touch "${item}"
-    chwon "${SSHGATE_GATE_ACCOUNT}" "${item}"
+    chown "${SSHGATE_GATE_ACCOUNT}" "${item}"
     echo "${item}"
     return 0;
   }
