@@ -104,14 +104,14 @@ if [ "${__RECORD_FUNC__:-}" != 'Loaded' ]; then
   # desc: remove session state information
   private_SESSION_STATE_REMOVE () {
     local session_file= pid= nb=
-    if [ $# -ne 3 ]; then
+    if [ $# -ne 1 ]; then
       BAD_ARGUMENTS ; return 1;
     fi
 
     session_file="${SSHGATE_LOGS_CURRENT_SESSION_FILE}"
 
     MUTEX_GET "${session_file}"
-      grep -v "^${pid}:" < "${session_file}" > "${session_file}.tmp"
+      grep -v "^${1:-}:" < "${session_file}" > "${session_file}.tmp"
       mv "${session_file}.tmp" "${session_file}"
       nb=$( wc -l < "${session_file}" | cut -d' ' -f1 )
       [ "${nb}" = '0' ] && rm -f "${session_file}"
