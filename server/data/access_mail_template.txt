@@ -1,0 +1,10 @@
+Dear user,
+
+Please find below the list of access granted on sshGate (sshgate.domain.tld) :
+##ACCESS_LIST##
+
+You can find documentation on accessing hosts through sshGate at http://wiki.tld/sshGate
+
+Bests regards,
+
+Your IT Department
