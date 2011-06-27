@@ -86,7 +86,7 @@ if [ "${__RECORD_FUNC__:-}" != 'Loaded' ]; then
   # usage: private_SESSION_CURRENT_ADD <pid> <username> <target>
   # desc: add session state information
   private_SESSION_STATE_ADD () {
-    local session_file= pid= username= target=
+    local session_file=
     if [ $# -ne 3 ]; then
       BAD_ARGUMENTS ; return 1;
     fi
@@ -94,7 +94,8 @@ if [ "${__RECORD_FUNC__:-}" != 'Loaded' ]; then
     session_file="${SSHGATE_LOGS_CURRENT_SESSION_FILE}"
 
     MUTEX_GET "${session_file}"
-    echo "${1:-}:${2:-}:${3:-}:${4:-}" >> "${session_file}"
+    # format = <pid>:<username>:<target>
+    echo "${1:-}:${2:-}:${3:-}" >> "${session_file}"
     MUTEX_RELEASE "${session_file}"
 
     return 0;
@@ -104,7 +105,7 @@ if [ "${__RECORD_FUNC__:-}" != 'Loaded' ]; then
   # desc: remove session state information
   private_SESSION_STATE_REMOVE () {
     local session_file= pid= nb=
-    if [ $# -ne 3 ]; then
+    if [ $# -ne 1 ]; then
       BAD_ARGUMENTS ; return 1;
     fi
 
@@ -130,6 +131,7 @@ if [ "${__RECORD_FUNC__:-}" != 'Loaded' ]; then
       BAD_ARGUMENTS ; return 1;
     fi
 
+    # in target global session file
     log_file=$( private_SESSION_TARGET_GET_LOG_FILE "${4:-}" )
     if [ -n "${log_file}" ]; then
       MUTEX_GET "${log_file}"
@@ -137,12 +139,22 @@ if [ "${__RECORD_FUNC__:-}" != 'Loaded' ]; then
       MUTEX_RELEASE "${log_file}"
     fi
 
+    # in user global session file
     log_file=$( private_SESSION_USER_GET_LOG_FILE "${3:-}" )
     if [ -n "${log_file}" ]; then
       MUTEX_GET "${log_file}"
       echo "${1:-}:${2:-}:${4:-}:${5:-}" >> "${log_file}"
       MUTEX_RELEASE "${log_file}"
     fi
+
+    # in global session log file
+    log_file="${SSHGATE_GLOBAL_SESSION_LOG_FILE}"
+    if [ -n "${log_file}" ]; then
+      MUTEX_GET "${log_file}"
+      echo "${1:-}:${2:-}:${4:-}:${5:-}" >> "${log_file}"
+      MUTEX_RELEASE "${log_file}"
+    fi
+
     return 0;
   }
 
@@ -164,7 +176,7 @@ if [ "${__RECORD_FUNC__:-}" != 'Loaded' ]; then
   # --------------------------------------------------------------------------
 
   # usage: SESSION_GET_TARGET_RECORD_FILE <username> <target>
-  # desc: echo-return the target session log file path
+  # desc: echo-return a random-generated target session log file path
   # note: we don't create/touch the file
   SESSION_TARGET_GET_RECORD_FILE () {
     local user= target= f=
@@ -184,5 +196,57 @@ if [ "${__RECORD_FUNC__:-}" != 'Loaded' ]; then
   }
 
   # --------------------------------------------------------------------------
+
+  # usage: SESSION_DISPLAY_CONNECTED
+  # desc: echo-return the list of connected sessions
+  SESSION_DISPLAY_CONNECTED () {
+    local session_file=
+
+    session_file="${SSHGATE_LOGS_CURRENT_SESSION_FILE}"
+    if [ -f "${session_file}" ]; then
+      MUTEX_GET "${session_file}"
+      cat "${session_file}" | sed -e 's/^[^:]*:[^:]*:[^:]*$/\2 -> \3 (since \4)'
+      MUTEX_RELEASE "${session_file}"
+    else
+      echo "No user connected"
+    fi
+  }
+
+  # usage: SESSION_TARGET_LIST <target>
+  # desc: Display all sessions logs of the <target>
+  SESSION_TARGET_LIST () {
+    local target=
+
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
+    target=$( TARGET_REAL "$1" )
+    if [ -z "${target}" ]; then
+      ERROR "Target '$1' doesn't exist"; return 1;
+    fi
+
+    ls -1 "${SSHGATE_DIR_LOGS_TARGETS}/${target}"
+
+    return 0;
+  }
+
+  # usage: SESSION_LIST_LAST <number>
+  # desc: Display number-last session log created
+  SESSION_LIST_LAST () {
+    local nb=
+
+    if [ $# -ne 0 -a $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
+    [ $# -eq 1 ] && nb=$?
+    if ! test ${nb} -eq ${nb} 2>/dev/null ; then
+      ERROR "First argument must be a number"; return 1;
+    fi
+
+    echo 'Not Yet implemented :-('
+    return 0
+  }
 
 fi # end of: if [ "${__RECORD_FUNC__:-}" != 'Loaded' ]; then
