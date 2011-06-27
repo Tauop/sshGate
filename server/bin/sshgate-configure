@@ -1,0 +1,242 @@
+#!/bin/bash
+#
+# Copyright (c) 2010 Linagora
+# Patrick Guiran <pguiran@linagora.com>
+# http://github.com/Tauop/sshGate
+#
+# sshGate is free software, you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of
+# the License, or (at your option) any later version.
+#
+# sshGate is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# README ---------------------------------------------------------------------
+# The purpose of this script is to configure or reconfigure sshGate
+# ----------------------------------------------------------------------------
+
+ACTION="$1"
+
+if [ "${ACTION}" != 'configure' -a "${ACTION}" != 'display' -a -n "${ACTION}" ]; then
+  echo "Usage: $0 [configure|display]"
+  exit 1
+fi
+
+# Helper function to load dependencies ---------------------------------------
+load() {
+  local var= value= file=
+
+  var="$1"; file="$2"
+  value=$( eval "echo \"\${${var}:-}\"" )
+
+  [ -n "${value}" ] && return 1;
+  if [ -f "${file}" ]; then
+    . "${file}"
+  else
+    echo "ERROR: Unable to load ${file}"
+    exit 2
+  fi
+  return 0;
+}
+
+# Load ScriptHelper libraries ------------------------------------------------
+
+if [ -r /etc/sshgate.conf ]; then
+  # if sshGate is already installed, SCRIPT_HELPER_DIRECTORY is defined in its
+  # configuration file /etc/sshgate.conf
+  . /etc/sshgate.conf
+elif [ -r /etc/ScriptHelper.conf ]; then
+  # if ScriptHelper is installed on the system, get its configuration
+  . /etc/ScriptHelper.conf
+  SCRIPT_HELPER_DIRECTORY="${SCRIPT_HELPER_DIRECTORY:-}"
+  SCRIPT_HELPER_DIRECTORY="${SCRIPT_HELPER_DIRECTORY%%/}"
+else
+  # During installation process, it's needed when ScriptHelper is embeeded in sshGate
+  SCRIPT_HELPER_DIRECTORY='./lib/'
+fi
+
+if [ ! -d "${SCRIPT_HELPER_DIRECTORY}" ]; then
+  echo "ERROR: sshGate depends on ScriptHelper which doesn't seem to be installed"
+  exit 2
+fi
+
+load __LIB_RANDOM__  "${SCRIPT_HELPER_DIRECTORY}/random.lib.sh"
+load __LIB_MESSAGE__ "${SCRIPT_HELPER_DIRECTORY}/message.lib.sh"
+load __LIB_ASK__     "${SCRIPT_HELPER_DIRECTORY}/ask.lib.sh"
+load __LIB_CONF__    "${SCRIPT_HELPER_DIRECTORY}/conf.lib.sh"
+
+# Utility functions ----------------------------------------------------------
+
+local_CONF () {
+  local var= value= question= opt=
+
+  while true ; do
+    case "${1:-}" in
+      --*) opt="${opt:+${opt} }$1"; shift ;;
+      *) break;
+    esac
+  done
+
+  value=$( eval "echo ${var}" )
+  question=$( echo "${question}" | sed -e "s/%%%/${value}/g" )
+  eval "ASK ${opt} \"${var}\" \"${question}\" \"${value}\""
+  CONF_SAVE "${var}"
+}
+
+# ----------------------------------------------------------------------------
+SSHGATE_CONF_DISPLAY () {
+  MESSAGE "Configuration file: /etc/sshgate.conf"
+  BR
+  MESSAGE " Main configuration values"
+  MESSAGE " - Directory where sshGate is installed : ${SSHGATE_DIRECTORY:-Configuration problem}"
+  MESSAGE " - Unix account used by sshGAte : ${SSHGATE_GATE_ACCOUNT:-Not defined}"
+  MESSAGE " - Default ssh login to use to connect to target host : ${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN:-Not defined}"
+  MESSAGE " - Is mail notification activated : ${SSHGATE_MAIL_SEND:-N}"
+  if [ "${SSHGATE_MAIL_SEND:-N}" = 'Y' ]; then
+    MESSAGE " - Notification mail destination : ${SSHGATE_MAIL_TO:-Not defined}"
+  fi
+  MESSAGE " - Ask for TOS acception at firt usage : ${SSHGATE_USERS_MUST_ACCEPT_CGU:-N}"
+  MESSAGE " - Remote command allowed : ${SSHGATE_ALLOW_REMOTE_COMMAND:-N}"
+  if [ "${SSHGATE_ALLOW_REMOTE_COMMAND:-N}" = 'Y' ]; then
+    MESSAGE " - Remote administration command allowed : ${SSHGATE_USE_REMOTE_ADMIN_CLI:-N}"
+    if [ "${SSHGATE_USE_REMOTE_ADMIN_CLI:-N}" = 'Y' ]; then
+      MESSAGE " - sudo with password : ${SSHGATE_SUDO_WITH_PASSWORD:-N}"
+    fi
+  fi
+
+  # remove "main configuration" values from the configuration
+  # and display other values :-)
+  tmp_file="/tmp/sshgate.conf.$(RANDOM)"
+  < /etc/sshgate.conf grep "="                     \
+    | sed -e 's/^ *\([^=]*\) *= *\(.*\) *$/\1=\2/' \
+    | grep -v 'SSHGATE_DIRECTORY'                  \
+    | grep -v 'SSHGATE_GATE_ACCOUNT'               \
+    | grep -v 'SSHGATE_TARGETS_DEFAULT_SSH_LOGIN'  \
+    | grep -v 'SSHGATE_MAIL_SEND'                  \
+    | grep -v 'SSHGATE_MAIL_TO'                    \
+    | grep -v 'SSHGATE_USERS_MUST_ACCEPT_CGU'      \
+    | grep -v 'SSHGATE_ALLOW_REMOTE_COMMAND'       \
+    | grep -v 'SSHGATE_USE_REMOTE_ADMIN_CLI'       \
+    | grep -v 'SSHGATE_SUDO_WITH_PASSWORD'         \
+    | grep -v 'SSHGATE_VERSION'                    \
+    | grep -v 'SSHGATE_BUILD'                      \
+    | sed -e 's/^/ - /'                            \
+    > "${tmp_file}"
+
+  if [ -s "${tmp_file}" ]; then
+    BR
+    MESSAGE "Other configuration variables"
+    cat "${tmp_file}"
+  fi
+
+  # clean up
+  rm -f "${tmp_file}" 2>/dev/null
+}
+
+# ----------------------------------------------------------------------------
+SSHGATE_CONF_CONFIGURE () {
+  local setup_file=
+
+  local_CONF SSHGATE_DIRECTORY "Where do you want to install sshGate [%%%] ? "
+  local_CONF SSHGATE_GATE_ACCOUNT "Which unix account to use for sshGate users [%%%] ? "
+  local_CONF SSHGATE_TARGETS_DEFAULT_SSH_LOGIN "What the default user account to use when connecting to target host [%%%] ? "
+  local_CONF --yesno SSHGATE_MAIL_SEND "Activate mail notification system [%%%] ?"
+
+  if [ "${SSHGATE_MAIL_SEND}" = 'Y' ]; then
+    local_CONF SSHGATE_MAIL_TO "Who will receive mail notification (comma separated mails) [%%%] ?"
+    [ -z "${SSHGATE_MAIL_TO}" ] && SSHGATE_MAIl_SEND='N'
+  fi
+  
+  local_CONF --yesno SSHGATE_USERS_MUST_ACCEPT_CGU "Do users have to accept TOS when connecting for the first time [%%% ? "
+  local_CONF --yesno SSHGATE_ALLOW_REMOTE_COMMAND "Allow remote command [%%%] ? "
+  
+  if [ "${SSHGATE_ALLOW_REMOTE_COMMAND}" = 'Y' ]; then
+    local_CONF --yesno SSHGATE_USE_REMOTE_ADMIN_CLI "Allow remote administration CLI [%%%] ? "
+    if [ "${SSHGATE_USE_REMOTE_ADMIN_CLI}" = 'Y' ]; then
+      local_CONF --yesno SSHGATE_SUDO_WITH_PASSWORD "Configure sudo with NOPASSWD to launch remote admin CLI [%%%] ?" 'N'
+    fi
+  fi
+
+  CONF_GET --config-file /etc/sshgate.conf SSHGATE_DIR_DATA setup_file
+  setup_file="${file}/sshgate.setup";
+
+  SSHGATE_UPDATE_INSTALLATION "${OLD_CONF}" "${OLD_SETUP}" "/etc/sshgate.conf" "${setup_file}"
+}
+
+# ----------------------------------------------------------------------------
+# usage: SSHGATE_UPDATE_INSTALLATION <old-conf-file> <old-setup-file> <new-setup-file> <new-setup-file>
+# desc: update sshGate installation, if some configuration directive has changed
+SSHGATE_UPDATE_INSTALLATION () {
+  local old_conf= new_conf= load_old= load_new= old= new= directories= dir=
+
+  load_old="__SSHGATE_SETUP__=''; . \"$1\"; . \"$2\""
+  load_new="__SSHGATE_SETUP__=''; . \"$3\"; . \"$4\""
+
+  # change sshgate unix account if needed
+  old=( eval "${load_old}"; echo "${SSHGATE_GATE_ACCOUNT}" )
+  new=( eval "${load_new}"; echo "${SSHGATE_GATE_ACCOUNT}" )
+  
+  # move directories if needed
+  directories="SSHGATE_DIRECTORY"
+  directories="${directories} SSHGATE_DIR_DATA"
+  directories="${directories} SSHGATE_DIR_BIN"
+  directories="${directories} SSHGATE_DIR_CORE"
+  directories="${directories} SSHGATE_DIR_TEST"
+  directories="${directories} SSHGATE_DIR_USERS"
+  directories="${directories} SSHGATE_DIR_TARGETS"
+  directories="${directories} SSHGATE_DIR_USERS_GROUPS"
+  directories="${directories} SSHGATE_DIR_LOGS"
+  directories="${directories} SSHGATE_DIR_LOGS_TARGETS"
+  directories="${directories} SSHGATE_DIR_LOGS_USERS"
+  directories="${directories} SSHGATE_DIR_ARCHIVE"
+
+  for dir in ${directories}; do
+    old=$( eval "eval \"\${load_old}\"; echo \"${dir}\"" )
+    new=$( eval "eval \"\${load_new}\"; echo \"${dir}\"" )
+    if [ "${old}" != "${new}" -a -d "${old}" ]; then
+      [ ! -d "${new%%/${new##*/}}" ] && mkdir -p "${new%%/${new##*/}}"
+      mv "${old}" "${new}"
+    fi
+  done
+}
+
+# ----------------------------------------------------------------------------
+SSHGATE_UPDATE_PERMISSIONS () {
+  # Not Yet implemented
+}
+
+# Load existing configuration ------------------------------------------------
+
+# if /etc/sshgate.conf exists, save it to see if there is modification
+# in the configuration of sshgate, in order to apply them.
+file="/etc/sshgate.conf"; OLD_CONF="/tmp/sshgate.conf.$(RANDOM)"
+[ -s "${file}" ] && cp "${file}" "${OLD_CONF}"
+
+CONF_GET --config-file /etc/sshgate.conf SSHGATE_DIR_DATA file
+file="${file}/sshgate.setup"; OLD_SETUP="/tmp/sshgate.setup.$(RANDOM)"
+[ -s "${file}" ] && cp "${file}" "${OLD_SETUP}"
+
+CONF_SET_FILE "/etc/sshgate.conf"
+CONF_LOAD
+
+BR
+MESSAGE "   --- sshGate server configuration ---"
+MESSAGE "             by Patrick Guiran"
+BR
+
+case "${ACTION}" in
+ 'configure') SSHGATE_CONF_CONFIGURE ;;
+ 'display')   SSHGATE_CONF_DISPLAY ;;
+ *)           SSHGATE_CONF_DISPLAY ;;
+esac
+
+# clean up
+rm -f "${OLD_CONF}" "${OLD_SEUPT}" 2>/dev/null
+
+exit 0
