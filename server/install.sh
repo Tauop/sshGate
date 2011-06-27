@@ -233,13 +233,14 @@ DOTHIS 'Installing sshGate'
   fi
 OK
 
-DOTHIS 'Generate default sshkey pair'
+
+if [ ! -f "${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}" ]; then
+  DOTHIS 'Generate default sshkey pair'
   # generate targets default sshkey
-  if [ ! -f "${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}" ]; then
     ssh-keygen -C "sshGate key" -t rsa -b 4096 -N '' -f "${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}" >/dev/null
     mv "${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}.pub" "${SSHGATE_TARGET_DEFAULT_PUBLIC_SSHKEY_FILE}"
-  fi
-OK
+  OK
+fi
 
 DOTHIS 'Setup files permissions'
   chown -R "${SSHGATE_GATE_ACCOUNT}" "${SSHGATE_DIRECTORY}"
