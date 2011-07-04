@@ -35,7 +35,7 @@ Main settings :
 - SSHGATE_GATE_ACCOUNT : the unix account used by sshGate
 - SSHGATE_ALLOW_REMOTE_COMMAND : Do we allow remote command like "sshg 'cmd list targets'" ? default: Y
 - SSHGATE_USE_REMOTE_ADMIN_CLI : Do we allow remote administration CLI ? default: Y
-- SSHGATE_USERS_MUST_ACCEPT_CGU : Do users have to accept CGU at the first connection ? default: Y
+- SSHGATE_USERS_MUST_ACCEPT_TOS : Do users have to accept TOS at the first connection ? default: Y
 - SSHGATE_EDITOR : editor program to use by sshGate. default: ${EDITOR}
 - SSHGATE_TARGETS_SCP_PATH : default SCP path when it's not specified. default: ~/
 - SSHGATE_TARGET_DEFAULT_SSH_LOGIN : default ssh login to use when connecting to target host. default: root
@@ -64,7 +64,7 @@ other settings which can be override in /etc/sshgate.conf
 - SSHGATE_TARGETS_SSH_CONFIG_FILENAME : name of the target ssh configuration file
 - SSHGATE_TARGETS_SSH_LOGINS_FILENAME : name of the target ssh login list file
 - SSHGATE_LOGS_CURRENT_SESSION_FILE : path to the current session log file
-- SSHGATE_CGU_FILE : path to the CGU file
+- SSHGATE_TOS_FILE : path to the TOS file
 
 == Details on data ==
 

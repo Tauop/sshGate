@@ -121,14 +121,14 @@ if [ "${SSHGATE_ALLOW_REMOTE_COMMAND}" = 'Y' -a "${action_type}" = 'ssh' ]; then
 fi
 
 # check usage condition ------------------------------------------------------
-if [ "${SSHGATE_USERS_MUST_ACCEPT_CGU}" = 'Y' -a -f "${SSHGATE_CGU_FILE}" ]; then
-  has_accept_cgu=$( USER_GET_CONF "${SSHKEY_USER}" HAS_ACCEPT_CGU )
+if [ "${SSHGATE_USERS_MUST_ACCEPT_TOS}" = 'Y' -a -f "${SSHGATE_TOS_FILE}" ]; then
+  has_accept_cgu=$( USER_GET_CONF "${SSHKEY_USER}" HAS_ACCEPT_TOS )
   if [ "${has_accept_cgu}" != 'true' ]; then
-    cat "${SSHGATE_CGU_FILE}"
+    cat "${SSHGATE_TOS_FILE}"
     echo
     ASK --yesno var "-> 'yes' / 'no' ?"
     [ "${var}" = 'N' ] && exit 1;
-    USER_SET_CONF "${SSHKEY_USER}" HAS_ACCEPT_CGU 'true'
+    USER_SET_CONF "${SSHKEY_USER}" HAS_ACCEPT_TOS 'true'
   fi
 fi
 

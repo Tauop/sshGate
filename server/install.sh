@@ -121,10 +121,10 @@ if [ "${configure}" = 'yes' ]; then
   CONF_SAVE SSHGATE_MAIL_SEND
   CONF_SAVE SSHGATE_MAIL_TO
 
-  ASK --yesno SSHGATE_USERS_MUST_ACCEPT_CGU \
-      "Do users have to accept CGU when connecting for the first time [${SSHGATE_USERS_MUST_ACCEPT_CGU}] ? " \
-      "${SSHGATE_USERS_MUST_ACCEPT_CGU}"
-  CONF_SAVE SSHGATE_USERS_MUST_ACCEPT_CGU
+  ASK --yesno SSHGATE_USERS_MUST_ACCEPT_TOS \
+      "Do users have to accept TOS when connecting for the first time [${SSHGATE_USERS_MUST_ACCEPT_TOS}] ? " \
+      "${SSHGATE_USERS_MUST_ACCEPT_TOS}"
+  CONF_SAVE SSHGATE_USERS_MUST_ACCEPT_TOS
 
   ASK --yesno SSHGATE_ALLOW_REMOTE_COMMAND \
       "Allow remote command [${SSHGATE_ALLOW_REMOTE_COMMAND}] ? " \

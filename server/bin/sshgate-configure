@@ -101,7 +101,7 @@ SSHGATE_CONF_DISPLAY () {
   if [ "${SSHGATE_MAIL_SEND:-N}" = 'Y' ]; then
     MESSAGE " - Notification mail destination : ${SSHGATE_MAIL_TO:-Not defined}"
   fi
-  MESSAGE " - Ask for TOS acception at firt usage : ${SSHGATE_USERS_MUST_ACCEPT_CGU:-N}"
+  MESSAGE " - Ask for TOS acception at firt usage : ${SSHGATE_USERS_MUST_ACCEPT_TOS:-N}"
   MESSAGE " - Remote command allowed : ${SSHGATE_ALLOW_REMOTE_COMMAND:-N}"
   if [ "${SSHGATE_ALLOW_REMOTE_COMMAND:-N}" = 'Y' ]; then
     MESSAGE " - Remote administration command allowed : ${SSHGATE_USE_REMOTE_ADMIN_CLI:-N}"
@@ -120,7 +120,7 @@ SSHGATE_CONF_DISPLAY () {
     | grep -v 'SSHGATE_TARGETS_DEFAULT_SSH_LOGIN'  \
     | grep -v 'SSHGATE_MAIL_SEND'                  \
     | grep -v 'SSHGATE_MAIL_TO'                    \
-    | grep -v 'SSHGATE_USERS_MUST_ACCEPT_CGU'      \
+    | grep -v 'SSHGATE_USERS_MUST_ACCEPT_TOS'      \
     | grep -v 'SSHGATE_ALLOW_REMOTE_COMMAND'       \
     | grep -v 'SSHGATE_USE_REMOTE_ADMIN_CLI'       \
     | grep -v 'SSHGATE_SUDO_WITH_PASSWORD'         \
@@ -153,7 +153,7 @@ SSHGATE_CONF_CONFIGURE () {
     [ -z "${SSHGATE_MAIL_TO}" ] && SSHGATE_MAIl_SEND='N'
   fi
   
-  local_CONF --yesno SSHGATE_USERS_MUST_ACCEPT_CGU "Do users have to accept TOS when connecting for the first time [%%% ? "
+  local_CONF --yesno SSHGATE_USERS_MUST_ACCEPT_TOS "Do users have to accept TOS when connecting for the first time [%%% ? "
   local_CONF --yesno SSHGATE_ALLOW_REMOTE_COMMAND "Allow remote command [%%%] ? "
   
   if [ "${SSHGATE_ALLOW_REMOTE_COMMAND}" = 'Y' ]; then
