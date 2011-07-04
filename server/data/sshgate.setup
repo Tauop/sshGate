@@ -75,6 +75,6 @@ if [ "${__SSHGATE_SETUP__:-}" != 'Loaded' ]; then
   SET_GLOBAL SSHGATE_GLOBAL_SESSION_LOG_FILE "${SSHGATE_DIR_LOGS}/sessions.log"
 
   # TODO : a multi-language support.
-  SET_GLOBAL SSHGATE_CGU_FILE "${SSHGATE_DIR_DATA}/CGU.txt"
+  SET_GLOBAL SSHGATE_CGU_FILE "${SSHGATE_DIR_DATA}/TOS.txt"
 
 fi # __SSHGATE_SETUP__
