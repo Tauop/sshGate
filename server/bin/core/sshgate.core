@@ -47,6 +47,7 @@ if [ "${__SSHGATE_CORE__:-}" != 'Loaded' ]; then
   load __LIB_MESSAGE__   "${SCRIPT_HELPER_DIRECTORY}/message.lib.sh"
   load __LIB_CONF__      "${SCRIPT_HELPER_DIRECTORY}/conf.lib.sh"
   load __LIB_ASK__       "${SCRIPT_HELPER_DIRECTORY}/ask.lib.sh"
+  load __LIB_MUTEX__     "${SCRIPT_HELPER_DIRECTORY}/mutex.lib.sh"
 
   # load sub-core libraries
   load __USER_FUNC__               "${SSHGATE_DIR_CORE}/user.func"
