@@ -1,0 +1,14 @@
+*******************************************************************************
+Toutes les actions que vous réalisez sur les serveurs sur lesquels vous vous
+connectez avec la passerelle sshGate sont enregistrées. Cela permet notamment
+aux  administrateurs  de  la  passerelle sshGate  de pouvoir diagnostiquer un
+problème sur un serveur, et  de  trouver  la  mauvaise manipulation  dont  le
+dysfonctionnement résulte.
+
+Pour  toute  information  sur  vos  droits  et  les  traitements  automatiques
+réalisées, vous pouvez consulter la note de service "CNIL", notre responsable
+juridique ou les délégués du personnel.
+
+*******************************************************************************                                                                                                                          
+                                                                                                                                                                                                         
+Acceptez-vous ces Conditions Générale d'Utilisation (CGU) ? 

@@ -124,7 +124,9 @@ fi
 if [ "${SSHGATE_USERS_MUST_ACCEPT_TOS}" = 'Y' -a -f "${SSHGATE_TOS_FILE}" ]; then
   has_accept_cgu=$( USER_GET_CONF "${SSHKEY_USER}" HAS_ACCEPT_TOS )
   if [ "${has_accept_cgu}" != 'true' ]; then
-    cat "${SSHGATE_TOS_FILE}"
+    lang=$( USER_GET_CONF "${SSHKEY_USER}" LANGUAGE )
+    [ -n "${lang}" ] && lang="${SSHGATE_DEFAULT_LANGUAGE}"
+    cat "${SSHGATE_DIR_TEMPLATES}/${lang}/${SSHGATE_TOS_FILE}"
     echo
     ASK --yesno var "-> 'yes' / 'no' ?"
     [ "${var}" = 'N' ] && exit 1;

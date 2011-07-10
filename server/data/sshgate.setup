@@ -44,6 +44,7 @@ if [ "${__SSHGATE_SETUP__:-}" != 'Loaded' ]; then
 
   # directories of sshgates
   SET_GLOBAL SSHGATE_DIR_DATA         "${SSHGATE_DIRECTORY}/data"
+  SET_GLOBAL SSHGATE_DIR_TEMPLATES    "${SSHGATE_DIR_DATA}/templates"
   SET_GLOBAL SSHGATE_DIR_BIN          "${SSHGATE_DIRECTORY}/bin"
   SET_GLOBAL SSHGATE_DIR_CORE         "${SSHGATE_DIR_BIN}/core"
   SET_GLOBAL SSHGATE_DIR_TEST         "${SSHGATE_DIR_BIN}/tests"
