@@ -155,7 +155,7 @@ if [ "${__USER_FUNC__:-}" != 'Loaded' ]; then
     file="${SSHGATE_DIR_USERS}/${user}.properties"
     if [ -n "${value}" ]; then
       [ ! -f "${file}" ] && touch "${file}"
-      chown "${SSHGATE_GATE_ACCOUNT}" "${file}" # ensure that sshgate.sh can read/write this file
+      chown "${SSHGATE_GATE_ACCOUNT}" "${file}" # ensure that sshgate-bridge can read/write this file
       CONF_SAVE --conf-file "${file}" "${var}" "${value}"
       private_MAIL_APPEND "User '${user}' configuration: ${var} = ${value}"
     else
@@ -450,7 +450,7 @@ if [ "${__USER_FUNC__:-}" != 'Loaded' ]; then
     fi
 
     user_key=$( cat "${SSHGATE_DIR_USERS}/${user}" )
-    echo "command=\"/bin/sh ${SSHGATE_DIR_BIN}/sshgate.sh ${user}\" ${user_key}" >> "${authorized_keys2}"
+    echo "command=\"/bin/sh ${SSHGATE_DIR_BIN}/sshgate-bridge ${user}\" ${user_key}" >> "${authorized_keys2}"
 
     chown "${SSHGATE_GATE_ACCOUNT}" "${authorized_keys2}"
     chmod u+r "${authorized_keys2}"
@@ -484,7 +484,7 @@ if [ "${__USER_FUNC__:-}" != 'Loaded' ]; then
       ERROR "Can't write into temporary file '${tmpfile}'"; return 1
     fi
 
-    grep -v "^command=\"/bin/sh ${SSHGATE_DIR_BIN}/sshgate.sh ${user}\" " < "${authorized_keys2}" > "${tmp_file}"
+    grep -v "^command=\"/bin/sh ${SSHGATE_DIR_BIN}/sshgate-bridge ${user}\" " < "${authorized_keys2}" > "${tmp_file}"
     mv "${tmp_file}" "${authorized_keys2}"
 
     chown "${SSHGATE_GATE_ACCOUNT}" "${authorized_keys2}"

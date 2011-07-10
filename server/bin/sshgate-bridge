@@ -96,7 +96,7 @@ fi
 if [ "${SSHGATE_ALLOW_REMOTE_COMMAND}" = 'Y' -a "${action_type}" = 'ssh' ]; then
   if [ "${TARGET_HOST}" = 'cmd' -o "${TARGET_HOST}" = 'cli' ]; then
     # inpired from ScriptHelper/cli.lib.sh
-    # we don't want sshgate.sh to be dependant on ScriptHelper
+    # we don't want sshgate-bridge to be dependant on ScriptHelper
     BUILD_SED_CODE () {
       local sed_cmd=
       for word in $( echo "$1" | tr ' ' $'\n' ); do
