@@ -1,0 +1,481 @@
+#!/bin/bash
+#
+# Copyright (c) 2010 Linagora
+# Patrick Guiran <pguiran@linagora.com>
+# http://github.com/Tauop/sshGate
+#
+# sshGate is free software, you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of
+# the License, or (at your option) any later version.
+#
+# sshGate is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# README ---------------------------------------------------------------------
+# Collection of all setup related functions
+# ----------------------------------------------------------------------------
+
+## Helper function to load dependencies ---------------------------------------
+#load() {
+#  local var= value= file=
+#
+#  var="$1"; file="$2"
+#  value=$( eval "echo \"\${${var}:-}\"" )
+#
+#  [ -n "${value}" ] && return 1;
+#  if [ -f "${file}" ]; then
+#    . "${file}"
+#  else
+#    echo "ERROR: Unable to load ${file}"
+#    exit 2
+#  fi
+#  return 0;
+#}
+#
+## load core, if it's not
+#load SSHGATE_DIRECTORY '/etc/sshgate.conf'
+#load __SSHGATE_SETUP__ "${SSHGATE_DIR_DATA}/data/sshgate.setup"
+#
+#load __LIB_RANDOM__  "${SCRIPT_HELPER_DIRECTORY}/random.lib.sh"
+#load __LIB_MESSAGE__ "${SCRIPT_HELPER_DIRECTORY}/message.lib.sh"
+#load __LIB_ASK__     "${SCRIPT_HELPER_DIRECTORY}/ask.lib.sh"
+#load __LIB_CONF__    "${SCRIPT_HELPER_DIRECTORY}/conf.lib.sh"
+#
+
+if [ "${__SETUP_FUNC__:-}" != 'Loaded' ]; then
+  __SETUP_FUNC__='Loaded'
+
+  # usage: private_SED_SEPARATOR <string> 
+  # desc: determine a good sed separator
+  private_SED_SEPARATOR () {
+    for s in '/' '@' ',' '|'; do
+      echo "$1" | grep "$s" >/dev/null
+      if [ $? -ne 0 ]; then
+        echo "$s"; return 0;
+      fi
+    done
+    return 1;
+  }
+
+  # usage: private_CONF [<ask-options>] <var> <question>
+  private_CONF () {
+    local var= value= question= opt= sep=
+
+    while true ; do
+      case "${1:-}" in
+        --*) opt="${opt:+${opt} }$1"; shift ;;
+        *) break;
+      esac
+    done
+
+    var="$1"; question="$2";
+
+    value=$( eval "echo \${${var}}" )
+    sep=$( private_SED_SEPARATOR "${value}" )
+    question=$( echo "${question}" | sed -e "s${sep}%%%${sep}${value}${sep}g" )
+
+    eval "ASK ${opt} \"${var}\" \"${question}\" \"${value}\""
+    CONF_SAVE "${var}"
+    return 0;
+  }
+
+  # usage: private_GET_SETUP_FILE <config-file>
+  # desc: get the setup file, by getting information from the configuration file
+  private_GET_SETUP_FILE () {
+    local config_file= setup_file=
+
+    config_file="$1"
+
+    # determine the data/ directory to extract sshgate.setup file
+    CONF_GET --conf-file "${config_file}" SSHGATE_DIR_DATA setup_file
+    if [ -z "${setup_file}" ]; then
+      CONF_GET --conf-file "${config_file}" SSHGATE_DIRECTORY setup_file
+      setup_file="${setup_file}/data"
+    fi
+    setup_file="${setup_file}/sshgate.setup"
+
+    echo -n "${setup_file}"
+    return 0;
+  }
+  # ----------------------------------------------------------------------------
+  # usage: SETUP_DISPLAY_CONF [<config-file>]
+  # desc: Display configuration values, with explanation, as it's interpreted by sshGate.
+  # note: if <config-file> isn't specify, try to load /etc/sshgate.conf
+  SETUP_DISPLAY_CONF () {
+    local config_file=
+
+    [ $# -eq 1 ] && config_file="$1" || config_file="/etc/sshgate.conf"
+
+    if [ ! -r "${config_file}" ]; then
+      ERROR "Can't read configuration file ${config_file}."
+      return 1;
+    fi
+
+    CONF_LOAD "${config_file}"
+    private_SETUP_SET_DEFAULT
+
+    BR
+    MESSAGE "Configuration file: ${config_file}"
+    BR
+    MESSAGE "sshGate information"
+    MESSAGE "- sshGate Version : ${SSHGATE_VERSION:-0}"
+    MESSAGE "- sshGate build : ${SSHGATE_BUILD:-0}"
+    BR
+    MESSAGE " Main configuration values"
+    MESSAGE " - Directory where sshGate is installed : ${SSHGATE_DIRECTORY}"
+    MESSAGE " - Unix account used by sshGAte : ${SSHGATE_GATE_ACCOUNT}"
+    MESSAGE " - Default ssh login to use to connect to target host : ${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}"
+    MESSAGE " - Default language : ${SSHGATE_DEFAULT_LANGUAGE}"
+    MESSAGE " - Editor : ${SSHGATE_EDITOR}"
+    MESSAGE " - Is mail notification activated : ${SSHGATE_MAIL_SEND}"
+    if [ "${SSHGATE_MAIL_SEND:-N}" = 'Y' ]; then
+      MESSAGE " - Notification mail destination : ${SSHGATE_MAIL_TO}"
+    fi
+    MESSAGE " - Ask for TOS acception at firt usage : ${SSHGATE_USERS_MUST_ACCEPT_TOS}"
+    MESSAGE " - Remote command allowed : ${SSHGATE_ALLOW_REMOTE_COMMAND}"
+    if [ "${SSHGATE_ALLOW_REMOTE_COMMAND}" = 'Y' ]; then
+      MESSAGE " - Remote administration command allowed : ${SSHGATE_USE_REMOTE_ADMIN_CLI}"
+      if [ "${SSHGATE_USE_REMOTE_ADMIN_CLI}" = 'Y' ]; then
+        MESSAGE " - sudo with password : ${SSHGATE_SUDO_WITH_PASSWORD}"
+      fi
+    fi
+
+    # remove "main configuration" values from the configuration
+    # and display other values :-)
+    tmp_file="/tmp/sshgate.conf.$(RANDOM)"
+    < "${config_file}"  grep "="                     \
+      | sed -e 's/^ *\([^=]*\) *= *\(.*\) *$/\1=\2/' \
+      | grep -v 'SSHGATE_DIRECTORY'                  \
+      | grep -v 'SSHGATE_GATE_ACCOUNT'               \
+      | grep -v 'SSHGATE_TARGETS_DEFAULT_SSH_LOGIN'  \
+      | grep -v 'SSHGATE_DEFAULT_LANGUAGE'           \
+      | grep -v 'SSHGATE_EDITOR'                     \
+      | grep -v 'SSHGATE_MAIL_SEND'                  \
+      | grep -v 'SSHGATE_MAIL_TO'                    \
+      | grep -v 'SSHGATE_USERS_MUST_ACCEPT_TOS'      \
+      | grep -v 'SSHGATE_ALLOW_REMOTE_COMMAND'       \
+      | grep -v 'SSHGATE_USE_REMOTE_ADMIN_CLI'       \
+      | grep -v 'SSHGATE_SUDO_WITH_PASSWORD'         \
+      | grep -v 'SSHGATE_VERSION'                    \
+      | grep -v 'SSHGATE_BUILD'                      \
+      | sed -e 's/^/ - /'                            \
+      > "${tmp_file}"
+
+    if [ -s "${tmp_file}" ]; then
+      BR
+      MESSAGE "Other configuration variables"
+      cat "${tmp_file}"
+    fi
+
+    BR
+
+    # clean up
+    rm -f "${tmp_file}" 2>/dev/null
+
+    return 0;
+  }
+
+
+  # ----------------------------------------------------------------------------
+  # usage: private_SETUP_SET_DEFAULT
+  # desc: set default value to configuration variables when they aren't set
+  private_SETUP_SET_DEFAULT () {
+    SSHGATE_DIRECTORY="${SSHGATE_DIRECTORY:-/opt/sshgate/}"
+    SSHGATE_GATE_ACCOUNT="${SSHGATE_GATE_ACCOUNT:-sshgate}"
+    SSHGATE_TARGETS_DEFAULT_SSH_LOGIN="${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN:-root}"
+    SSHGATE_DEFAULT_LANGUAGE="${SSHGATE_DEFAULT_LANGUAGE:-us}"
+    SSHGATE_EDITOR="${SSHGATE_EDITOR:-vi}"
+    SSHGATE_MAIL_SEND="${SSHGATE_MAIL_SEND:-Y}"
+    SSHGATE_MAIL_TO="${SSHGATE_MAIL_TO:-sshgate@linagora.com}"
+    SSHGATE_USERS_MUST_ACCEPT_TOS="${SSHGATE_USERS_MUST_ACCEPT_TOS:-Y}"
+    SSHGATE_ALLOW_REMOTE_COMMAND="${SSHGATE_ALLOW_REMOTE_COMMAND:-Y}"
+    SSHGATE_USE_REMOTE_ADMIN_CLI="${SSHGATE_USE_REMOTE_ADMIN_CLI:-Y}"
+    SSHGATE_SUDO_WITH_PASSWORD="${SSHGATE_SUDO_WITH_PASSWORD:-Y}"
+  }
+
+  # usage: SETUP_GET_DIRECTORY_VARIABLES
+  # desc: Echo-return list of sshGate variable which are directory paths
+  SETUP_GET_DIRECTORY_VARIABLES () {
+    local directories=
+
+    directories="SSHGATE_DIRECTORY"
+    directories="${directories} SSHGATE_DIR_DATA"
+    directories="${directories} SSHGATE_DIR_TEMPLATES"
+    directories="${directories} SSHGATE_DIR_BIN"
+    directories="${directories} SSHGATE_DIR_CORE"
+    directories="${directories} SSHGATE_DIR_TEST"
+    directories="${directories} SSHGATE_DIR_USERS"
+    directories="${directories} SSHGATE_DIR_TARGETS"
+    directories="${directories} SSHGATE_DIR_USERS_GROUPS"
+    directories="${directories} SSHGATE_DIR_LOGS"
+    directories="${directories} SSHGATE_DIR_LOGS_TARGETS"
+    directories="${directories} SSHGATE_DIR_LOGS_USERS"
+    directories="${directories} SSHGATE_DIR_ARCHIVE"
+
+    echo "${directories}"
+  }
+
+  # ----------------------------------------------------------------------------
+  # usage: SETUP_CONFIGURE [ <config-file> ]
+  # desc: ask for configuration parameter, and save them into <config-file>
+  # note: if <config-file> isn't given, try to load /etc/sshgate.conf
+  SETUP_CONFIGURE () {
+    local config_file= setup_file= new_config_file= new_setup_file= old_conf_set_file=
+
+    [ $# -eq 1 ] && config_file="$1" || config_file="/etc/sshgate.conf"
+
+    if [ ! -r "${config_file}" ]; then
+      ERROR "Can't read configuration file ${config_file}."
+      return 1;
+    fi
+
+    # copy configuration file and setup file to be able to work on it --------
+    setup_file=$( private_GET_SETUP_FILE "${config_file}" )
+    if [ -n "${setup_file}" -a -r "${setup_file}" ]; then
+      new_setup_file="/tmp/sshgate.setup.$(RANDOM)"
+      cp "${setup_file}" "${new_setup_file}"
+    fi
+
+    new_config_file="/tmp/sshgate.conf.$(RANDOM)"
+    cp "${config_file}" "${new_config_file}"
+
+    # load and work on a copy of sshGate configuration file ------------------
+    old_conf_set_file="${__CONF_FILE__}"
+    CONF_SET_FILE "${new_config_file}"
+    CONF_LOAD
+    private_SETUP_SET_DEFAULT
+
+    private_CONF SSHGATE_DIRECTORY "Where do you want to locate sshGate [%%%] ? "
+    private_CONF SSHGATE_GATE_ACCOUNT "Which unix account to use for sshGate users [%%%] ? "
+    private_CONF SSHGATE_TARGETS_DEFAULT_SSH_LOGIN "What the default user account to use when connecting to target host [%%%] ? "
+
+    if [ -d "${SSHGATE_DIR_TEMPLATES}" ]; then
+      languages=$( ls -1 "${SSHGATE_DIR_TEMPLATES}" | tr $'\n' ' ' )
+    else
+      # called from ./install.sh !
+      languages=$( ls -1 ./data/templates/ | tr $'\n' ' ' )
+    fi
+    languages="${languages% }"
+
+    good_lang="0"
+    while [ "${good_lang}" = "0" ]; do
+      MESSAGE "List of avariable languages: ${languages}"
+      private_CONF SSHGATE_DEFAULT_LANGUAGE "Default language for user messages [%%%] ?"
+      for lang in ${languages}; do
+        if [ "${lang}" = "${SSHGATE_DEFAULT_LANGUAGE}" ]; then
+          good_lang="1"; break;
+        fi
+      done
+    done
+
+    private_CONF SSHGATE_EDITOR "Which editor to use [%%%] ?"
+
+    private_CONF --yesno SSHGATE_MAIL_SEND "Activate mail notification system [%%%] ?"
+    if [ "${SSHGATE_MAIL_SEND}" = 'Y' ]; then
+      private_CONF SSHGATE_MAIL_TO "Who will receive mail notification (comma separated mails) [%%%] ?"
+      [ -z "${SSHGATE_MAIL_TO}" ] && SSHGATE_MAIl_SEND='N'
+    fi
+
+    private_CONF --yesno SSHGATE_USERS_MUST_ACCEPT_TOS "Do users have to accept TOS when connecting for the first time [%%%] ? "
+    private_CONF --yesno SSHGATE_ALLOW_REMOTE_COMMAND "Allow remote command [%%%] ? "
+
+    if [ "${SSHGATE_ALLOW_REMOTE_COMMAND}" = 'Y' ]; then
+      private_CONF --yesno SSHGATE_USE_REMOTE_ADMIN_CLI "Allow remote administration CLI [%%%] ? "
+      if [ "${SSHGATE_USE_REMOTE_ADMIN_CLI}" = 'Y' ]; then
+        private_CONF --yesno SSHGATE_SUDO_WITH_NOPASSWORD "Configure sudo with NOPASSWD to launch remote admin CLI [%%%] ?" 'N'
+      else
+        CONF_SAVE SSHGATE_SUDO_WITH_NOPASSWORD 'N'
+      fi
+    else
+      CONF_SAVE SSHGATE_USE_REMOTE_ADMIN_CLI 'N'
+      CONF_SAVE SSHGATE_SUDO_WITH_NOPASSWORD   'N'
+    fi
+
+    # if configuration file isn't /etc/sshgate.conf, sshGate isn't installed.
+    # if it's installed, update sshGate installation !
+    if [ "${config_file}" = '/etc/sshgate.conf' ]; then
+      SETUP_UPDATE_INSTALLATION "${config_file}" "${setup_file}" "${new_config_file}" "${new_setup_file}"
+    fi
+
+    # update configuration files now
+    mv "${new_config_file}" "${config_file}"
+    [ -n "${new_setup_file}" ] && rm -f "${new_setup_file}"
+
+    # reload set configuration file
+    CONF_SET_FILE "${old_conf_set_file}"
+    CONF_LOAD
+
+    return 0;
+  }
+
+  # ----------------------------------------------------------------------------
+  # usage: SETUP_UPDATE_INSTALLATION <old-conf-file> <old-setup-file> <new-conf-file> <new-setup-file>
+  # usage: SETUP_UPDATE_INSTALLATION <new-setup-file> <new-setup-file>
+  # desc: update sshGate installation, if some configuration directive has changed, comparing <old-*> and <new-*> files
+  # note: if <old-config-file> and <old-setup-file> aren't given, try to use /etc/sshgate.conf
+  #       and ${SSHGATE_DIR_DATA}/sshgate.setup files
+  SETUP_UPDATE_INSTALLATION () {
+    local config_file= setup_file= new_config_file= new_setup_file=
+    local has_diff= load_old= load_new=
+    local dir= old_home_dir= new_home_dir=
+
+    if [ $# -ne 2 -a $# -ne 4 ]; then
+      ERROR "SETUP_UPDATE_INSTALLATION: Bad arguments"
+      return 1;
+    fi
+
+    if [ $# -eq 4 ]; then
+      config_file="$1";     setup_file="$2"
+      new_config_file="$3"; new_setup_file="$4"
+    else
+      new_config_file="$1"; new_setup_file="$2"
+      config_file="/etc/sshgate.conf"
+      setup_file=$( private_GET_SETUP_FILE "${config_file}" )
+    fi
+
+    if [ ! -r "${config_file}" -o ! -r "${new_config_file}" ]; then
+      ERROR "Can't read configuration files"; return 1;
+    fi
+
+    BR
+    MESSAGE "sshGate installation will be updated"
+    BR
+
+    # check if we have modification between files
+    diff "${config_file}" "${new_config_file}" >/dev/null 2>/dev/null
+    has_diff=$?
+    if [ $has_diff -eq 0 -a -n "${setup_file}" -a -r "${setup_file}" ]; then
+      diff "${setup_file}" "${new_setup_file}" >/dev/null 2>/dev/null
+      has_diff=$?
+    fi
+
+    if [ $has_diff -eq 0 ]; then
+      MESSAGE "no Modification has to be applied"
+      BR
+      return 0;
+    fi
+
+    # check we are 'root' to be able to write/modify anything/anywhere
+    user_id=`id -u`
+    [ "${user_id}" != "0" ] && KO "You must execute $0 with root privileges" 
+
+    # we can't get old and new configuration values, using setup !!
+    # first, load sshgate.conf, then sshgate.setup, so that sshgate.setup
+    # doesn't try to load a bad sshgate.conf
+    load_old=". \"${config_file}\""
+    load_new=". \"${new_config_file}\""
+    [ -r "${setup_file}"     ] && load_old="${load_old}; __SSHGATE_SETUP__=''; . \"${setup_file}\""
+    [ -r "${new_setup_file}" ] && load_new="${load_new}; __SSHGATE_SETUP__=''; . \"${new_setup_file}\""
+
+    for dir in $( SETUP_GET_DIRECTORY_VARIABLES ); do
+      old=$( eval "${load_old}; echo \"\${${dir}}\"" )
+      new=$( eval "${load_new}; echo \"\${${dir}}\"" )
+      if [ "${old}" != "${new}" -a -d "${old}" ]; then
+        if [ ! -d "${new%%/${new##*/}}" ]; then
+          MESSAGE ". Creating ${new%%/${new##*/}}"
+          mkdir -p "${new%%/${new##*/}}"
+        fi
+        MESSAGE ". Moving ${old} -> ${new}"
+        mv "${old}" "${new}"
+      fi
+    done
+
+    # change sshgate unix account if needed
+    old=$( eval "${load_old}; echo \"\${SSHGATE_GATE_ACCOUNT}\"" )
+    new=$( eval "${load_new}; echo \"\${SSHGATE_GATE_ACCOUNT}\"" )
+
+    if [ "${old}" != "${new}" ]; then
+
+      # create new user
+      MESSAGE ". Creating ${new} unix account"
+      useradd "${new}"
+
+      new_home_dir=$( cat /etc/passwd | grep "^${new}:" | cut -d':' -f6 )
+      old_home_dir=$( cat /etc/passwd | grep "^${old}:" | cut -d':' -f6 )
+
+      mkdir -p "${new_home_dir}/.ssh/"
+      chmod 755 "${new_home_dir}"
+
+      mv "${old_home_dir}/*" "${new_home_dir}"
+      chown -R "${new}:${new}" "${new_home_dir}"
+
+      MESSAGE ". Deleting ${old} unix account"
+      userdel "${old}"
+      [ -d "${old_home_dir}" ] && rm -rf "${old_home_dir}"
+
+      SETUP_UPDATE_PERMISSIONS
+    fi
+
+    BR
+    MESSAGE "Updates completed"
+    BR
+    return 0;
+  }
+
+  # ----------------------------------------------------------------------------
+  # usage: SETUP_UPDATE_PERMISSIONS [<config_file> [<setup_file>]]
+  # desc: update or correct permissions on directories and files
+  SETUP_UPDATE_PERMISSIONS () {
+    local config_file= setup_file= user= load= dir= d= home_dir=
+
+    [ $# -gt 1 ] && config_file="$1" || config_file=/etc/sshgate.conf
+    [ $# -eq 2 ] && setup_file="$2"
+    [ ! -r "${setup_file}" ] && setup_file=$( private_GET_SETUP_FILE "${config_file}" )
+
+    # get SSHGATE_GATE_ACCOUNT Unix user
+    CONF_GET --conf-file "${config_file}" SSHGATE_GATE_ACCOUNT user
+
+    load=". \"${config_file}\""
+    [ -r "${setup_file}" ] && load="${load}; __SSHGATE_SETUP__=''; . \"${setup_file}\""
+
+    for d in $( SETUP_GET_DIRECTORY_VARIABLES ); do
+      dir=$( eval "${load}; echo \"\${${d}}\"" )
+      chown -R "${user}:${user}" "${dir}"
+      chmod a=rx,u+w "${dir}"
+      find "${dir}" -type d -exec chmod a=rx,u+w {} \;
+    done
+
+    # all files in DIR_BIN and DIR_CORE must be readable
+    find "${SSHGATE_DIR_BIN}"  -type f -exec chmod a=r {} \;
+    find "${SSHGATE_DIR_CORE}" -type f -exec chmod a=r {} \;
+
+    # some scripts have to be executable
+    chmod a=rx "${SSHGATE_DIR_BIN}/sshgate-cli"
+    chmod a=rx "${SSHGATE_DIR_BIN}/sshgate-configure"
+    chmod a=rx "${SSHGATE_DIR_TEST}/test.sh"
+
+    # setup file has to be readable by all (installation/update)
+    chmod a+r "${SSHGATE_DIR_DATA}/sshgate.setup"
+
+    # properties, ssh_logins.list and ssh_conf* files must be read/write
+    find "${SSHGATE_DIR_USERS}"   -type f -name "*properties"     -exec chmod a=r,u+w {} \;
+    find "${SSHGATE_DIR_TARGETS}" -type f -name "*properties"     -exec chmod a=r,u+w {} \;
+    find "${SSHGATE_DIR_TARGETS}" -type f -name "ssh_logins.list" -exec chmod a=r,u+w {} \;
+    find "${SSHGATE_DIR_TARGETS}" -type f -name "ssh_conf*"       -exec chmod a=r,u+w {} \;
+
+    # public sshkeys have to be readable by all, as private ones must be read/write only by the user
+    find "${SSHGATE_DIR_USERS}"   -type f ! -name "*.properties" -exec chmod u=r {} \;
+    find "${SSHGATE_DIR_TARGETS}" -name "${SSHGATE_TARGET_PRIVATE_SSHKEY_FILENAME}" -exec chmod a=,u+rw {} \;
+    find "${SSHGATE_DIR_TARGETS}" -name "${SSHGATE_TARGET_PUBLIC_SSHKEY_FILENAME}"  -exec chmod a=r,u+w {} \;
+    chmod a=,u+rw "${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}"
+    chmod a=r,u+w "${SSHGATE_TARGET_DEFAULT_PUBLIC_SSHKEY_FILE}"
+
+    # set permissions on SSHGATE_GATE_ACCOUNT directories and files
+    home_dir=$( cat /etc/passwd | grep "^${user}:" | cut -d':' -f6 )
+    chown -R "${user}:${user}" "${home_dir}"
+    chmod 755 "${home_dir}"
+    chmod 755 "${home_dir}/.ssh"
+
+    [ -e "${home_dir}/.ssh/authorized_keys2" ] && chmod a=r,u+w "${home_dir}/.ssh/authorized_keys2"
+    [ -e "${home_dir}/.ssh/known_hosts"      ] && chmod a=r,u+w "${home_dir}/.ssh/known_hosts"
+
+    return 0
+  }
+
+fi # end of: if [ "${__SETUP_FUNC__:-}" != 'Loaded' ]; then

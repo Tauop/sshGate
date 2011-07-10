@@ -18,6 +18,11 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+# don't want to add exec.lib.sh in dependencies :/
+user_id=`id -u`
+[ "${user_id}" != "0" ] \
+  && KO "You must execute $0 with root privileges"
+
 # load dependencies
 load() {
   local var= value= file=
@@ -54,12 +59,11 @@ load __LIB_MESSAGE__ "${SCRIPT_HELPER_DIRECTORY}/message.lib.sh"
 load __LIB_ASK__     "${SCRIPT_HELPER_DIRECTORY}/ask.lib.sh"
 load __LIB_CONF__    "${SCRIPT_HELPER_DIRECTORY}/conf.lib.sh"
 
-[ -r ./upgrade.sh ] && . ./upgrade.sh
+# for configuration (SETUP_CONFIGURE and SETUP_GET_DIRECTORIES)
+[ -r ./bin/core/setup.func ] && . ./bin/core/setup.func
 
-# don't want to add exec.lib.sh in dependencies :/
-user_id=`id -u`
-[ "${user_id}" != "0" ] \
-  && KO "You must execute $0 with root privileges"
+# for migrations
+[ -r ./upgrade.sh ] && . ./upgrade.sh
 
 # ----------------------------------------------------------------------------
 
@@ -74,8 +78,8 @@ CONF_SET_FILE "./sshgate.conf"
 CONF_LOAD
 
 BR
-MESSAGE "   --- sshGate server configuration ---"
-MESSAGE "             by Patrick Guiran"
+MESSAGE "   --- sshGate server installation ---"
+MESSAGE "            by Patrick Guiran"
 BR
 
 if [ -r /etc/sshgate.conf ]; then
@@ -86,6 +90,8 @@ if [ -r /etc/sshgate.conf ]; then
       'Y'
   [ "${reply}" = 'Y' ] && configure='no'
 
+  # get installed version and this package version to know wether
+  # we have to make migration (update sshGate internal data)
   CONF_GET --conf-file ./sshgate.conf    SSHGATE_VERSION this_version
   CONF_GET --conf-file /etc/sshgate.conf SSHGATE_VERSION installed_version
 
@@ -94,54 +100,6 @@ if [ -r /etc/sshgate.conf ]; then
 fi
 
 if [ "${configure}" = 'yes' ]; then
-  ASK SSHGATE_DIRECTORY \
-      "Where do you want to install sshGate [${SSHGATE_DIRECTORY}] ? " \
-      "${SSHGATE_DIRECTORY}"
-  CONF_SAVE SSHGATE_DIRECTORY
-
-  ASK SSHGATE_GATE_ACCOUNT \
-      "Which unix account to use for sshGate users [${SSHGATE_GATE_ACCOUNT}] ? " \
-      "${SSHGATE_GATE_ACCOUNT}"
-  CONF_SAVE SSHGATE_GATE_ACCOUNT
-
-  ASK SSHGATE_TARGETS_DEFAULT_SSH_LOGIN \
-      "What the default user account to use when connecting to target host [${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}] ? " \
-      "${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}"
-  CONF_SAVE SSHGATE_TARGETS_DEFAULT_SSH_LOGIN
-
-  ASK --yesno SSHGATE_MAIL_SEND \
-      "Activate mail notification system [Yes] ?" \
-      "Y"
-  if [ "${SSHGATE_MAIL_SEND}" = 'Y' ]; then
-    ASK SSHGATE_MAIL_TO \
-        "Who will receive mail notification (comma separated mails) [${SSHGATE_MAIL_TO}] ?" \
-        "${SSHGATE_MAIL_TO}"
-    [ -z "${SSHGATE_MAIL_TO}" ] && SSHGATE_MAIl_SEND='N'
-  fi
-  CONF_SAVE SSHGATE_MAIL_SEND
-  CONF_SAVE SSHGATE_MAIL_TO
-
-  ASK --yesno SSHGATE_USERS_MUST_ACCEPT_TOS \
-      "Do users have to accept TOS when connecting for the first time [${SSHGATE_USERS_MUST_ACCEPT_TOS}] ? " \
-      "${SSHGATE_USERS_MUST_ACCEPT_TOS}"
-  CONF_SAVE SSHGATE_USERS_MUST_ACCEPT_TOS
-
-  ASK --yesno SSHGATE_ALLOW_REMOTE_COMMAND \
-      "Allow remote command [${SSHGATE_ALLOW_REMOTE_COMMAND}] ? " \
-      "${SSHGATE_ALLOW_REMOTE_COMMAND}"
-
-  sudo_no_passwd=''
-  if [ "${SSHGATE_ALLOW_REMOTE_COMMAND}" = 'Y' ]; then
-    ASK --yesno SSHGATE_USE_REMOTE_ADMIN_CLI \
-        "Allow remote administration CLI [${SSHGATE_USE_REMOTE_ADMIN_CLI}] ? " \
-        "${SSHGATE_USE_REMOTE_ADMIN_CLI}"
-    if [ "${SSHGATE_USE_REMOTE_ADMIN_CLI}" = 'Y' ]; then
-      ASK --yesno sudo_no_passwd "Configure sudo with NOPASSWD to launch remote admin CLI [No] ?" 'N'
-    fi
-  fi
-  CONF_SAVE SSHGATE_ALLOW_REMOTE_COMMAND
-  CONF_SAVE SSHGATE_USE_REMOTE_ADMIN_CLI
-
   # ScriptHelper dependency
   if [ -r /etc/ScriptHelper.conf ]; then
     CONF_GET --conf-file /etc/ScriptHelper.conf SCRIPT_HELPER_DIRECTORY
@@ -153,10 +111,15 @@ if [ "${configure}" = 'yes' ]; then
     BR
     NOTICE "ScriptHelper will be installed as part of sshGate, not system-wide"
     MESSAGE "If you want to install ScriptHelper system-wide, please visit http://github.com/Tauop/ScriptHelper"
+    BR
     SCRIPT_HELPER_DIRECTORY="${SSHGATE_DIRECTORY}/bin/lib"
     install_script_helper='Y'
   fi
   CONF_SAVE SCRIPT_HELPER_DIRECTORY
+
+  # configure sshGate installation
+  # sh ./bin/sshgate-configure --silent configure ./sshgate.conf
+  SETUP_CONFIGURE ./sshgate.conf
 
 fi # end of : if [ "${configure}" = 'yes' ]; then
 
@@ -164,18 +127,7 @@ fi # end of : if [ "${configure}" = 'yes' ]; then
 BR ; BR
 
 if [ "${action}" = 'update' ]; then
-  migrations=$( GET_MIGRATIONS "${installed_version}" "${this_version}" )
-  if [ -n "${migrations}" ]; then
-    DOTHIS 'Make sshGate version migrations'
-      for migration in ${migrations}; do
-        [ -n "${migration}" ] && eval "${migration}"
-        if [ $? -ne 0 ]; then
-          KO "An error occured will upgrading sshGate"
-          exit 1
-        fi
-      done
-    OK
-  fi
+  ./do_migration.sh "${installed_version}" "${this_version}"
 fi
 
 DOTHIS 'Reload configuration'
@@ -194,15 +146,12 @@ OK
 
 DOTHIS 'Installing sshGate'
   if [ "${action}" = 'install' ]; then
+
     # create directories
     MK () { [ ! -d "$1/" ] && mkdir -p "$1"; }
-    MK "${SSHGATE_DIRECTORY}"
-    MK "${SSHGATE_DIR_USERS}"
-    MK "${SSHGATE_DIR_TARGETS}"
-    MK "${SSHGATE_DIR_USERS_GROUPS}"
-    MK "${SSHGATE_DIR_LOGS_TARGETS}"
-    MK "${SSHGATE_DIR_LOGS_USERS}"
-    MK "${SSHGATE_DIR_ARCHIVE}"
+    for dir in $( SETUP_GET_DIRECTORY_VARIABLES ); do
+      MK "$( eval "echo \"\${${dir}}\"" )"
+    done
 
     grep "^${SSHGATE_GATE_ACCOUNT}:" /etc/passwd >/dev/null 2>/dev/null
     if [ $? -ne 0 ]; then
@@ -210,9 +159,6 @@ DOTHIS 'Installing sshGate'
       home_dir=$( cat /etc/passwd | grep "^${SSHGATE_GATE_ACCOUNT}:" | cut -d':' -f6 )
 
       MK "${home_dir}/.ssh/"
-      chmod 755 "${home_dir}"
-      chown "${SSHGATE_GATE_ACCOUNT}" "${home_dir}"
-      chown "${SSHGATE_GATE_ACCOUNT}" "${home_dir}/.ssh"
     fi
   fi
 
@@ -243,27 +189,7 @@ if [ ! -f "${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}" ]; then
 fi
 
 DOTHIS 'Setup files permissions'
-  chown -R "${SSHGATE_GATE_ACCOUNT}" "${SSHGATE_DIRECTORY}"
-  chown -R root "${SSHGATE_DIR_BIN}"
-
-  find "${SSHGATE_DIRECTORY}" -type d -exec chmod a=rx,u+w {} \;
-  find "${SSHGATE_DIR_BIN}"   -type f -exec chmod a=r {} \;
-
-  chmod a=rx "${SSHGATE_DIR_BIN}/sshgate-cli"
-  chmod a=rx "${SSHGATE_DIR_TEST}/test.sh"
-
-  find "${SSHGATE_DIR_USERS}"   -type f -name "*properties"     -exec chmod a=r,u+w {} \;
-  find "${SSHGATE_DIR_TARGETS}" -type f -name "*properties"     -exec chmod a=r,u+w {} \;
-  find "${SSHGATE_DIR_TARGETS}" -type f -name "ssh_logins.list" -exec chmod a=r,u+w {} \;
-  find "${SSHGATE_DIR_TARGETS}" -type f -name "ssh_conf*"       -exec chmod a=r,u+w {} \;
-
-  # sshkeys must be in 400
-  find "${SSHGATE_DIR_USERS}"   -type f ! -name "*.properties" -exec chmod u=r {} \;
-  find "${SSHGATE_DIR_TARGETS}" -name "${SSHGATE_TARGET_PRIVATE_SSHKEY_FILENAME}" -exec chmod a=,u+rw {} \;
-  find "${SSHGATE_DIR_TARGETS}" -name "${SSHGATE_TARGET_PUBLIC_SSHKEY_FILENAME}"  -exec chmod a=r,u+w {} \;
-  chmod a=,u+r "${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}"
-  chmod a=,u+r "${SSHGATE_TARGET_DEFAULT_PUBLIC_SSHKEY_FILE}"
-
+  SETUP_UPDATE_PERMISSIONS
 OK
 
 DOTHIS 'Install archive cron'
@@ -274,7 +200,7 @@ OK
 if [ "${SSHGATE_USE_REMOTE_ADMIN_CLI}" = 'Y' -a "${action}" = 'install' ]; then
   DOTHIS 'configure /etc/sudoers'
     file="/tmp/sudoers.${RANDOM}"
-    [ "${sudo_no_passwd}" = 'Y' ] && sudo_no_passwd='NOPASSWD:' || sudo_no_passwd=''
+    [ "${SSHGATE_SUDO_WITH_NOPASSWORD}" = 'Y' ] && sudo_no_passwd='NOPASSWD:' || sudo_no_passwd=''
     grep -v "^${SSHGATE_GATE_ACCOUNT} " < /etc/sudoers > "${file}"
     mv "${file}" /etc/sudoers
     echo "${SSHGATE_GATE_ACCOUNT} ALL=(root) ${sudo_no_passwd}${SSHGATE_DIR_BIN}/sshgate-cli" >> /etc/sudoers
@@ -283,7 +209,26 @@ if [ "${SSHGATE_USE_REMOTE_ADMIN_CLI}" = 'Y' -a "${action}" = 'install' ]; then
   OK
 fi
 
-BR
+if [ -z "$( ls -1 "${SSHGATE_DIR_USERS}" )" ]; then
+  . "${SSHGATE_DIR_CORE}/sshgate.core"
 
+  BR
+  MESSAGE "You need to add the first user of sshGate, which will be sshGate administrator."
+  MESSAGE "This user will allow you to manage other users, targets and accesses."
+
+  ASK user "user login ?"
+  ASK mail "user mail ?"
+
+  USER_ADD "${user}" "${mail}"
+  USER_SET_CONF "${user}" IS_ADMIN      'true'
+  USER_SET_CONF "${user}" IS_RESTRICTED 'true'
+  BR
+  MESSAGE "In order to administrate sshGate, just ssh this host with this user"
+  MESSAGE "  If you have installed sshGate client -> sshg cli"
+  MESSAGE "  with standard ssh client -> ssh -t ${SSHGATE_GATE_ACCOUNT}@$(hostname) cli"
+  MESSAGE "  from this terminal -> ${SSHGATE_DIR_BIN}/sshgate-cli -u ${SSHGATE_GATE_ACCOUNT}"
+fi
+
+BR
 NOTICE "You may add ${SSHGATE_DIR_BIN} in your PATH variable"
 BR
