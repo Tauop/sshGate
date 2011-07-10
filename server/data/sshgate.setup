@@ -78,4 +78,8 @@ if [ "${__SSHGATE_SETUP__:-}" != 'Loaded' ]; then
   # TODO : a multi-language support.
   SET_GLOBAL SSHGATE_CGU_FILE "${SSHGATE_DIR_DATA}/TOS.txt"
 
+  # Add template support for access notification mail
+  SET_GLOBAL SSHGATE_ACCESS_MAIL_TEMPLATE "${SSHGATE_DIR_DATA}/access_mail_template.txt"
+  SET_GLOBAL SSHGATE_ACCESS_MAIL_SUBJECT "[sshGate] Access granted"
+
 fi # __SSHGATE_SETUP__

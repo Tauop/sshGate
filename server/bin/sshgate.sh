@@ -177,6 +177,6 @@ else
   rm -f "${SSH_CONFIG_FILE}"
 fi
 
-SESSION_END "$$" "${SSHKEY_USER}" "${TARGET_HOST}" "${SESSION_RECORD_FILE:-}"
+SESSION_END "$$" "${SSHKEY_USER}" "${TARGET_HOST}" "${SESSION_RECORD_FILE:-}" "${action_type}"
 
 exit ${RETURN_VALUE}
