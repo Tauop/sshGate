@@ -89,6 +89,7 @@ userdel "${SSHGATE_GATE_ACCOUNT}"
 file="/tmp/file.$(RANDOM)"
 grep -v "^${SSHGATE_GATE_ACCOUNT} " < /etc/sudoers > "${file}"
 mv "${file}" /etc/sudoers
+chmod 0440 /etc/sudoers
 
 # delete global configuration
 rm -f /etc/sshgate.conf
