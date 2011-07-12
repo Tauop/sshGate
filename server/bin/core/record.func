@@ -184,7 +184,7 @@ if [ "${__RECORD_FUNC__:-}" != 'Loaded' ]; then
       BAD_ARGUMENTS ; return 1;
     fi
 
-    user="$2"; target="$1"
+    user="$1"; target="$2"
     target=$( TARGET_REAL "${target}" )
     if [ -z "${target}" -o -z "${user}" ]; then
       echo ''; return 1;
