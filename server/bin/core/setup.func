@@ -301,7 +301,7 @@ if [ "${__SETUP_FUNC__:-}" != 'Loaded' ]; then
   #       and ${SSHGATE_DIR_DATA}/sshgate.setup files
   SETUP_UPDATE_INSTALLATION () {
     local config_file= setup_file= new_config_file= new_setup_file=
-    local has_diff= file= load_old= load_new=
+    local has_diff= file= sep= load_old= load_new=
     local dir= old_home_dir= new_home_dir=
 
     if [ $# -ne 2 -a $# -ne 4 ]; then
@@ -394,10 +394,41 @@ if [ "${__SETUP_FUNC__:-}" != 'Loaded' ]; then
       userdel "${old}"
       [ -d "${old_home_dir}" ] && rm -rf "${old_home_dir}"
 
-      SETUP_UPDATE_PERMISSIONS "${new_config_file}" "${new_setup_file}"
+    fi
+
+    # SSHGATE_DIR_BIN has changed, update some files
+    old=$( eval "${load_old}; echo \"\${SSHGATE_DIR_BIN}\"" )
+    new=$( eval "${load_new}; echo \"\${SSHGATE_DIR_BIN}\"" )
+
+    if [ "${old}" != "${new}" ]; then
+      # update authorized_keys
+      file="/tmp/file.$(RANDOM)"
+      sep=$( private_SED_SEPARATOR "${old}${new}" )
+      sed -e "s${sep}${old}${sep}${new}${sep}g" < "${new_home_dir}/.ssh/authorized_keys2" > "${file}"
+      mv "${file}" "${new_home_dir}/.ssh/authorized_keys2"
+      # /etc/sudoers
+      file="/tmp/file.$(RANDOM)"
+      sep=$( private_SED_SEPARATOR "${old}${new}" )
+      sed -e "s${sep}${old}${sep}${new}${sep}g" < /etc/sudoers > "${file}"
+      mv "${file}" "/etc/sudoers"
+      chmod 440 /etc/sudoers
+    fi
+
+    # Update /etc/sudoers if sshGate Unix account has changed
+    old=$( eval "${load_old}; echo \"\${SSHGATE_GATE_ACCOUNT}\"" )
+    new=$( eval "${load_new}; echo \"\${SSHGATE_GATE_ACCOUNT}\"" )
+
+    if [ "${old}" != "${new}" ]; then
+      file="/tmp/file.$(RANDOM)"
+      sep=$( private_SED_SEPARATOR "${old}${new}" )
+      sed -e "s${sep}${old}${sep}${new}${sep}g" < /etc/sudoers > "${file}"
+      mv "${file}" /etc/sudoers
+      chmod 440 /etc/sudoers
     fi
 
     rm -f "${file}"
+
+    SETUP_UPDATE_PERMISSIONS "${new_config_file}" "${new_setup_file}"
 
     BR
     MESSAGE "Updates completed"
