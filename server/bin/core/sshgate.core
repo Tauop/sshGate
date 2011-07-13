@@ -98,7 +98,7 @@ if [ "${__SSHGATE_CORE__:-}" != 'Loaded' ]; then
   # note: if the string doesn't contain the login :
   #       - we try to get the DEFAULT_SSH_LOGIN of the host
   #       - otherwise ${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}, if contain in login list of the host
-  #       - otherwise the first login avariable for the host
+  #       - otherwise the first login available for the host
   #       - empty string ( ERROR )
   GET_LOGIN () {
     local string="$1" login= target= login_list=
