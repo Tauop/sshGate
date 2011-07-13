@@ -151,7 +151,7 @@ if [ "${__TARGET_SSHKEY_FUNC__:-}" != 'Loaded' ]; then
     fi
 
     cat "${sshkey_file}"          \
-      | TARGET_SSH_RUN_COMMAND "$1" "umask 077; test -d .ssh || mkdir .ssh ; cat >> .ssh/authorized_keys"
+      | TARGET_SSH_RUN_COMMAND "${login}@${target}" "umask 077; test -d .ssh || mkdir .ssh ; cat >> .ssh/authorized_keys"
     if [ $? -ne 0 ]; then
       echo "NOTICE: Public ssh key of '${target}' can't be installed on '${login}@${target}'. Install it manually"
     fi
