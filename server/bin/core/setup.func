@@ -21,33 +21,6 @@
 # Collection of all setup related functions
 # ----------------------------------------------------------------------------
 
-## Helper function to load dependencies ---------------------------------------
-#load() {
-#  local var= value= file=
-#
-#  var="$1"; file="$2"
-#  value=$( eval "echo \"\${${var}:-}\"" )
-#
-#  [ -n "${value}" ] && return 1;
-#  if [ -f "${file}" ]; then
-#    . "${file}"
-#  else
-#    echo "ERROR: Unable to load ${file}"
-#    exit 2
-#  fi
-#  return 0;
-#}
-#
-## load core, if it's not
-#load SSHGATE_DIRECTORY '/etc/sshgate.conf'
-#load __SSHGATE_SETUP__ "${SSHGATE_DIR_DATA}/data/sshgate.setup"
-#
-#load __LIB_RANDOM__  "${SCRIPT_HELPER_DIRECTORY}/random.lib.sh"
-#load __LIB_MESSAGE__ "${SCRIPT_HELPER_DIRECTORY}/message.lib.sh"
-#load __LIB_ASK__     "${SCRIPT_HELPER_DIRECTORY}/ask.lib.sh"
-#load __LIB_CONF__    "${SCRIPT_HELPER_DIRECTORY}/conf.lib.sh"
-#
-
 if [ "${__SETUP_FUNC__:-}" != 'Loaded' ]; then
   __SETUP_FUNC__='Loaded'
 
@@ -226,7 +199,7 @@ if [ "${__SETUP_FUNC__:-}" != 'Loaded' ]; then
   # desc: ask for configuration parameter, and save them into <config-file>
   # note: if <config-file> isn't given, try to load /etc/sshgate.conf
   SETUP_CONFIGURE () {
-    local config_file= setup_file= new_config_file= new_setup_file= old_conf_set_file=
+    local config_file= setup_file= new_config_file= new_setup_file= old_conf_set_file= old_sshgate_dir=
 
     [ $# -eq 1 ] && config_file="$1" || config_file="/etc/sshgate.conf"
 
@@ -251,7 +224,13 @@ if [ "${__SETUP_FUNC__:-}" != 'Loaded' ]; then
     CONF_LOAD
     private_SETUP_SET_DEFAULT
 
+    # SCRIPT_HELPER_DIRECTORY can be relative to SSHGATE_DIRECTORY
+    old_sshgate_dir="${SSHGATE_DIRECTORY}"
     private_CONF SSHGATE_DIRECTORY "Where do you want to locate sshGate [%%%] ? "
+    if [ "${SCRIPT_HELPER_DIRECTORY#${old_sshgate_dir}/}" != "${SCRIPT_HELPER_DIRECTORY}" ]; then
+      CONF_SAVE SCRIPT_HELPER_DIRECTORY "${SSHGATE_DIRECTORY}/${SCRIPT_HELPER_DIRECTORY#${old_sshgate_dir}/}"
+    fi
+
     private_CONF SSHGATE_GATE_ACCOUNT "Which unix account to use for sshGate users [%%%] ? "
     private_CONF SSHGATE_TARGETS_DEFAULT_SSH_LOGIN "What the default user account to use when connecting to target host [%%%] ? "
 
@@ -322,7 +301,7 @@ if [ "${__SETUP_FUNC__:-}" != 'Loaded' ]; then
   #       and ${SSHGATE_DIR_DATA}/sshgate.setup files
   SETUP_UPDATE_INSTALLATION () {
     local config_file= setup_file= new_config_file= new_setup_file=
-    local has_diff= load_old= load_new=
+    local has_diff= file= load_old= load_new=
     local dir= old_home_dir= new_home_dir=
 
     if [ $# -ne 2 -a $# -ne 4 ]; then
@@ -342,6 +321,11 @@ if [ "${__SETUP_FUNC__:-}" != 'Loaded' ]; then
     if [ ! -r "${config_file}" -o ! -r "${new_config_file}" ]; then
       ERROR "Can't read configuration files"; return 1;
     fi
+
+    # copy sshgate.setup file, as we will move SSHGATE_DIRECTORY
+    file="/tmp/sshgate.setup.$(RANDOM)"
+    cp "${setup_file}" "${file}"
+    setup_file="${file}"
 
     BR
     MESSAGE "sshGate installation will be updated"
@@ -399,18 +383,21 @@ if [ "${__SETUP_FUNC__:-}" != 'Loaded' ]; then
       new_home_dir=$( cat /etc/passwd | grep "^${new}:" | cut -d':' -f6 )
       old_home_dir=$( cat /etc/passwd | grep "^${old}:" | cut -d':' -f6 )
 
+      mv "${old_home_dir}" "${new_home_dir}"
+
       mkdir -p "${new_home_dir}/.ssh/"
       chmod 755 "${new_home_dir}"
 
-      mv "${old_home_dir}/*" "${new_home_dir}"
       chown -R "${new}:${new}" "${new_home_dir}"
 
       MESSAGE ". Deleting ${old} unix account"
       userdel "${old}"
       [ -d "${old_home_dir}" ] && rm -rf "${old_home_dir}"
 
-      SETUP_UPDATE_PERMISSIONS
+      SETUP_UPDATE_PERMISSIONS "${new_config_file}" "${new_setup_file}"
     fi
+
+    rm -f "${file}"
 
     BR
     MESSAGE "Updates completed"
@@ -422,21 +409,24 @@ if [ "${__SETUP_FUNC__:-}" != 'Loaded' ]; then
   # usage: SETUP_UPDATE_PERMISSIONS [<config_file> [<setup_file>]]
   # desc: update or correct permissions on directories and files
   SETUP_UPDATE_PERMISSIONS () {
-    local config_file= setup_file= user= load= dir= d= home_dir=
+    local config_file= setup_file= load= dir= d= home_dir=
 
     [ $# -gt 1 ] && config_file="$1" || config_file=/etc/sshgate.conf
     [ $# -eq 2 ] && setup_file="$2"
     [ ! -r "${setup_file}" ] && setup_file=$( private_GET_SETUP_FILE "${config_file}" )
 
-    # get SSHGATE_GATE_ACCOUNT Unix user
-    CONF_GET --conf-file "${config_file}" SSHGATE_GATE_ACCOUNT user
+    # save and load manipulated configuration file
+    __SSHGATE_SETUP__=
+    SSHGATE_DIR_DATA=
+    CONF_LOAD "${config_file}"
+    [ -n "${SSHGATE_DIR_DATA}" ] && . "${SSHGATE_DIR_DATA}/sshgate.setup" || . "${SSHGATE_DIRECTORY}/data/sshgate.setup"
 
     load=". \"${config_file}\""
     [ -r "${setup_file}" ] && load="${load}; __SSHGATE_SETUP__=''; . \"${setup_file}\""
 
     for d in $( SETUP_GET_DIRECTORY_VARIABLES ); do
       dir=$( eval "${load}; echo \"\${${d}}\"" )
-      chown -R "${user}:${user}" "${dir}"
+      chown -R "${SSHGATE_GATE_ACCOUNT}:${SSHGATE_GATE_ACCOUNT}" "${dir}"
       chmod a=rx,u+w "${dir}"
       find "${dir}" -type d -exec chmod a=rx,u+w {} \;
     done
@@ -467,13 +457,16 @@ if [ "${__SETUP_FUNC__:-}" != 'Loaded' ]; then
     chmod a=r,u+w "${SSHGATE_TARGET_DEFAULT_PUBLIC_SSHKEY_FILE}"
 
     # set permissions on SSHGATE_GATE_ACCOUNT directories and files
-    home_dir=$( cat /etc/passwd | grep "^${user}:" | cut -d':' -f6 )
-    chown -R "${user}:${user}" "${home_dir}"
+    home_dir=$( cat /etc/passwd | grep "^${SSHGATE_GATE_ACCOUNT}:" | cut -d':' -f6 )
+    chown -R "${SSHGATE_GATE_ACCOUNT}:${SSHGATE_GATE_ACCOUNT}" "${home_dir}"
     chmod 755 "${home_dir}"
     chmod 755 "${home_dir}/.ssh"
 
     [ -e "${home_dir}/.ssh/authorized_keys2" ] && chmod a=r,u+w "${home_dir}/.ssh/authorized_keys2"
     [ -e "${home_dir}/.ssh/known_hosts"      ] && chmod a=r,u+w "${home_dir}/.ssh/known_hosts"
+
+    # reload previous configuration file
+    CONF_LOAD
 
     return 0
   }
