@@ -112,7 +112,6 @@ if [ "${configure}" = 'yes' ]; then
     NOTICE "ScriptHelper will be installed as part of sshGate, not system-wide"
     MESSAGE "If you want to install ScriptHelper system-wide, please visit http://github.com/Tauop/ScriptHelper"
     BR
-    SCRIPT_HELPER_DIRECTORY="${SSHGATE_DIRECTORY}/bin/lib"
     install_script_helper='Y'
   fi
   CONF_SAVE SCRIPT_HELPER_DIRECTORY
@@ -210,6 +209,10 @@ if [ "${SSHGATE_USE_REMOTE_ADMIN_CLI}" = 'Y' -a "${action}" = 'install' ]; then
 fi
 
 if [ -z "$( ls -1 "${SSHGATE_DIR_USERS}" )" ]; then
+  # FIXME: ugly => load all sshGate, like the CLI :-(
+  __SSHGATE_SETUP__=
+  SSHGATE_DIRECTORY=
+  . "${SSHGATE_DIR_DATA}/sshgate.setup"
   . "${SSHGATE_DIR_CORE}/sshgate.core"
 
   BR
