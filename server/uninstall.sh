@@ -81,7 +81,7 @@ for dir in $( SETUP_GET_DIRECTORY_VARIABLES ); do
 done
 
 # delete sshGate Unix user
-home_dir=$( cat /etc/passwd | grep "^${user}:" | cut -d':' -f6 )
+home_dir=$( cat /etc/passwd | grep "^${SSHGATE_GATE_ACCOUNT}:" | cut -d':' -f6 )
 userdel "${SSHGATE_GATE_ACCOUNT}"
 [ -d "${home_dir}" ] && rm -rf "${home_dir}"
 
