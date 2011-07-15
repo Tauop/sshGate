@@ -176,7 +176,7 @@ if [ "${SSHGATE_TEST:-}" != 'sshGateTest' ]; then
   MSG "sshGate administration Interface"
   MSG "By Patrick Guiran <pguiran@linagora.com>"
   BR
-  MSG "Use 'help' command to list all avariable commands"
+  MSG "Use 'help' command to list all available commands"
   BR
 
   CLI_RUN
