@@ -293,7 +293,7 @@ if [ "${__TARGET_SSH_FUNC__:-}" != 'Loaded' ]; then
   }
 
   # usage: TARGET_SSH_LIST_LOGINS <target>
-  # desc: List all avariable ssh logins of target
+  # desc: List all available ssh logins of target
   TARGET_SSH_LIST_LOGINS () {
     local target= file=
     if [ $# -ne 1 ]; then
