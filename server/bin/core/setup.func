@@ -244,7 +244,7 @@ if [ "${__SETUP_FUNC__:-}" != 'Loaded' ]; then
 
     good_lang="0"
     while [ "${good_lang}" = "0" ]; do
-      MESSAGE "List of avariable languages: ${languages}"
+      MESSAGE "List of available languages: ${languages}"
       private_CONF SSHGATE_DEFAULT_LANGUAGE "Default language for user messages [%%%] ?"
       for lang in ${languages}; do
         if [ "${lang}" = "${SSHGATE_DEFAULT_LANGUAGE}" ]; then
