@@ -534,4 +534,35 @@ if [ "${__USER_FUNC__:-}" != 'Loaded' ]; then
     return 0;
   }
 
+  # usage: USER_ACCEPTED_TOS <user>
+  # desc: returns 0 if <user> has accepted the TOS, otherwise it returns 1
+  USER_ACCEPTED_TOS () {
+    local user= has_accepted= lang= tos_file= var=
+
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
+    user="$1"
+    if [ ! -f "${SSHGATE_DIR_USERS}/${user}" ]; then
+      ERROR "User '${user}' doesn't exist"; return 1;
+    fi
+
+    has_accepted=$( USER_GET_CONF "${user}" HAS_ACCEPT_TOS )
+    if [ "${has_accepted}" != 'true' ]; then
+      lang=$( USER_GET_CONF "${user}" LANGUAGE )
+      [ -n "${lang}" ] && lang="${SSHGATE_DEFAULT_LANGUAGE}"
+      # TODO: send a mail to the admin to tell there is no TOS file
+      tos_file="${SSHGATE_DIR_TEMPLATES}/${lang}/${SSHGATE_TOS_FILENAME}"
+      if [ -r "${tos_file}" ]; then
+        cat "${tos_file}"; BR
+        ASK --yesno var "-> 'yes' / 'no' ?"
+        [ "${var}" = 'N' ] && return 1;
+        USER_SET_CONF "${user}" HAS_ACCEPT_TOS 'true'
+      fi
+    fi
+
+    return 0;
+  }
+
 fi # if [ "${__USER_FUNC__}" != 'Loaded' ]; then
