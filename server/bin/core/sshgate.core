@@ -124,7 +124,7 @@ if [ "${__SSHGATE_CORE__:-}" != 'Loaded' ]; then
   # usage: GET_HOST <string>
   # desc: Echo-return the host from a connection string
   GET_HOST () {
-    echo "${1#*@}"; return 0;
+    echo "${1#*@}"| tr '[:upper:]' '[:lower:]'; return 0;
   }
 
   # usage: HAS_ACCESS <username> [<login>@]<target_host>
