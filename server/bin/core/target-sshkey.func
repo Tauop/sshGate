@@ -37,7 +37,11 @@ if [ "${__TARGET_SSHKEY_FUNC__:-}" != 'Loaded' ]; then
     if [ $# -ne 1 ]; then
       BAD_ARGUMENTS ; return 1;
     fi
-    target="$1"
+
+    target=$( TARGET_REAL "$1" )
+    if [ -z "${target}" ]; then
+      ERROR "Target host '${target}' doesn't exist"; return 1
+    fi
 
     privkey="${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGET_PRIVATE_SSHKEY_FILENAME}"
     pubkey="${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGET_PUBLIC_SSHKEY_FILENAME}"
