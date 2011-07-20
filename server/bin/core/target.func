@@ -163,7 +163,7 @@ if [ "${__TARGET_FUNC__:-}" != 'Loaded' ]; then
     if [ $# -ne 2 ]; then
       BAD_ARGUMENTS ; return 1;
     fi
-    target=$( TARGET_REAL "$1" ); new_name="$2"; new_target=$( TARGET_REAL "${new_name}" )
+    target=$( TARGET_REAL "$1" ); new_name=$( echo "$2" | tr '[:upper:]' '[:lower:]' ); new_target=$( TARGET_REAL "${new_name}" )
     if [ -z "${target}" ]; then
       ERROR "Target host '${target}' doesn't exist"; return 1;
     fi
@@ -325,7 +325,7 @@ if [ "${__TARGET_FUNC__:-}" != 'Loaded' ]; then
       BAD_ARGUMENTS ; return 1;
     fi
 
-    target=$( TARGET_REAL "$1" ); alias="$2"
+    target=$( TARGET_REAL "$1" ); alias=$( echo "$2" | tr '[:upper:]' '[:lower:]' )
     if [ -z "${target}" ]; then
       ERROR "Target host '${target}' doesn't exist" ; return 1
     fi
@@ -351,7 +351,7 @@ if [ "${__TARGET_FUNC__:-}" != 'Loaded' ]; then
       BAD_ARGUMENTS ; return 1;
     fi
 
-    alias="$1"
+    alias=$( echo "$1" | tr '[:upper:]' '[:lower:]' )
     if [ -z "${alias}" ]; then
       BAD_ARGUMENTS ; return 1;
     fi
