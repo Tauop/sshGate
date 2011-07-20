@@ -62,8 +62,9 @@ load __SSHGATE_CORE__  "${SSHGATE_DIR_CORE}/sshgate.core"
 load __LIB_ASK__       "${SCRIPT_HELPER_DIRECTORY}/ask.lib.sh"
 load __LIB_RECORD__    "${SCRIPT_HELPER_DIRECTORY}/record.lib.sh"
 
-# one little function --------------------------------------------------------
+# littles functions ----------------------------------------------------------
 mLOG () { local file=$1; shift; echo "$(date +'[%D %T]') $*" >> ${file}; }
+quote() { echo "$1" | sed -e "s/'/\\\'/g;s/^/'/;s/$/'/;"; }
 
 # determine action type (ssh or scp) and build TARGET_HOST -------------------
 if [ "${SSH_ORIGINAL_COMMAND}" != "${SSH_ORIGINAL_COMMAND#/usr/libexec/openssh/sftp-server }" \
@@ -115,7 +116,7 @@ if [ "${SSHGATE_ALLOW_REMOTE_COMMAND}" = 'Y' -a "${action_type}" = 'ssh' ]; then
       code="${code} $(BUILD_SED_CODE 'cli' "sudo ${SSHGATE_DIR_BIN}/sshgate-cli -u '${SSHKEY_USER}'")"
     fi
     code="${code} a \ echo 'ERROR: unknown command' "
-    eval $(echo "${SSH_ORIGINAL_COMMAND}" | sed -n -e "$code" )
+    eval $( echo "$( quote "${SSH_ORIGINAL_COMMAND}" )" | sed -n -e "$code" )
     exit 0;
   fi
 fi
@@ -157,12 +158,14 @@ if [ "${action_type:-}" = 'ssh' ]; then
   SESSION_RECORD_FILE=$( SESSION_TARGET_GET_RECORD_FILE "${SSHKEY_USER}" "${TARGET_HOST}" )
   SSH_CONFIG_FILE=$( TARGET_SSH_GET_CONFIG "${TARGET_HOST}" "${TARGET_LOGIN}" )
 
+  TARGET_HOST_COMMAND=$( echo "${TARGET_HOST_COMMAND}" | sed -e "s/'/\\\'/g;s/^/'/;s/$/'/;" )
   RECORD --file "${SESSION_RECORD_FILE}" "ssh -F '${SSH_CONFIG_FILE}' ${TARGET_HOST} '${TARGET_HOST_COMMAND}'"
   RETURN_VALUE=$?
   rm -f "${SSH_CONFIG_FILE}"
 else
   SSH_CONFIG_FILE=$( TARGET_SSH_GET_CONFIG "${TARGET_HOST}" "${TARGET_LOGIN}" )
 
+  SSH_ORIGINAL_COMMAND=$( echo "${SSH_ORIGINAL_COMMAND}" | sed -e "s/'/\\\'/g;s/^/'/;s/$/'/;" )
   ssh -F "${SSH_CONFIG_FILE}" ${TARGET_HOST} "${SSH_ORIGINAL_COMMAND}"
   RETURN_VALUE=$?
   rm -f "${SSH_CONFIG_FILE}"
