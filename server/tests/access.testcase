@@ -20,7 +20,7 @@
 
 mDOTHIS 'Generate access tests'
 
-hostname=$( hostname )
+hostname=$( hostname | tr '[:upper:]' '[:lower:]' )
 alias="${hostname}2"
 ip=$( hostname -i )
 

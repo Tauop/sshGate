@@ -20,7 +20,7 @@
 
 mDOTHIS 'Generate target tests'
 
-hostname=$( hostname )
+hostname=$( hostname | tr '[:upper:]' '[:lower:]' )
 alias="${hostname}2"
 ip=$( hostname -i )
 
@@ -118,6 +118,7 @@ sshGate >  target root@${hostname} ssh display full config
 Host *
  IdentityFile ${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}
  IdentitiesOnly yes
+ PasswordAuthentication no
  StrictHostKeyChecking yes
  HashKnownHosts no
  UserKnownHostsFile $(SSHGATE_ACCOUNT_HOMEDIR)/.ssh/known_hosts
@@ -126,6 +127,7 @@ ConnectTimeout 10
 Host ${hostname}
  IdentityFile ${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}
  IdentitiesOnly yes
+ PasswordAuthentication no
  StrictHostKeyChecking yes
  User root
 ConnectTimeout 30
@@ -138,6 +140,7 @@ sshGate >  target root@${hostname} ssh display full config
 Host *
  IdentityFile ${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}
  IdentitiesOnly yes
+ PasswordAuthentication no
  StrictHostKeyChecking yes
  HashKnownHosts no
  UserKnownHostsFile $(SSHGATE_ACCOUNT_HOMEDIR)/.ssh/known_hosts
@@ -146,12 +149,14 @@ ConnectTimeout 10
 Host ${alias}
  IdentityFile ${SSHGATE_DIR_TARGETS}/${alias}/sshkey.priv
  IdentitiesOnly yes
+ PasswordAuthentication no
  StrictHostKeyChecking yes
  User ${user_unix_test_account}
 
 Host ${hostname}
  IdentityFile ${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}
  IdentitiesOnly yes
+ PasswordAuthentication no
  StrictHostKeyChecking yes
  User root
  ProxyCommand ssh -F ssh_conf_file ${user_unix_test_account}@${alias} nc %h %p
