@@ -99,6 +99,7 @@ if [ "${__TARGET_SSH_FUNC__:-}" != 'Loaded' ]; then
                'ForwardAgent'             \
                'IdentityFile'             \
                'PreferredAuthentications' \
+               'PasswordAuthentication'   \
                'ProxyCommand'             \
                'StrictHostKeyChecking'    \
                'User'                     \
@@ -180,6 +181,7 @@ if [ "${__TARGET_SSH_FUNC__:-}" != 'Loaded' ]; then
       echo "Host *"                                                      >> "${tmpfile}"
       echo " IdentityFile ${SSHGATE_TARGET_DEFAULT_PRIVATE_SSHKEY_FILE}" >> "${tmpfile}"
       echo " IdentitiesOnly yes"                                         >> "${tmpfile}"
+      echo " PasswordAuthentication no"                                  >> "${tmpfile}"
       echo " StrictHostKeyChecking yes"                                  >> "${tmpfile}"
       echo " HashKnownHosts no"                                          >> "${tmpfile}"
       echo " UserKnownHostsFile ${known_hosts_file}"                     >> "${tmpfile}"
@@ -192,6 +194,7 @@ if [ "${__TARGET_SSH_FUNC__:-}" != 'Loaded' ]; then
     echo "Host ${target}"                          >> "${tmpfile}"
     echo " IdentityFile ${sshkey_file}"            >> "${tmpfile}"
     echo " IdentitiesOnly yes"                     >> "${tmpfile}"
+    echo " PasswordAuthentication no"              >> "${tmpfile}"
     echo " StrictHostKeyChecking yes"              >> "${tmpfile}"
     echo " User ${login}"                          >> "${tmpfile}"
     if [ -n "${proxy}" ]; then
