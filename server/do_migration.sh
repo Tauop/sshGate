@@ -1,5 +1,7 @@
 #!/bin/bash
 
+. ./upgrade.sh
+
 old_version="$1"
 new_version="$2"
 

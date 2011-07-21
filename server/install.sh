@@ -126,6 +126,7 @@ fi # end of : if [ "${configure}" = 'yes' ]; then
 BR ; BR
 
 if [ "${action}" = 'update' ]; then
+  chmod +x ./do_migration.sh
   ./do_migration.sh "${installed_version}" "${this_version}"
 fi
 
