@@ -85,19 +85,45 @@ if [ "${__RECORD_FUNC__:-}" != 'Loaded' ]; then
 
   # --------------------------------------------------------------------------
 
-  # usage: private_SESSION_CURRENT_ADD <pid> <timestamp> <username> <target>
-  # desc: add session state information
-  private_SESSION_STATE_ADD () {
-    local session_file=
-    if [ $# -ne 4 ]; then
-      BAD_ARGUMENTS ; return 1;
-    fi
+  # usage: private_SESSION_STATE_CLEAN
+  # desc: clean current_session.log file, by removing no-existing process (pid)
+  private_SESSION_STATE_CLEAN () {
+    local session_file= pid= rest= tmp_file= old_IFS=
 
     session_file="${SSHGATE_LOGS_CURRENT_SESSION_FILE}"
+    tmp_file="/tmp/file.$(RANDOM)"
+
+    [ ! -w "${session_file}" ] && return 1
 
     MUTEX_GET "${session_file}"
-    # format = <pid>:<timestamp>:<username>:<target>
-    echo "${1:-}:${2:-}:${3:-}:{4:-}" >> "${session_file}"
+      cp "${session_file}" "${tmp_file}"
+      old_IFS="${IFS}"
+      IFS=':'; while read pid rest ; do
+        ps -p "${pid}" >/dev/null 2>/dev/null && printf "%s:%s\n" "${pid}" "${rest}"
+      done < "${tmp_file}" > "${session_file}"
+      IFS="${old_IFS}"
+    MUTEX_RELEASE "${session_file}"
+
+    rm -f "${tmp_file}"
+
+    return 0
+  }
+
+  # usage: private_SESSION_CURRENT_ADD <timestamp> <pid> <username> <target> <type> <info>
+  # desc: add session state information
+  private_SESSION_STATE_ADD () {
+    local log_msg= session_file=
+
+    session_file="${SSHGATE_LOGS_CURRENT_SESSION_FILE}"
+    # format = <pid>:<timestamp>:<username>:<target>:<type>:<...info ..>
+    log_msg="${2:-}:${1:-}:${3:-}:${4:-}:${5:-}"
+    shift 5
+    log_msg="${log_msg}:$*"
+
+    private_SESSION_STATE_CLEAN
+
+    MUTEX_GET "${session_file}"
+    echo "${log_msg}" >> "${session_file}"
     MUTEX_RELEASE "${session_file}"
 
     return 0;
@@ -113,11 +139,15 @@ if [ "${__RECORD_FUNC__:-}" != 'Loaded' ]; then
 
     session_file="${SSHGATE_LOGS_CURRENT_SESSION_FILE}"
 
+    private_SESSION_STATE_CLEAN
+
     MUTEX_GET "${session_file}"
-      grep -v "^$1:" < "${session_file}" > "${session_file}.tmp"
-      mv "${session_file}.tmp" "${session_file}"
-      nb=$( wc -l < "${session_file}" | cut -d' ' -f1 )
-      [ "${nb}" = '0' ] && rm -f "${session_file}"
+      if [ -w "${session_file}" ]; then
+        grep -v "^$1:" < "${session_file}" > "${session_file}.tmp"
+        mv "${session_file}.tmp" "${session_file}"
+        nb=$( wc -l < "${session_file}" | cut -d' ' -f1 )
+        [ "${nb}" = '0' ] && rm -f "${session_file}"
+      fi
     MUTEX_RELEASE "${session_file}"
 
     return 0;
@@ -168,7 +198,7 @@ if [ "${__RECORD_FUNC__:-}" != 'Loaded' ]; then
   # note: <type> can be 'ssh' or 'scp', or whatever you want
   SESSION_START () {
     private_SESSION_WRITE_EVENT 'START' $@ ;
-    private_SESSION_STATE_ADD "${1:-}" "${2:-}" "${3:-}" "${4:-}"
+    private_SESSION_STATE_ADD $@
   }
 
   # usage: TARGET_SESSION_END <timestamp> <pid> <username> <target> <session-log-file>
@@ -205,12 +235,19 @@ if [ "${__RECORD_FUNC__:-}" != 'Loaded' ]; then
   # usage: SESSION_DISPLAY_CONNECTED
   # desc: echo-return the list of connected sessions
   SESSION_DISPLAY_CONNECTED () {
-    local session_file=
+    local session_file= pid= time= user= target= old_IFS=
 
     session_file="${SSHGATE_LOGS_CURRENT_SESSION_FILE}"
+
     if [ -f "${session_file}" ]; then
+      private_SESSION_STATE_CLEAN
+
       MUTEX_GET "${session_file}"
-      cat "${session_file}" | sed -e 's/^[^:]*:[^:]*:[^:]*$/\2 -> \3 (since \4)'
+        old_IFS="${IFS}"
+        IFS=':'; while read pid time user target type info; do
+          printf "[%5s] %s --(%s)--> %s (%s%s)\n" "${pid}" "${user}" "${type}" "${target}" "$( date -d "1970-01-01 UTC ${time} seconds" +'%Y-%m-%d %T %z' )" "${info:+ - ${info}}"
+        done < "${session_file}"
+        IFS="${old_IFS}"
       MUTEX_RELEASE "${session_file}"
     else
       echo "No user connected"
@@ -251,6 +288,40 @@ if [ "${__RECORD_FUNC__:-}" != 'Loaded' ]; then
     fi
 
     echo 'Not Yet implemented :-('
+    return 0
+  }
+
+  # usage: SESSION_KILL <pid>
+  # desc: Kill a sshGate session
+  SESSION_KILL () {
+    local pid= session_file= tmp=
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS; return 1;
+    fi
+
+    pid="$1"
+    session_file="${SSHGATE_LOGS_CURRENT_SESSION_FILE}"
+
+    if [ -w "${session_file}" ]; then
+      grep "^${pid}:" < "${session_file}" >/dev/null 2>/dev/null
+      if [ $? -eq 0 ]; then
+        # get the process tty/pts
+        tmp=$( ps -p "${pid}" -o tty )
+        if [ $? -ne 0 ]; then
+          ERROR "No such process ${pid}."
+          return 1
+        fi
+        # in worst case, it will kill the ssh process which launch sshgate-bridge
+        kill -HUP $( ps -t `echo "${tmp}" | tail -n 1` -o pid | sort -n | tail -n 1 ) >/dev/null 2>/dev/null
+        [ $? -ne 0 ]                                       \
+          && ERROR "Can't kill or no such session ${pid}." \
+          || MESSAGE "Session ${pid} killed."
+        private_SESSION_STATE_REMOVE "${pid}"
+      fi
+    else
+      ERROR "No active session"
+    fi
+
     return 0
   }
 

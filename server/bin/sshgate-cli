@@ -159,6 +159,11 @@ CLI_REGISTER_COMMAND 'target [<login>@]<target> access list usergroups'         
 CLI_REGISTER_COMMAND 'target [<login>@]<target> access add usergroup <group>'   'TARGET_ACCESS_ADD_USERGROUP \1 \2'
 CLI_REGISTER_COMMAND 'target [<login>@]<target> access del usergroup <group>'   'TARGET_ACCESS_DEL_USERGROUP \1 \2'
 
+CLI_REGISTER_MENU    'session'
+CLI_REGISTER_COMMAND 'session list current'                               'SESSION_DISPLAY_CONNECTED'
+CLI_REGISTER_COMMAND 'session kill <pid>'                                 'SESSION_KILL \1'
+
+CLI_REGISTER_COMMAND 'debug' 'set -x'
 
 
 # use --force when CLI is called from remote
