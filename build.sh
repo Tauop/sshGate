@@ -86,8 +86,9 @@ fi
 
 if [ "${action}" = 'all' -o "${action}" = 'server' ]; then
   DOTHIS 'Build sshgate-server package'
-    dir=/tmp/sshGate-server-${version}
-    [ -n "${build}" ] && dir="${dir}-${build}"
+    softname=sshGate-server-${version}
+    [ -n "${build}" ] && softname="${softname}-${build}"
+    dir=/tmp/${softname}
 
     [ -d ${dir}/ ] && CMD rm -rf ${dir}/
     CMD mkdir ${dir}/
@@ -95,7 +96,7 @@ if [ "${action}" = 'all' -o "${action}" = 'server' ]; then
     CMD cp COPYING              ${dir}/
     CMD cp -r ./server/*        ${dir}/
     if [ "${include_script_helper}" = 'Y' ]; then
-      CMD cp -r ./lib/          ${dir}/
+      CMD cp -r ./lib           ${dir}/
     fi
 
     # put version and build number
@@ -103,14 +104,19 @@ if [ "${action}" = 'all' -o "${action}" = 'server' ]; then
     sed_repl="${sed_repl} s|%% __SSHGATE_VERSION__ %%|${version}|;"
     sed_repl="${sed_repl} s|%% __SSHGATE_BUILD__ %%|${build}|;"
 
-    sed -i -e "${sed_repl}" "${dir}/install.sh"
-    sed -i -e "${sed_repl}" "${dir}/sshgate.conf"
+    sed -e "${sed_repl}" < "${dir}/install.sh"   > "${dir}/install.sh.sed"
+    sed -e "${sed_repl}" < "${dir}/sshgate.conf" > "${dir}/sshgate.conf.sed"
+    mv "${dir}/install.sh.sed"   "${dir}/install.sh"
+    mv "${dir}/sshgate.conf.sed" "${dir}/sshgate.conf"
 
     CMD chmod +x ${dir}/install.sh
 
     CMD find ${dir}/ -type f -iname "*swp" -exec rm -f {} '\;'
     CMD 'find ${dir}/ -iname ".git" | xargs rm -rf'
-    CMD tar c --transform "'s|^tmp/||S'" -z -f ${dir}.tar.gz ${dir} 2>/dev/null
+
+    cd /tmp
+    CMD tar -z -c -f ${softname}.tar.gz ${softname} 2>/dev/null
+    cd - >/dev/null
 
     CMD mv ${dir}.tar.gz .
     CMD rm -rf ${dir}
