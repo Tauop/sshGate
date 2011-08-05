@@ -274,7 +274,7 @@ if [ "${__RECORD_FUNC__:-}" != 'Loaded' ]; then
   }
 
   # usage: SESSION_LIST_LAST <number>
-  # desc: Display number-last session log created
+  # desc: Display number-last closed session
   SESSION_LIST_LAST () {
     local nb=
 
