@@ -1,0 +1,108 @@
+#!/bin/bash
+#
+# Copyright (c) 2010 Linagora
+# Patrick Guiran <guiran@linagora.com>
+# http://github.com/Tauop/sshGate
+#
+# sshGate is free software, you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of
+# the License, or (at your option) any later version.
+#
+# sshGate is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+
+# Helper function to load dependencies ---------------------------------------
+load() {
+  local var= value= file=
+
+  var="$1"; file="$2"
+  value=$( eval "echo \"\${${var}:-}\"" )
+
+  [ -n "${value}" ] && return 1;
+  if [ -f "${file}" ]; then
+    . "${file}"
+    return 0
+  fi
+  return 2;
+}
+
+function ERROR () { printf "[ERROR] %s\n" $*; }
+function FATAL () { ERROR $*; exit 1  }
+
+load SCRIPT_HELPER_DIRECTORY /etc/ScriptHelper.conf || FATAL "Can't load ScriptHelper"
+load __LIB_MESSAGE__ "${SCRIPT_HELPER_DIRECTORY}/message.lib.sh" || FATAL 'Unable to load message.lib.sh'
+load __LIB_ASK__     "${SCRIPT_HELPER_DIRECTORY}/ask.lib.sh"     || FATAL 'Unable to load ask.lib.sh'
+load __LIB_RANDOM__  "${SCRIPT_HELPER_DIRECTORY}/random.lib.sh"  || FATAL "Unable to load random.lib.sh"
+
+# Variables ------------------------------------------------------------------
+
+SSH_CLIENT_DIR=~/.ssh
+SSH_CONFIG_FILE="${SSH_CLIENT_DIR}/config"
+TMP_FILE="/tmp/file.$(RANDOM)"
+SSHGATE_GATE_ACCOUNT='sshgate'
+SSHGATE_GATE_HOST='gate.par.lng'
+
+# function -------------------------------------------------------------------
+
+function CONFIGURE_CLIENT () {
+  # check if we need to configure
+  grep '^Host sshgate' < "${SSH_CONFIG_FILE}" >/dev/null 2>/dev/null
+  [ $? -eq 0 ] && return 0
+
+  # create directory and file (in case they doesn't exist)
+  mkdir "${SSH_CLIENT_DIR}"  >/dev/null
+  touch "${SSH_CONFIG_FILE}" >/dev/null
+  [ ! -w ~/.ssh/config ] && FATAL "Can't write into ${SSH_CONFIG_FILE}"
+
+  BR
+  MSG "  --- sshGate client configuration ---"
+  MSG "         by Patrick Guiran"
+  BR
+  MSG "This script will help you to configure your ssh client in order to use sshGate."
+  BR
+
+  sshgate_user=
+  sshgate_host=
+  sshgate_sshkey=
+
+  ASK sshgate_host    "What is the sshgGate hostname or IP address ? [${SSHGATE_GATE_HOST}]"              "${SSHGATE_GATE_HOST}"
+  ASK sshgate_user    "What is the username to use when connecting to sshGate? [${SSHGATE_GATE_ACCOUNT}]" "${SSHGATE_GATE_ACCOUNT}"
+  ASK sshgate_sshkey  "What is the SSH private key file to use for sshGate? [${SSH_CLIENT_DIR}/id_rsa]"   "${SSH_CLIENT_DIR}/id_rsa"
+
+  ssh_config="
+Host sshgate
+  User ${sshgate_user}
+  IdentityFile ${sshgate_sshkey}
+  HostName ${sshgate_host}"
+
+  # on enlève la conf sshgate de la conf client
+sed -n -e '
+/^Host sshgate/ {
+  s/^..*$//;
+  :loop
+  n; s/^..*$//
+  t loop;
+}
+/^.*$/p ' < "${SSH_CONFIG_FILE}" > "${TMP_FILE}"
+
+  # on ajoute la conf sshgate de la conf client
+  echo                 >> "${TMP_FILE}"
+  echo "${ssh_config}" >> "${TMP_FILE}"
+  echo                 >> "${TMP_FILE}"
+
+  mv "${TMP_FILE}" "${SSH_CONFIG_FILE}" >/dev/null 2>/dev/null
+  
+  BR
+  MSG "sshGate-client configured !"
+  BR
+}
+
+# call CONFIGURE
+CONFIGURE_CLIENT

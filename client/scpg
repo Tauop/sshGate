@@ -25,6 +25,9 @@ usage () {
   exit 1
 }
 
+# check the configuration
+sshgate-client-configure
+
 is_target_arg() {
   echo "$1" | grep ':' >/dev/null 2>/dev/null
   [ $? -eq 0 ] && echo 'true' || echo 'false'
