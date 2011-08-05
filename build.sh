@@ -60,8 +60,9 @@ fi
 
 if [ "${action}" = 'all' -o "${action}" = 'client' ]; then
   DOTHIS 'Build sshgate-client package'
-    dir=/tmp/sshGate-client-${version}
-    [ -n "${build}" ] && dir="${dir}-${build}"
+    softname=sshGate-client-${version}
+    dir=/tmp/${softname}
+    [ -n "${build}" ] && softname="${softname}-${build}"
 
     [ -d ${dir}/ ] && CMD rm -rf ${dir}/
     CMD mkdir ${dir}/
@@ -77,7 +78,9 @@ if [ "${action}" = 'all' -o "${action}" = 'client' ]; then
     CMD chmod +x ${dir}/sshg
     CMD chmod +x ${dir}/scpg
 
-    CMD tar c --transform "'s|^tmp/||S'" -z -f ${dir}.tar.gz ${dir} 2>/dev/null
+    cd /tmp
+    CMD tar -z -c -f ${softname}.tar.gz ${softname} 2>/dev/null
+    cd - >/dev/null
 
     CMD mv ${dir}.tar.gz .
     CMD rm -rf ${dir}
