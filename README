@@ -19,12 +19,16 @@ Client project is located at http://github.com/Tauop/sshGate-client
 ScriptHelper project is located at http://github.com/Tauop/ScriptHelper
 
 
-== Install & upgrade ==
+== Install & Upgrade ==
+
+If you crab the source for github.com, you need to build a sshGate-server tarball.
+For more information : https://github.com/Tauop/sshGate/wiki/BuildPackages
 
 Just run the ./install.sh script and answer to questions.
 It you make a upgrade, the installed configuration can be re-used, and
 data migration can be performed.
 
+For more information : https://github.com/Tauop/sshGate/wiki/ServerInstallation
 
 == Documentation == 
 
