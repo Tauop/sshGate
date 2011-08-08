@@ -60,7 +60,8 @@ load __LIB_ASK__     "${SCRIPT_HELPER_DIRECTORY}/ask.lib.sh"
 load __LIB_CONF__    "${SCRIPT_HELPER_DIRECTORY}/conf.lib.sh"
 
 # for configuration (SETUP_CONFIGURE and SETUP_GET_DIRECTORIES)
-[ -r ./bin/core/setup.func ] && . ./bin/core/setup.func
+load __SETUP_FUNC__  "./bin/core/setup.func"
+# [ -r ./bin/core/setup.func ] && . ./bin/core/setup.func
 
 # for migrations
 [ -r ./upgrade.sh ] && . ./upgrade.sh
@@ -74,7 +75,7 @@ this_version=             # version of this package (set by build.sh)
 installed_version=        # version of installed sshgate
 
 # ----------------------------------------------------------------------------
-CONF_SET_FILE "./sshgate.conf"
+CONF_SET_FILE "./data/sshgate.conf"
 CONF_LOAD
 
 BR
@@ -92,8 +93,8 @@ if [ -r /etc/sshgate.conf ]; then
 
   # get installed version and this package version to know wether
   # we have to make migration (update sshGate internal data)
-  CONF_GET --conf-file ./sshgate.conf    SSHGATE_VERSION this_version
-  CONF_GET --conf-file /etc/sshgate.conf SSHGATE_VERSION installed_version
+  CONF_GET --conf-file ./data/sshgate.conf SSHGATE_VERSION this_version
+  CONF_GET --conf-file /etc/sshgate.conf   SSHGATE_VERSION installed_version
 
   # old version of sshGate hasn't a SSHGATE_VERSION conf variable
   [ -z "${installed_version}" ] && installed_version='0'
@@ -117,8 +118,8 @@ if [ "${configure}" = 'yes' ]; then
   CONF_SAVE SCRIPT_HELPER_DIRECTORY
 
   # configure sshGate installation
-  # sh ./bin/sshgate-configure --silent configure ./sshgate.conf
-  SETUP_CONFIGURE ./sshgate.conf
+  # sh ./bin/sshgate-configure --silent configure ./data/sshgate.conf
+  SETUP_CONFIGURE ./data/sshgate.conf
 
 fi # end of : if [ "${configure}" = 'yes' ]; then
 
@@ -175,7 +176,7 @@ DOTHIS 'Installing sshGate'
   fi
 
   if [ "${configure}" = 'yes' ]; then
-    cp ./sshgate.conf /etc/sshgate.conf
+    cp ./data/sshgate.conf /etc/sshgate.conf
   fi
 OK
 

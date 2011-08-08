@@ -18,12 +18,22 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-action='all'
-if [ $# -ne 0 ]; then
-  [ "$1" = 'client' ] && action='client'
-  [ "$1" = 'server' ] && action='server'
-fi
+# load dependencies
+load() {
+  local var= value= file=
 
+  var="$1"; file="$2"
+  value=$( eval "echo \"\${${var}:-}\"" )
+
+  [ -n "${value}" ] && return 1;
+  if [ -f "${file}" ]; then
+    . "${file}"
+  else
+    echo "ERROR: Unable to load ${file}"
+    exit 2
+  fi
+  return 0;
+}
 
 # Load configuration file
 if [ -r /etc/ScriptHelper.conf ]; then
@@ -35,13 +45,12 @@ else
 fi
 
 if [ ! -d "${SCRIPT_HELPER_DIRECTORY}/" ]; then
-  echo "ERROR: sshGate depends on ScriptHelper which doesn't seem to be installed"
+  echo "[ERROR] sshGate depends on ScriptHelper which doesn't seem to be installed"
   exit 2
 fi
 
-. "${SCRIPT_HELPER_DIRECTORY}/message.lib.sh"
-. "${SCRIPT_HELPER_DIRECTORY}/ask.lib.sh"
-. "${SCRIPT_HELPER_DIRECTORY}/exec.lib.sh"
+load __LIB_MESSAGE__ "${SCRIPT_HELPER_DIRECTORY}/message.lib.sh"
+load __LIB_ASK__     "${SCRIPT_HELPER_DIRECTORY}/ask.lib.sh"
 
 # ----------------------------------------------------------------------------
 version=
@@ -58,70 +67,50 @@ fi
 
 # ----------------------------------------------------------------------------
 
-if [ "${action}" = 'all' -o "${action}" = 'client' ]; then
-  DOTHIS 'Build sshgate-client package'
-    softname=sshGate-client-${version}
-    dir=/tmp/${softname}
-    [ -n "${build}" ] && softname="${softname}-${build}"
+DOTHIS 'Build sshgate-server package'
+  softname=sshGate-server-${version}
+  [ -n "${build}" ] && softname="${softname}-${build}"
+  dir="/tmp/${softname}"
 
-    [ -d ${dir}/ ] && CMD rm -rf ${dir}/
-    CMD mkdir ${dir}/
-    CMD mkdir ${dir}/lib/
+  [ -d "${dir}/" ] && rm -rf "${dir}/"
+  mkdir "${dir}/"
 
-    CMD cp COPYING              ${dir}/
-    CMD cp -r ./client/*        ${dir}/
-    CMD cp ./lib/ask.lib.sh     ${dir}/lib/
-    CMD cp ./lib/message.lib.sh ${dir}/lib/
-    CMD cp ./lib/random.lib.sh  ${dir}/lib/
+  # for MacOS X and its fucking ._files
+  export COPYFILE_DISABLE=true
 
-    CMD chmod +x ${dir}/install.sh
-    CMD chmod +x ${dir}/sshg
-    CMD chmod +x ${dir}/scpg
+  cp -r ./  "${dir}/"
+  if [ "${include_script_helper}" = 'Y' ]; then
+    cp -r ./lib  ${dir}/
+  fi
 
-    cd /tmp
-    CMD tar -z -c -f ${softname}.tar.gz ${softname} 2>/dev/null
-    cd - >/dev/null
+  # specific action for package built with build.sh script
+  find "${dir}/build-utils" -name "*.sh" -exec mv {} "${dir}/" ';'
+  mv "${dir}/build-utils/bin/sshgate-configure" "${dir}/bin/sshgate-configure"
+  mv "${dir}/build-utils/bin/core/setup.func"   "${dir}/bin/core/setup.func"
+  rm -rf "${dir}/build-utils/"
 
-    CMD mv ${dir}.tar.gz .
-    CMD rm -rf ${dir}
-  OK
-fi
+  # clean up
+  find "${dir}/" -name "sshGate-server-*.tar.gz" | xargs rm -f
+  find "${dir}/" -type f -iname '*swp' | xargs rm -f
+  find "${dir}/" -type f -iname '.*'   | xargs rm -f
+  find "${dir}/" -iname '.git'         | xargs rm -rf
 
-if [ "${action}" = 'all' -o "${action}" = 'server' ]; then
-  DOTHIS 'Build sshgate-server package'
-    softname=sshGate-server-${version}
-    [ -n "${build}" ] && softname="${softname}-${build}"
-    dir=/tmp/${softname}
+  # put version and build number
+  sed_repl=
+  sed_repl="${sed_repl} s|%% __SSHGATE_VERSION__ %%|${version}|;"
+  sed_repl="${sed_repl} s|%% __SSHGATE_BUILD__ %%|${build}|;"
 
-    [ -d ${dir}/ ] && CMD rm -rf ${dir}/
-    CMD mkdir ${dir}/
+  sed -e "${sed_repl}" < "${dir}/install.sh"        > "${dir}/install.sh.sed"
+  sed -e "${sed_repl}" < "${dir}/data/sshgate.conf" > "${dir}/sshgate.conf.sed"
+  mv "${dir}/install.sh.sed"   "${dir}/install.sh"
+  mv "${dir}/sshgate.conf.sed" "${dir}/data/sshgate.conf"
 
-    CMD cp COPYING              ${dir}/
-    CMD cp -r ./server/*        ${dir}/
-    if [ "${include_script_helper}" = 'Y' ]; then
-      CMD cp -r ./lib           ${dir}/
-    fi
+  chmod +x "${dir}/install.sh"
 
-    # put version and build number
-    sed_repl=
-    sed_repl="${sed_repl} s|%% __SSHGATE_VERSION__ %%|${version}|;"
-    sed_repl="${sed_repl} s|%% __SSHGATE_BUILD__ %%|${build}|;"
+  cd /tmp
+  tar -z -c -f "${softname}.tar.gz" "${softname}" 2>/dev/null >/dev/null
+  cd - >/dev/null
 
-    sed -e "${sed_repl}" < "${dir}/install.sh"   > "${dir}/install.sh.sed"
-    sed -e "${sed_repl}" < "${dir}/sshgate.conf" > "${dir}/sshgate.conf.sed"
-    mv "${dir}/install.sh.sed"   "${dir}/install.sh"
-    mv "${dir}/sshgate.conf.sed" "${dir}/sshgate.conf"
-
-    CMD chmod +x ${dir}/install.sh
-
-    CMD find ${dir}/ -type f -iname "*swp" -exec rm -f {} '\;'
-    CMD 'find ${dir}/ -iname ".git" | xargs rm -rf'
-
-    cd /tmp
-    CMD tar -z -c -f ${softname}.tar.gz ${softname} 2>/dev/null
-    cd - >/dev/null
-
-    CMD mv ${dir}.tar.gz .
-    CMD rm -rf ${dir}
-  OK
-fi
+  mv "${dir}.tar.gz" .
+  rm -rf "${dir}"
+OK
