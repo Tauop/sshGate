@@ -157,6 +157,7 @@ DOTHIS 'Installing sshGate'
     grep "^${SSHGATE_GATE_ACCOUNT}:" /etc/passwd >/dev/null 2>/dev/null
     if [ $? -ne 0 ]; then
       useradd "${SSHGATE_GATE_ACCOUNT}"
+      groupadd "${SSHGATE_GATE_ACCOUNT}"
       home_dir=$( cat /etc/passwd | grep "^${SSHGATE_GATE_ACCOUNT}:" | cut -d':' -f6 )
 
       MK "${home_dir}/.ssh/"
