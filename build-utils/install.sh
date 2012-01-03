@@ -241,12 +241,12 @@ if [ -z "$( ls -1 "${SSHGATE_DIR_USERS}" )" ]; then
 
   USER_ADD "${user}" "${mail}"
   USER_SET_CONF "${user}" IS_ADMIN      'true'
-  USER_SET_CONF "${user}" IS_RESTRICTED 'true'
+  USER_SET_CONF "${user}" IS_RESTRICTED 'false'
   BR
   MESSAGE "In order to administrate sshGate, just ssh this host with this user"
   MESSAGE "  If you have installed sshGate client -> sshg cli"
   MESSAGE "  with standard ssh client -> ssh -t ${SSHGATE_GATE_ACCOUNT}@$(hostname) cli"
-  MESSAGE "  from this terminal -> ${SSHGATE_DIR_BIN}/sshgate-cli -u ${SSHGATE_GATE_ACCOUNT}"
+  MESSAGE "  from this terminal -> ${SSHGATE_DIR_BIN}/sshgate-cli -u ${user}"
 fi
 
 BR
