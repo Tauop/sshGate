@@ -154,14 +154,28 @@ DOTHIS 'Installing sshGate'
       MK "$( eval "echo \"\${${dir}}\"" )"
     done
 
+    # Create sshGate unix account
     grep "^${SSHGATE_GATE_ACCOUNT}:" /etc/passwd >/dev/null 2>/dev/null
     if [ $? -ne 0 ]; then
-      useradd "${SSHGATE_GATE_ACCOUNT}"
-      groupadd "${SSHGATE_GATE_ACCOUNT}"
-      home_dir=$( cat /etc/passwd | grep "^${SSHGATE_GATE_ACCOUNT}:" | cut -d':' -f6 )
-
-      MK "${home_dir}/.ssh/"
+      useradd "${SSHGATE_GATE_ACCOUNT}" 2>/dev/null
+      if [ $? -ne 0 ]; then
+        echo "ERROR: Can't create ${SSHGATE_GATE_ACCOUNT} unix account"
+        exit 1;
+      fi
     fi
+
+    # Create sshGate unix group
+    grep "^${SSHGATE_GATE_ACCOUNT}:" /etc/group >/dev/null 2>/dev/null
+    if [ $? -ne 0 ]; then
+      groupadd "${SSHGATE_GATE_ACCOUNT}" 2>/dev/null
+      if [ $? -ne 0 ]; then
+        echo "ERROR: Can't create ${SSHGATE_GATE_ACCOUNT} unix account"
+        exit 1;
+      fi
+    fi
+
+    home_dir=$( cat /etc/passwd | grep "^${SSHGATE_GATE_ACCOUNT}:" | cut -d':' -f6 )
+    MK "${home_dir}/.ssh/"
   fi
 
   # install stuff
