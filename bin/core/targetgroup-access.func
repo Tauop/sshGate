@@ -1,0 +1,181 @@
+#
+# Copyright (c) 2010 Linagora
+# Patrick Guiran <pguiran@linagora.com>
+# http://github.com/Tauop/sshGate
+#
+# sshGate is free software, you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of
+# the License, or (at your option) any later version.
+#
+# sshGate is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# README ---------------------------------------------------------------------
+#
+# Collection of all targets' group related functions
+#
+# ----------------------------------------------------------------------------
+if [ "${__SSHGATE_CORE__}" != 'Loaded' ]; then
+  echo "ERROR: Only sshgate.core can load target.func."; exit 1;
+fi
+
+if [ "${__TARGETGROUP_ACCESS_FUNC__:-}" != 'Loaded' ]; then
+  __TARGETGROUP_ACCESS_FUNC__='Loaded'
+
+  # usage: TARGETGROUP_ACCESS_LIST_TARGETS <target_group>
+  # desc: List targets of a group
+  # note: target names are separated by \n
+  TARGETGROUP_ACCESS_LIST_USERS () {
+  local targetgroup= file=
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
+    targetgroup="$1"
+    if [ ! -d "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}" -o -z "${targetgroup}" ]; then
+      ERROR "Target group '${targetgroup}' doesn't exist" ; return 1;
+    fi
+
+    file="${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/${SSHGATE_TARGETS_GROUPS_USER_ACCESS_FILENAME}"
+    [ -f "${file}" ] && ( cat "${file}" | sort -u ) || echo
+    return 0;
+  }
+
+  # usage: TARGETGROUP_ACCESS_ADD_USER <target_group> <user>
+  # desc: Give to the user access to all <login>@<target> host of the targets group
+  TARGETGROUP_ACCESS_ADD_USER () {
+  local targetgroup= login= user=
+
+  targetgroup="$1"; user="$2"
+    if [ $# -ne 2 -o -z "${targetgroup}" -o -z "${user}" ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
+    if [ ! -f "${SSHGATE_DIR_USERS}/${user}" ]; then
+    ERROR "User ${user} doesn't exist"; return 1;
+  fi
+    if [ ! -d "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}" ]; then
+    ERROR "Target group ${targetgroup} doesn't exist"; return 1;
+  fi
+
+    private_ACL_FILE_ADD "${user}" "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/${SSHGATE_TARGETS_GROUPS_USER_ACCESS_FILENAME}"
+    private_MAIL_APPEND "User ${user} access to Target Group ${targetgroup} granted"
+
+    return 0;
+  }
+
+  # usage: TARGETGROUP_ACCESS_DEL_USER <target_group> <user>
+  # desc: Revoke user access to target host of target group
+  TARGETGROUP_ACCESS_DEL_USER () {
+  local targetgroup= user=
+
+  targetgroup="$1"; user="$2"
+  if [ $# -ne 2 -o -z "${targetgroup}" -o -z "${user}" ]; then
+    BAD_ARGUMENTS ; return 1;
+  fi
+
+    if [ ! -d "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}" ]; then
+    ERROR "Target group ${targetgroup} doesn't exist"; return 1;
+  fi
+
+  private_ACL_FILE_DEL "${user}" "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/${SSHGATE_TARGETS_GROUPS_USER_ACCESS_FILENAME}"
+    private_MAIL_APPEND "User ${user} access to Target Group ${targetgroup} revoked"
+
+    return 0;
+  }
+
+  # usage: TARGETGROUP_ACCESS_LIST_USERGROUPS <target_group>
+  # desc: List targets of a group
+  # note: target names are separated by \n
+  TARGETGROUP_ACCESS_LIST_USERGROUPS () {
+  local targetgroup= file=
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
+    targetgroup="$1"
+    if [ ! -d "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}" -o -z "${targetgroup}" ]; then
+      ERROR "Target group '${targetgroup}' doesn't exist" ; return 1;
+    fi
+
+    file="${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/${SSHGATE_TARGETS_GROUPS_USERGROUP_ACCESS_FILENAME}"
+    [ -f "${file}" ] && ( cat "${file}" | sort -u ) || echo
+    return 0;
+  }
+
+  # usage: TARGETGROUP_ACCESS_ADD_USERGROUP <target_group> <user-group>
+  # desc: Give to users of usergroup access to all <login>@<target> hosts of the targets group
+  TARGETGROUP_ACCESS_ADD_USERGROUP () {
+  local targetgroup= login= usergroup=
+
+  targetgroup="$1"; usergroup="$2"
+    if [ $# -ne 2 -o -z "${targetgroup}" -o -z "${usergroup}" ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
+  if [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" -o -z "${usergroup}" ]; then
+      ERROR "User group '${usergroup}' doesn't exist" ; return 1;
+    fi
+    if [ ! -d "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}" ]; then
+    ERROR "Target group ${targetgroup} doesn't exist"; return 1;
+  fi
+
+    private_ACL_FILE_ADD "${usergroup}" "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/${SSHGATE_TARGETS_GROUPS_USERGROUP_ACCESS_FILENAME}"
+    private_MAIL_APPEND "User group ${usergroup} access to Target Group ${targetgroup} granted"
+
+    return 0;
+  }
+
+  # usage: TARGETGROUP_ACCESS_DEL_USERGROUP <target_group> <user-group>
+  # desc: Revoke accesses of users, belongs to <user-group>, to target host of target group
+  TARGETGROUP_ACCESS_DEL_USERGROUP () {
+  local targetgroup= usergroup=
+
+  targetgroup="$1"; usergroup="$2"
+  if [ $# -ne 2 -o -z "${targetgroup}" -o -z "${usergroup}" ]; then
+    BAD_ARGUMENTS ; return 1;
+  fi
+
+    if [ ! -d "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}" ]; then
+    ERROR "Target group ${targetgroup} doesn't exist"; return 1;
+  fi
+
+  private_ACL_FILE_DEL "${usergroup}" "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/${SSHGATE_TARGETS_GROUPS_USERGROUP_ACCESS_FILENAME}"
+    private_MAIL_APPEND "User group ${usergroup} access to Target Group ${targetgroup} revoked"
+
+    return 0;
+  }
+
+   # usage: TARGETGROUP_ACCESS_INFO <target-group>
+   # desc: List all user who has access to targets of the targetgroup, and how
+   TARGETGROUP_ACCESS_INFO () {
+  local targetgroup= targets= users= usergroups=
+  if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
+    targetgroup="$1"
+    if [ ! -d "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}" ]; then
+      ERROR "Target group ${targetgroup} doesn't exist"; return 1;
+    fi
+
+  # direct access (user --targetgroup--> targets)
+    users=$(   TARGETGROUP_ACCESS_LIST_USERS "${targetgroup}" ); echo -n "${users}"   | tr $'\n' ','
+    targets=$( TARGETGROUP_LIST_TARGETS "${targetgroup}"      ); echo -n "${targets}" | tr $'\n' ','
+    echo "  ${users} --- targetgroup(${targetgroup}) ---> ${targets}";
+
+    # througth usergroup (user --usergroup--targetgroup--> targets)
+    for usergroup in $( TARGETGROUP_ACCESS_LIST_USERGROUPS "${targetgroup}" ); do
+      users=$( USERGROUP_LIST_USERS "${usergroup}" ); echo -n "${users}" | tr $'\n' ','
+      echo "  ${users} --- usergroup(${usergroup}) --- targetgroup(${targetgroup}) ---> ${targets}"
+    done
+    return 0;
+  }
+
+fi

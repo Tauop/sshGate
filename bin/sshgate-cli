@@ -95,6 +95,7 @@ CLI_REGISTER_COMMAND 'user <user> set conf <variable> <value>'      'USER_SET_CO
 CLI_REGISTER_COMMAND 'user <user> del conf <variable>'              'USER_SET_CONF \1 \2'
 CLI_REGISTER_COMMAND 'user <user> list targets'                     'USER_LIST_TARGETS \1'
 CLI_REGISTER_COMMAND 'user <user> list usergroups'                  'USER_LIST_USERGROUPS \1'
+CLI_REGISTER_COMMAND 'user <user> list targetgroups'                'USER_LIST_TARGETGROUPS \1'
 CLI_REGISTER_COMMAND 'user <user> has access [<login>@]<target>'    'HAS_ACCESS \1 \2'
 CLI_REGISTER_COMMAND 'user <user> access info'                      'USER_ACCESS_INFO \1'
 CLI_REGISTER_COMMAND 'user <user> access notify'                    'USER_ACCESS_NOTIFY \1'
@@ -102,18 +103,43 @@ CLI_REGISTER_COMMAND 'user <user> edit sshkey'                      'USER_SSHKEY
 CLI_REGISTER_COMMAND 'user <user> display sshkey'                   'USER_SSHKEY_DISPLAY \1'
 CLI_REGISTER_COMMAND 'user <user> update auth_keys'                 'USER_AUTH_KEYS_UPDATE \1'
 
+
 CLI_REGISTER_MENU    'usergroup'             'Usergroup related commands'
 CLI_REGISTER_COMMAND 'usergroup list'        'USERGROUPS_LIST'
 CLI_REGISTER_COMMAND 'usergroup add <group>' 'USERGROUP_ADD \1'
 CLI_REGISTER_COMMAND 'usergroup del <group>' 'USERGROUP_DEL \1'
 
-CLI_REGISTER_MENU    'usergroup <group>'
-CLI_REGISTER_COMMAND 'usergroup <group> list users'        'USERGROUP_LIST_USERS \1'
-CLI_REGISTER_COMMAND 'usergroup <group> add user <user>'   'USERGROUP_ADD_USER \1 \2'
-CLI_REGISTER_COMMAND 'usergroup <group> del user <user>'   'USERGROUP_DEL_USER \1 \2'
-CLI_REGISTER_COMMAND 'usergroup <group> list targets'      'USERGROUP_LIST_TARGETS \1'
-CLI_REGISTER_COMMAND 'usergroup <group> access info'       'USERGROUP_ACCESS_INFO \1'
-CLI_REGISTER_COMMAND 'usergroup <group> access notify'     'USERGROUP_ACCESS_NOTIFY \1'
+CLI_REGISTER_MENU    'usergroup <user-group>'
+CLI_REGISTER_COMMAND 'usergroup <user-group> list users'        'USERGROUP_LIST_USERS \1'
+CLI_REGISTER_COMMAND 'usergroup <user-group> list targetgroups' 'USERGROUP_LIST_TARGETGROUPS \1'
+CLI_REGISTER_COMMAND 'usergroup <user-group> add user <user>'   'USERGROUP_ADD_USER \1 \2'
+CLI_REGISTER_COMMAND 'usergroup <user-group> del user <user>'   'USERGROUP_DEL_USER \1 \2'
+CLI_REGISTER_COMMAND 'usergroup <user-group> list targets'      'USERGROUP_LIST_TARGETS \1'
+CLI_REGISTER_COMMAND 'usergroup <user-group> access info'       'USERGROUP_ACCESS_INFO \1'
+# limit spam please :-)
+# CLI_REGISTER_COMMAND 'usergroup <user-group> access notify'     'USERGROUP_ACCESS_NOTIFY \1'
+
+CLI_REGISTER_MENU    'targetgroup'
+CLI_REGISTER_COMMAND 'targetgroup list'                                           'TARGETGROUPS_LIST'
+CLI_REGISTER_COMMAND 'targetgroup list <pattern>'                                 'TARGETGROUPS_LIST \1'
+CLI_REGISTER_COMMAND 'targetgroup add <target-group>'                             'TARGETGROUPS_ADD \1'
+CLI_REGISTER_COMMAND 'targetgroup del <target-group>'                             'TARGETGROUPS_DEL \1'
+
+CLI_REGISTER_MENU    'targetgroup <target-group>'
+CLI_REGISTER_COMMAND 'targetgroup <target-group> list targets'                    'TARGETGROUP_LIST_TARGETS \1'
+CLI_REGISTER_COMMAND 'targetgroup <target-group> add target [<login>@]<target>'   'TARGETGROUP_ADD_TARGET \1 \2'
+CLI_REGISTER_COMMAND 'targetgroup <target-group> del target [<login>@]<target>'   'TARGETGROUP_DEL_TARGET \1 \2'
+
+CLI_REGISTER_MENU    'targetgroup <target-group> access'                              'Targets Groups access related commands'
+#CLI_REGISTER_COMMAND 'targetgroup <target-group> access info'                         'TARGETGROUP_ACCESS_INFO \1'
+CLI_REGISTER_COMMAND 'targetgroup <target-group> access list users'                   'TARGETGROUP_ACCESS_LIST_USERS \1'
+CLI_REGISTER_COMMAND 'targetgroup <target-group> access add user <user>'              'TARGETGROUP_ACCESS_ADD_USER \1 \2'
+CLI_REGISTER_COMMAND 'targetgroup <target-group> access del user <user>'              'TARGETGROUP_ACCESS_DEL_USER \1 \2'
+
+CLI_REGISTER_COMMAND 'targetgroup <target-group> access list usergroups'              'TARGETGROUP_ACCESS_LIST_USERGROUPS \1'
+CLI_REGISTER_COMMAND 'targetgroup <target-group> access add usergroup <user-group>'   'TARGETGROUP_ACCESS_ADD_USERGROUP \1 \2'
+CLI_REGISTER_COMMAND 'targetgroup <target-group> access del usergroup <user-group>'   'TARGETGROUP_ACCESS_DEL_USERGROUP \1 \2'
+
 
 CLI_REGISTER_MENU    'target'                                                      'Target related commands'
 CLI_REGISTER_COMMAND 'target list'                                                 'TARGETS_LIST'
@@ -162,6 +188,7 @@ CLI_REGISTER_COMMAND 'target [<login>@]<target> access info'                    
 CLI_REGISTER_COMMAND 'target [<login>@]<target> access list users'              'TARGET_ACCESS_LIST_USERS \1'
 CLI_REGISTER_COMMAND 'target [<login>@]<target> access add user <user>'         'TARGET_ACCESS_ADD_USER \1 \2'
 CLI_REGISTER_COMMAND 'target [<login>@]<target> access del user <user>'         'TARGET_ACCESS_DEL_USER \1 \2'
+
 CLI_REGISTER_COMMAND 'target [<login>@]<target> access list usergroups'         'TARGET_ACCESS_LIST_USERGROUPS \1'
 CLI_REGISTER_COMMAND 'target [<login>@]<target> access add usergroup <group>'   'TARGET_ACCESS_ADD_USERGROUP \1 \2'
 CLI_REGISTER_COMMAND 'target [<login>@]<target> access del usergroup <group>'   'TARGET_ACCESS_DEL_USERGROUP \1 \2'

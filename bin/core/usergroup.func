@@ -170,6 +170,27 @@ if [ "${__USERGROUP_FUNC__:-}" != 'Loaded' ]; then
     return 0;
   }
 
+  # usage: USERGROUP_LIST_TARGETGROUPS <user_group>
+  # desc: List targetgroups which usergroup has access to
+  USERGROUP_LIST_TARGETGROUPS () {
+  local usergroup=
+  if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+  fi
+
+  usergroup="$1"
+    if [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" -o -z "${usergroup}" ]; then
+      ERROR "User group '${usergroup}' doesn't exist" ; return 1;
+    fi
+
+  for targetgroup in $( find ${SSHGATE_DIR_TARGETS_GROUPS}                           \
+                           -name "${SSHGATE_TARGETS_GROUPS_USERGROUP_ACCESS_FILENAME}" \
+                           -exec grep -l "^${usergroup}\$" {} \; ); do
+    targetgroup=$( echo "${targetgroup}" | sed -e "s|^.*/\([^/]*\)/${SSHGATE_TARGETS_GROUPS_USERGROUP_ACCESS_FILENAME}\$|\1|")
+    echo "${targetgroup}"
+    done | sort -u
+  }
+
   # usage: USERGROUP_ACCESS_INFO <user_group>
   # desc: List all target whose users of the group have access to
   USERGROUP_ACCESS_INFO () {
@@ -183,9 +204,17 @@ if [ "${__USERGROUP_FUNC__:-}" != 'Loaded' ]; then
       ERROR "User group '${usergroup}' doesn't exist" ; return 1;
     fi
 
+    # direct access ( users --- usergroup ---> targets)
     users=$(   USERGROUP_LIST_USERS "${usergroup}"   ); users=$(   echo -n "${users}"   | tr $'\n' ',' )
     targets=$( USERGROUP_LIST_TARGETS "${usergroup}" ); targets=$( echo -n "${targets}" | tr $'\n' ',' )
     echo "  ${users} --- usergroup(${usergroup}) ---> ${targets}"
+
+    # access through targetgroups ( users --- usergroup --- targetgroups ---> targets)
+    for targetgroups in $( USERGROUP_LIST_TARGETGROUPS "${usergroup}" ); do
+      users=$(   TARGETGROUP_ACCESS_LIST_USERS "${targetgroup}" ); users=$(   echo -n "${users}"   | tr $'\n' ',' )
+      targets=$( TARGETGROUP_LIST_TARGETS "${targetgroup}"      ); targets=$( echo -n "${targets}" | tr $'\n' ',' )
+      echo "  ${users} --- targetgroup(${targetgroup}) ---> ${targets}"
+    done
 
     return 0;
   }

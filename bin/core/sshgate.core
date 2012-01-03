@@ -55,7 +55,11 @@ if [ "${__SSHGATE_CORE__:-}" != 'Loaded' ]; then
   load __TARGET_SSH_FUNC__         "${SSHGATE_DIR_CORE}/target-ssh.func"
   load __TARGET_SSHKEY_FUNC__      "${SSHGATE_DIR_CORE}/target-sshkey.func"
   load __TARGET_ACCESS_FUNC__      "${SSHGATE_DIR_CORE}/target-access.func"
+  load __TARGET_UG_ACCESS_FUNC__   "${SSHGATE_DIR_CORE}/target-ug_access.func"
+  load __TARGET_TG_ACCESS_FUNC__   "${SSHGATE_DIR_CORE}/target-tg_access.func"
   load __TARGET_KNOWN_HOSTS_FUNC__ "${SSHGATE_DIR_CORE}/target-known_hosts.func"
+  load __TARGETGROUP_FUNC__        "${SSHGATE_DIR_CORE}/targetgroup.func"
+  load __TARGETGROUP_ACCESS_FUNC__ "${SSHGATE_DIR_CORE}/targetgroup-access.func"
   load __USERGROUP_FUNC__          "${SSHGATE_DIR_CORE}/usergroup.func"
   load __RECORD_FUNC__             "${SSHGATE_DIR_CORE}/record.func"
 

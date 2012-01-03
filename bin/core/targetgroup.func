@@ -1,0 +1,210 @@
+#
+# Copyright (c) 2010 Linagora
+# Patrick Guiran <pguiran@linagora.com>
+# http://github.com/Tauop/sshGate
+#
+# sshGate is free software, you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of
+# the License, or (at your option) any later version.
+#
+# sshGate is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# README ---------------------------------------------------------------------
+#
+# Collection of all targets' group related functions
+#
+# ----------------------------------------------------------------------------
+if [ "${__SSHGATE_CORE__}" != 'Loaded' ]; then
+  echo "ERROR: Only sshgate.core can load target.func."; exit 1;
+fi
+
+if [ "${__TARGETGROUP_FUNC__:-}" != 'Loaded' ]; then
+  __TARGETGROUP_FUNC__='Loaded'
+
+  # usage: TARGETGROUPS_LIST
+  # desc: List all targets groups
+  # note: targets' group name are separated by '\n'
+  TARGETGROUPS_LIST () {
+    local res= find_opt=
+    [ $# -eq 1 ] && find_opt="-iname '$1'"
+    res=$( eval "find '${SSHGATE_DIR_TARGETS_GROUPS}' -mindepth 1 -type d ${find_opt} -printf '%P\n'" )
+    echo "${res}" | sort -u
+    return 0;
+  }
+
+  # usage: TARGETGROUPS_ADD <target_group>
+  # desc: Create a new targets group
+  TARGETGROUPS_ADD () {
+    local targetgroup= targetgroup_dir=
+    if [ $# -ne 1 ]; then
+    BAD_ARGUMENTS ; return 1;
+  fi
+
+  targetgroup="$1"
+    if [ -z "${targetgroup}" ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+    targetgroup_dir="${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}"
+    if [ -f "${targetgroup_dir}" ]; then
+      ERROR "Target group '${targetgroup}' already exists" ; return 1
+    fi
+
+    mkdir -p "${targetgroup_dir}" 2>/dev/null
+    if [ $? -ne 0 ]; then
+    ERROR "Can't create target data"; return 1;
+    fi
+
+    touch "${targetgroup_dir}/${SSHGATE_TARGETS_GROUPS_USER_ACCESS_FILENAME}"
+    touch "${targetgroup_dir}/${SSHGATE_TARGETS_GROUPS_USERGROUP_ACCESS_FILENAME}"
+    touch "${targetgroup_dir}/${SSHGATE_TARGETS_GROUPS_TARGETS_FILENAME}"
+
+    return 0;
+  }
+
+  # usage: TARGETGROUPS_DEL <target_group>
+  # desc: Delete a targets group
+  TARGETGROUPS_DEL () {
+    local targetgroup=
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
+    targetgroup="$1"
+    if [ ! -d "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}" -o -z "${targetgroup}" ]; then
+      ERROR "Target group '${targetgroup}' doesn't exist" ; return 1
+    fi
+
+    rm -rf "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}"
+    private_MAIL_APPEND "Target Group ${targetgroup} removed"
+
+    return 0
+  }
+
+  # usage: TARGETGROUP_LIST_TARGETS <target_group>
+  # desc: List users who has access to the targetgroup
+  TARGETGROUP_LIST_TARGETS () {
+  local targetgroup=
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
+    targetgroup="$1"
+    if [ ! -d "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}" -o -z "${targetgroup}" ]; then
+      ERROR "Target group '${targetgroup}' doesn't exist" ; return 1;
+    fi
+
+    cat "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/${SSHGATE_TARGETS_GROUPS_TARGETS_FILENAME}" | sort -u
+    return 0;
+  }
+
+  # usage: TARGETGROUP_ADD_TARGET <target_group> [<login>@]<target>
+  # desc: Add an target into a group
+  TARGETGROUP_ADD_TARGET () {
+    local targetgroup= target= login= target_real= item=
+    if [ $# -ne 2 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
+    targetgroup="$1"; target="$2";
+    if [ ! -d "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}" -o -z "${targetgroup}" ]; then
+      ERROR "Target group '${targetgroup}' doesn't exist" ; return 1;
+    fi
+
+    target_real=$( TARGET_REAL "${target}" )
+    if [ -z "${target_real}" ]; then
+      ERROR "Target '${target}' doesn't exist" ; return 1;
+    fi
+
+    if [ "${target}" != "${target%%@*}" ]; then
+      login="${target%%@*}";
+      TARGET_SSH_LIST_LOGINS "${target_real}" | grep "^${login}$" >/dev/null
+      if [ $? -ne 0 ]; then
+        ERROR "Login '${login}' doesn't exist on target '${target_real}'"; return 1;
+      fi
+      item="${login}@${target_real}"
+    else
+      item="${target_real}"
+    fi
+
+    private_ACL_FILE_ADD "${item}" "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/${SSHGATE_TARGETS_GROUPS_TARGETS_FILENAME}"
+    private_MAIL_APPEND "Target ${item} added to Target Group ${targetgroup}"
+
+    return 0;
+  }
+
+  # usage: TARGETGROUP_DEL_TARGET <target_group> [<login>@]<target>
+  # desc: Remove an target from a group
+  TARGETGROUP_DEL_TARGET () {
+    local targetgroup= target= login= target_real= item=
+    if [ $# -ne 2 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
+    targetgroup="$1"; target="$2"; target_real=$( TARGET_REAL "${target}" )
+    if [ ! -d "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}" -o -z "${targetgroup}" ]; then
+      ERROR "Target group '${targetgroup}' doesn't exist" ; return 1;
+    fi
+    if [ -z "${target_real}" ]; then
+      ERROR "Target '${target}' doesn't exist" ; return 1;
+    fi
+
+    if [ "${target}" != "${target%%@*}" ]; then
+      login="${target%%@*}";
+      TARGET_SSH_LIST_LOGINS "${target_real}" | grep "^${login}$" >/dev/null
+      if [ $? -ne 0 ]; then
+        ERROR "Login '${login}' doesn't exist on target '${target_real}'"; return 1;
+      fi
+      item="${login}@${target_real}"
+    else
+      item="${target_real}"
+    fi
+
+    private_ACL_FILE_DEL "${item}" "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/${SSHGATE_TARGETS_GROUPS_TARGETS_FILENAME}"
+    private_MAIL_APPEND  "Target ${item} removed from User Group ${targetgroup}"
+
+    return 0;
+  }
+
+  # usage: TARGETGROUP_FIND_TARGET <target-group> <target-name>
+  # desc: return all target definition in target-group. it can be <target> and all <login>@<target> possibilities
+  TARGETGROUP_FIND_TARGET () {
+  local targetgroup= target= login= target_real= pattern=
+  if [ $# -ne 2 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
+    targetgroup="$1"; target="$2";
+    if [ ! -d "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}" -o -z "${targetgroup}" ]; then
+      ERROR "Target group '${targetgroup}' doesn't exist" ; return 1;
+    fi
+
+    target_real=$( TARGET_REAL "${target}" )
+    if [ -z "${target_real}" ]; then
+      ERROR "Target '${target}' doesn't exist" ; return 1;
+    fi
+
+    if [ "${target}" != "${target%%@*}" ]; then
+      login="${target%%@*}";
+      TARGET_SSH_LIST_LOGINS "${target_real}" | grep "^${login}$" >/dev/null
+      if [ $? -ne 0 ]; then
+        ERROR "Login '${login}' doesn't exist on target '${target_real}'"; return 1;
+      fi
+      pattern="${login}@${target_real}"
+    else
+      pattern="(${target_real}|[^@]*@${target_real})"
+    fi
+
+    # list all targetgroups, and looking for target in the target-list-file
+    TARGETGROUP_LIST_TARGETS "${targetgroup}" | grep  -E "^${pattern}\$" | sort -u
+
+    return 0
+  }
+
+fi

@@ -1,0 +1,92 @@
+#
+# Copyright (c) 2010 Linagora
+# Patrick Guiran <pguiran@linagora.com>
+# http://github.com/Tauop/sshGate
+#
+# sshGate is free software, you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of
+# the License, or (at your option) any later version.
+#
+# sshGate is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# README ---------------------------------------------------------------------
+#
+# Collection of all targets access related functions
+# (users -- targetgroup --> target)
+#
+# ----------------------------------------------------------------------------
+
+
+if [ "${__SSHGATE_CORE__}" != 'Loaded' ]; then
+  echo "ERROR: Only sshgate.core can load user.func."; exit 1;
+fi
+
+if [ "${__TARGET_TG_ACCESS_FUNC__:-}" != 'Loaded' ]; then
+  __TARGET_TG_ACCESS_FUNC__='Loaded'
+
+  # usage: TARGET_ACCESS_LIST_TARGETGROUPS [<login>@]<target_host>
+  # desc: List all targetgroups in which the target is
+  # FIXME: usefull ?
+  TARGET_ACCESS_LIST_TARGETGROUPS () {
+    local arg= target= login= pattern=
+    if [ $# -ne 1 ]; then
+    BAD_ARGUMENTS ; return 1;
+  fi
+
+    arg="$1"
+
+    target=$( TARGET_REAL "${arg}" )
+    if [ -z "${target}" ]; then
+      ERROR "Target host '${target}' doesn't exist" ; return 1;
+    fi
+
+    # do we have a login in the argument ?
+    if [ "${arg}" != "${arg%%@*}" ]; then
+      login="${arg%%@*}";
+    TARGET_SSH_LIST_LOGINS "${target}" | grep "^${login}$" >/dev/null
+    if [ $? -ne 0 ]; then
+      ERROR "Login '${login}' doesn't exist on target '${target}'"; return 1;
+    fi
+    pattern="${login}@${target}"
+  else
+      pattern="(${target}|[^@]*@${target})"
+    fi
+
+    # list all targetgroups, and looking for target in the target-list-file
+    for targetgroup in $( TARGETGROUPS_LIST ); do
+      TARGETGROUP_LIST_TARGETS "${targetgroup}" | grep  -E "^${pattern}\$" >/dev/null 2>/dev/null
+      [ $? -eq 0 ] && echo "${targetgroup}"
+    done | sort -u
+
+    return 0;
+  }
+
+  # usage: TARGET_ACCESS_LIST_ALL_TARGETGROUPS <target_host>
+  # desc: List all groups who can access to the target host, for each ssh login
+  # TODO: not used / linked to the cli FTM
+  TARGET_ACCESS_LIST_ALL_TARGETGROUPS () {
+    local target= login=
+
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS; return 1;
+    fi
+
+    target=$( TARGET_REAL "$1" )
+    if [ -z "${target}" ]; then
+      ERROR "Target host '${target}' doesn't exist"; return 1;
+    fi
+
+    for login in $( TARGET_SSH_LIST_LOGINS "${target}" ); do
+      echo "= ${login}@${target} ="
+      TARGET_ACCESS_LIST_USERGROUPS "${login}@${target}"
+    done
+    return 0;
+  }
+fi

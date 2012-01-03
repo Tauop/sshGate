@@ -243,6 +243,28 @@ if [ "${__USER_FUNC__:-}" != 'Loaded' ]; then
     return 0;
   }
 
+  # usage: USER_LIST_TARGETGROUPS <user>
+  # desc: List targetgroup the user has access to
+  USER_LIST_TARGETGROUPS() {
+    local user=
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+
+    user="$1"
+    if [ ! -f "${SSHGATE_DIR_USERS}/${user}" -o -z "${user}" ]; then
+        ERROR "User '${user}' doesn't exist" ; return 1;
+    fi
+
+    for targetgroup in $( find ${SSHGATE_DIR_TARGETS_GROUPS}                     \
+                          -name "${SSHGATE_TARGETS_GROUPS_USER_ACCESS_FILENAME}" \
+                          -exec grep -l "^${user}\$" {} \; ); do
+      targetgroup=$( echo "${targetgroup}" | sed -e "s|^.*/\([^/]*\)/${SSHGATE_TARGETS_GROUPS_USER_ACCESS_FILENAME}\$|\1|" )
+      echo "${targetgroup}"
+    done | sort -u
+    return 0;
+  }
+
   # usage: USER_LIST_TARGETS <user>
   # desc: List all target host, which the <user> has access to
   USER_LIST_TARGETS () {
@@ -295,7 +317,7 @@ if [ "${__USER_FUNC__:-}" != 'Loaded' ]; then
       ERROR "User '${user}' doesn't exist" ; return 1;
     fi
 
-    # direct access
+    # direct access (user ----> targets)
     for target in $( find "${SSHGATE_DIR_TARGETS}"                     \
                       -name "${SSHGATE_TARGETS_USER_ACCESS_FILENAME}*" \
                       -exec grep -l "^${user}\$" {} \; | sort -u ); do
@@ -303,13 +325,27 @@ if [ "${__USER_FUNC__:-}" != 'Loaded' ]; then
       echo "  ${user} ---> ${target}"
     done
 
-    # access through usergroup
+    # access through usergroup (user --usergroup--> targets)
     for usergroup in $( USER_LIST_USERGROUPS "${user}" ); do
       for target in $( find "${SSHGATE_DIR_TARGETS}"                          \
                         -name "${SSHGATE_TARGETS_USERGROUP_ACCESS_FILENAME}*" \
                         -exec grep -l "^${usergroup}\$" {} \; | sort -u ); do
         target=$( echo "${target}" | sed -e "s|^.*/\([^/]*\)/${SSHGATE_TARGETS_USERGROUP_ACCESS_FILENAME}.\(.*\)$|\2@\1|" )
         echo "  ${user} --- usergroup(${usergroup}) ---> ${target}"
+      done
+    done
+
+    # access through targetgroup ( user --targetgroup--> targets)
+    for targetgroup in $( USER_LIST_TARGETGROUPS "${user}" ); do
+      targets=$( TARGETGROUP_LIST_TARGETS "${targetgroup}" ); targets=$( echo -n "${targets}" | tr $'\n' ',' )
+      echo "  ${user} --- targetgroup(${targetgroup}) ---> ${targets}"
+  done
+
+    # access through targetgroup and usergroup (user --usergroup--targetgroup--> targets)
+    for usergroup in $( USER_LIST_USERGROUPS "${user}" ); do
+      for targetgroup in $( USERGROUP_LIST_TARGETGROUPS "${usergroup}" ); do
+        targets=$( TARGETGROUP_LIST_TARGETS "${targetgroup}" ); targets=$( echo -n "${targets}" | tr $'\n' ',' )
+        echo "  ${user} --- usergroup(${usergroup}) --- targetgroup(${targetgroup}) ---> ${targets}"
       done
     done
 
