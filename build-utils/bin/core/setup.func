@@ -102,7 +102,7 @@ if [ "${__SETUP_FUNC__:-}" != 'Loaded' ]; then
     BR
     MESSAGE " Main configuration values"
     MESSAGE " - Directory where sshGate is installed : ${SSHGATE_DIRECTORY}"
-    MESSAGE " - Unix account used by sshGAte : ${SSHGATE_GATE_ACCOUNT}"
+    MESSAGE " - Unix account used by sshGate : ${SSHGATE_GATE_ACCOUNT}"
     MESSAGE " - Default ssh login to use to connect to target host : ${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}"
     MESSAGE " - Default language : ${SSHGATE_DEFAULT_LANGUAGE}"
     MESSAGE " - Editor : ${SSHGATE_EDITOR}"
