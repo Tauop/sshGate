@@ -91,7 +91,7 @@ sshGate >  target ${hostname} ssh use default key
 sshGate >  target ${hostname} ssh display key
 # public sshkey of ${hostname}
 $( cat "${SSHGATE_TARGET_DEFAULT_PUBLIC_SSHKEY_FILE}" )
-sshGate >  target ${user_unix_test_account}@${hostname} ssh install key 
+sshGate >  target ${user_unix_test_account}@${hostname} ssh install key
 sshGate >  target ssh update known_hosts
 - ${hostname} ... OK
 - ${hostname}2 ... KO

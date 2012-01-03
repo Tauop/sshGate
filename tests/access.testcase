@@ -72,6 +72,9 @@ sshGate >  target root@${hostname} access list usergroups
 OSSA
 sshGate >  target tauop@${ip} access list usergroups
 OSSA
+sshGate >  target ${ip} ssh list logins
+tauop
+${user_unix_test_account}
 sshGate >  target ${hostname} access info
   scourtois ---> root@${hostname}
   pguiran,scourtois ---> ${user_unix_test_account}@${hostname}
@@ -82,6 +85,11 @@ sshGate >  user pguiran access info
   pguiran --- usergroup(LRS) ---> ${user_unix_test_account}@${hostname}
   pguiran --- usergroup(OSSA) ---> tauop@${ip}
   pguiran --- usergroup(OSSA) ---> root@${hostname}
+sshGate >  user scourtois access info
+  scourtois ---> ${user_unix_test_account}@${ip}
+  scourtois ---> root@${hostname}
+  scourtois ---> ${user_unix_test_account}@${hostname}
+  scourtois --- usergroup(LRS) ---> ${user_unix_test_account}@${hostname}
 sshGate >  usergroup LRS access info
   pguiran,scourtois --- usergroup(LRS) ---> ${user_unix_test_account}@${hostname}
 sshGate >  usergroup OSSA access info
@@ -109,9 +117,57 @@ sshGate >  usergroup del LRS
 sshGate >  target ${hostname} access info
   scourtois ---> root@${hostname}
   pguiran,scourtois ---> ${user_unix_test_account}@${hostname}
+sshGate >  targetgroup add IP_SYSTEMS
+sshGate >  targetgroup IP_SYSTEMS add target ${user_unix_test_account}@${ip}
+sshGate >  targetgroup IP_SYSTEMS add target ${ip}
+sshGate >  usergroup add ALL_USERS
+sshGate >  usergroup ALL_USERS add user pguiran
+sshGate >  usergroup ALL_USERS add user scourtois
+sshGate >  targetgroup IP_SYSTEMS access add user pguiran
+sshGate >  targetgroup IP_SYSTEMS access list users
+pguiran
+sshGate >  user pguiran access info
+  pguiran ---> ${user_unix_test_account}@${hostname}
+  pguiran --- usergroup(OSSA) ---> tauop@${ip}
+  pguiran --- targetgroup(IP_SYSTEMS) ---> ${ip},${user_unix_test_account}@${ip}
+sshGate >  targetgroup IP_SYSTEMS access add usergroup ALL_USERS
+sshGate >  targetgroup IP_SYSTEMS access list usergroups
+ALL_USERS
+sshGate >  user pguiran list targetgroups
+IP_SYSTEMS
+sshGate >  user scourtois list targetgroups
+sshGate >  user pguiran access info
+  pguiran ---> ${user_unix_test_account}@${hostname}
+  pguiran --- usergroup(OSSA) ---> tauop@${ip}
+  pguiran --- targetgroup(IP_SYSTEMS) ---> ${ip},${user_unix_test_account}@${ip}
+  pguiran --- usergroup(ALL_USERS) --- targetgroup(IP_SYSTEMS) ---> ${ip},${user_unix_test_account}@${ip}
+sshGate >  user scourtois access info
+  scourtois ---> root@${hostname}
+  scourtois ---> ${user_unix_test_account}@${hostname}
+  scourtois --- usergroup(ALL_USERS) --- targetgroup(IP_SYSTEMS) ---> ${ip},${user_unix_test_account}@${ip}
 sshGate >  user del scourtois
 sshGate >  target ${hostname} access info
   pguiran ---> ${user_unix_test_account}@${hostname}
+sshGate >  target ${ip} access info
+  pguiran --- usergroup(OSSA) ---> tauop@${ip}
+  pguiran --- targetgroup(IP_SYSTEMS) ---> ${ip},${user_unix_test_account}@${ip}
+  pguiran --- usergroup(ALL_USERS) --- targetgroup(IP_SYSTEMS) ---> ${ip},${user_unix_test_account}@${ip}
+sshGate >  user pguiran has access ${ip}
+true
+sshGate >  targetgroup del IP_SYSTEMS
+sshGate >  target del ${hostname}
+sshGate >  target del ${ip}
+sshGate >  user del pguiran
+sshGate >  usergroup del OSSA
+sshGate >  usergroup del ALL_USERS
+sshGate >  targetgroup list
+
+sshGate >  user list
+
+sshGate >  target list
+
+sshGate >  usergroup list
+
 sshGate >  exit
 EOF
 

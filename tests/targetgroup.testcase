@@ -1,0 +1,93 @@
+#
+# Copyright (c) 2011 Linagora
+# Patrick Guiran <pguiran@linagora.com>
+# http://github.com/Tauop/ScriptHelper
+#
+# ScriptHelper is free software, you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of
+# the License, or (at your option) any later version.
+#
+# ScriptHelper is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# --------------------------------------------------------------------------
+
+mDOTHIS 'Generate targetgroup tests'
+
+hostname=$( hostname | tr '[:upper:]' '[:lower:]' )
+alias="${hostname}2"
+ip=$( hostname -i )
+
+cat >"${expected_test_file}" <<EOF
+sshGate >  targetgroup list
+
+sshGate >  targetgroup add LAN
+sshGate >  targetgroup add Internet
+sshGate >  targetgroup list
+Internet
+LAN
+sshGate >  target add ${hostname}
+Use the sshGate default sshkey for this target host [Y] ?   Y
+<<=Y
+sshGate >  target add ${ip}
+Use the sshGate default sshkey for this target host [Y] ?   N
+<<=N
+$(cat "${sshkey_priv_test_file}" | while read line ; do echo "<<-${line}"; done; echo "->>" )
+sshGate >  target list
+${ip}
+${hostname}
+sshGate >  targetgroup LAN add target ${hostname}
+sshGate >  targetgroup LAN add target ${ip}
+sshGate >  targetgroup LAN list targets
+${ip}
+${hostname}
+sshGate >  targetgroup Internet add target ${hostname}
+sshGate >  targetgroup Internet add target ${ip}
+sshGate >  targetgroup Internet del target ${ip}
+sshGate >  targetgroup Internet list targets
+${hostname}
+sshGate >  targetgroup del LAN
+sshGate >  targetgroup list
+Internet
+sshGate >  targetgroup add B.A.BA
+sshGate >  targetgroup add LAN
+sshGate >  targetgroup list
+B.A.BA
+Internet
+LAN
+sshGate >  targetgroup del B.A.BA
+sshGate >  targetgroup del Internet
+sshGate >  targetgroup del LAN
+sshGate >  targetgroup list
+
+sshGate >  exit
+EOF
+
+grep -E '^(<<=|<<-|->>|sshGate [^>]*>)' < "${expected_test_file}" \
+ | sed -e 's/^sshGate [^>]*>  //; s/^<<=//;' > "${input_test_file}"
+
+tmp_file="${expected_test_file}.$(RANDOM)"
+grep -v -E '^(<<=|<<-|->>)' < "${expected_test_file}" > "${tmp_file}"
+mv "${tmp_file}" "${expected_test_file}"
+
+mOK
+
+# --------------------------------------------------------------------------
+mDOTHIS 'Launch targetgroup tests'
+  ASK_SET_AUTOANSWER_FILE "${input_test_file}"
+  ( CLI_RUN > "${output_test_file}" )
+  result_diff=$( diff -au "${expected_test_file}" "${output_test_file}" )
+if [ $? -eq 0 ]; then
+  mOK
+else
+  echo "Test Failed"
+  echo "=========================================================="
+  echo "${result_diff}"
+  echo "=========================================================="
+fi
