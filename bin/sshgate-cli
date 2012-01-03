@@ -63,6 +63,13 @@ if [ "${SSHGATE_TEST:-}" != 'sshGateTest' ]; then
     echo "usage: $0 -u <username>"
     exit 1
   fi
+
+  is_admin=$( USER_GET_CONF "${SSHKEY_USER}" IS_ADMIN >/dev/null )
+  if [ "${is_admin}" != 'true' ]; then
+    echo "ERROR: '${SSHKEY_USER}' hasn't the ADMIN status in sshGate or doesn't exist."
+    exit 1
+  fi
+
 fi # end of: if [ "${SSHGATE_TEST:-}" != 'sshGateTest' ]; then
 
 # don't want to add exec.lib.sh in dependencies :/
