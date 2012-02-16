@@ -83,7 +83,7 @@ if [ "${__TARGET_SSH_FUNC__:-}" != 'Loaded' ]; then
     fi
 
     # edit the file
-    eval "${SSHGATE_EDITOR} '${file}'"
+    EDIT_FILE "${file}"
     if [ $? -ne 0 ]; then
       ERROR "Failed to edit the configuration file";
       mv -f "${bckfile}" "${file}"

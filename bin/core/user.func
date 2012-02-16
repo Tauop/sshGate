@@ -396,7 +396,7 @@ if [ "${__USER_FUNC__:-}" != 'Loaded' ]; then
     touch "${tmpfile}"
     echo "# Put the SSH public key for '${user}' here. Then save & quit from the editor" >> "${tmpfile}"
     echo "# line begins by '#' will be removed"                                          >> "${tmpfile}"
-    eval " ${SSHGATE_EDITOR} '${tmpfile}'"
+    EDIT_FILE "${tmpfile}"
 
     grep -v '^#' < "${tmpfile}" > "${SSHGATE_DIR_USERS}/${user}"
     rm -f "${tmpfile}" > /dev/null 2>/dev/null
