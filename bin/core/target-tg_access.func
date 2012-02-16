@@ -37,8 +37,8 @@ if [ "${__TARGET_TG_ACCESS_FUNC__:-}" != 'Loaded' ]; then
   TARGET_ACCESS_LIST_TARGETGROUPS () {
     local arg= target= login= pattern=
     if [ $# -ne 1 ]; then
-    BAD_ARGUMENTS ; return 1;
-  fi
+      BAD_ARGUMENTS ; return 1;
+    fi
 
     arg="$1"
 
@@ -50,12 +50,12 @@ if [ "${__TARGET_TG_ACCESS_FUNC__:-}" != 'Loaded' ]; then
     # do we have a login in the argument ?
     if [ "${arg}" != "${arg%%@*}" ]; then
       login="${arg%%@*}";
-    TARGET_SSH_LIST_LOGINS "${target}" | grep "^${login}$" >/dev/null
-    if [ $? -ne 0 ]; then
-      ERROR "Login '${login}' doesn't exist on target '${target}'"; return 1;
-    fi
-    pattern="${login}@${target}"
-  else
+      TARGET_SSH_LIST_LOGINS "${target}" | grep "^${login}$" >/dev/null
+      if [ $? -ne 0 ]; then
+        ERROR "Login '${login}' doesn't exist on target '${target}'"; return 1;
+      fi
+      pattern="${login}@${target}"
+    else
       pattern="(${target}|[^@]*@${target})"
     fi
 
