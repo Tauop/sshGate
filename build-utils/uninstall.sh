@@ -70,6 +70,7 @@ if [ "${reply}" = 'N' ]; then
   BR
   MESSAGE "Canceled !"
   BR
+  exit 0
 fi
 
 CONF_SET_FILE /etc/sshgate.conf
@@ -82,8 +83,10 @@ done
 
 # delete sshGate Unix user
 home_dir=$( cat /etc/passwd | grep "^${SSHGATE_GATE_ACCOUNT}:" | cut -d':' -f6 )
-userdel "${SSHGATE_GATE_ACCOUNT}"
-[ -d "${home_dir}" ] && rm -rf "${home_dir}"
+if [ -n "${home_dir}" ]; then
+  userdel "${SSHGATE_GATE_ACCOUNT}"
+  [ -d "${home_dir}" ] && rm -rf "${home_dir}"
+fi
 
 # remove sshGate sudoer entry
 file="/tmp/file.$(RANDOM)"
@@ -92,7 +95,10 @@ mv "${file}" /etc/sudoers
 chmod 0440 /etc/sudoers
 
 # delete global configuration
-rm -f /etc/sshgate.conf
+ASK --yesno reply "Delete /etc/sshgate.conf global configuration file [N] ?" 'N'
+if [ "${reply}" = 'Y' ]; then
+  rm -f /etc/sshgate.conf
+fi
 
 BR
 MESSAGE "sshGate is uninstalled"
