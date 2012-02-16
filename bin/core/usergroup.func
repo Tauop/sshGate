@@ -173,21 +173,21 @@ if [ "${__USERGROUP_FUNC__:-}" != 'Loaded' ]; then
   # usage: USERGROUP_LIST_TARGETGROUPS <user_group>
   # desc: List targetgroups which usergroup has access to
   USERGROUP_LIST_TARGETGROUPS () {
-  local usergroup=
-  if [ $# -ne 1 ]; then
+    local usergroup=
+    if [ $# -ne 1 ]; then
       BAD_ARGUMENTS ; return 1;
-  fi
+    fi
 
-  usergroup="$1"
+    usergroup="$1"
     if [ ! -f "${SSHGATE_DIR_USERS_GROUPS}/${usergroup}" -o -z "${usergroup}" ]; then
       ERROR "User group '${usergroup}' doesn't exist" ; return 1;
     fi
 
-  for targetgroup in $( find ${SSHGATE_DIR_TARGETS_GROUPS}                           \
+    for targetgroup in $( find ${SSHGATE_DIR_TARGETS_GROUPS}                           \
                            -name "${SSHGATE_TARGETS_GROUPS_USERGROUP_ACCESS_FILENAME}" \
                            -exec grep -l "^${usergroup}\$" {} \; ); do
-    targetgroup=$( echo "${targetgroup}" | sed -e "s|^.*/\([^/]*\)/${SSHGATE_TARGETS_GROUPS_USERGROUP_ACCESS_FILENAME}\$|\1|")
-    echo "${targetgroup}"
+      targetgroup=$( echo "${targetgroup}" | sed -e "s|^.*/\([^/]*\)/${SSHGATE_TARGETS_GROUPS_USERGROUP_ACCESS_FILENAME}\$|\1|")
+      echo "${targetgroup}"
     done | sort -u
   }
 
