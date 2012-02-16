@@ -164,5 +164,45 @@ if [ "${__SSHGATE_CORE__:-}" != 'Loaded' ]; then
     fi
     echo 'false'; return 1;
   }
+  
+  # usage: EDIT_FILE <file>
+  # desc: Open a file with ${SSHGATE_EDITOR} to be edit
+  # return: 0 on success, otherwise 1
+  # note: can failed if ${SSHGATE_EDITOR} is empty and ${EDITOR} is empty too
+  EDIT_FILE() {
+    local the_editor= file= good= message_done=
+    
+    if [ $# -ne 1 ]; then
+      BAD_ARGUMENTS ; return 1;
+    fi
+    
+    file="$1"
+    if [ ! -f "${file}" ]; then
+      ERROR "The file ${file} doesn't exist"; return 1;
+    fi
+    
+    the_editor="${SSHGATE_EDITOR:-${EDITOR}}"
+    
+    # don't check for the binary existance if we are testing
+    if [ "${SSHGATE_TEST:-}" != 'sshGateTest' ]; then
+      message_done='false'
+      while [ true ]; do
+        which "${the_editor}" >/dev/null 2>/dev/null
+        [ $? -eq 0 ] && break;
+        BR
+        WARNING "sshGate can't find a editor. Provide a editor to use for the moment."
+        if [ "${message_done}" = 'false' ]; then
+          NOTICE "Ask the sshGate super-administrator (root unix account) to configure"
+          MESSAGE "sshGate via sshgate-configure or configure your \${EDITOR} environment variable"
+          BR
+          message_done='true'
+        fi
+        ASK the_editor "Editor to use for now : "
+      done
+    fi
+    
+    eval "${the_editor} '${file}'"
+    return $?
+  }
 
 fi # __SSHGATE_CORE__
