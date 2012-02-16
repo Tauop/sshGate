@@ -60,7 +60,7 @@ if [ "${__TARGET_SSHKEY_FUNC__:-}" != 'Loaded' ]; then
 
     echo "# Put the private sshkey for '${target}' here. Then save & quit from the editor" >> "${tmpfile}"
     echo "# line begins by '#' will be removed"                                            >> "${tmpfile}"
-    eval " ${SSHGATE_EDITOR} '${tmpfile}'"
+    EDIT_FILE "${tmpfile}"
     if [ $? -ne 0 ]; then
       ERROR "Can't edit sshkey file"; return 1;
     fi

@@ -175,7 +175,7 @@ if [ "${__SETUP_FUNC__:-}" != 'Loaded' ]; then
     SSHGATE_GATE_ACCOUNT="${SSHGATE_GATE_ACCOUNT:-sshgate}"
     SSHGATE_TARGETS_DEFAULT_SSH_LOGIN="${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN:-root}"
     SSHGATE_DEFAULT_LANGUAGE="${SSHGATE_DEFAULT_LANGUAGE:-us}"
-    SSHGATE_EDITOR="${SSHGATE_EDITOR:-vi}"
+    SSHGATE_EDITOR="${SSHGATE_EDITOR:-${EDITOR}}"
     SSHGATE_MAIL_SEND="${SSHGATE_MAIL_SEND:-Y}"
     SSHGATE_MAIL_TO="${SSHGATE_MAIL_TO:-you@yourdomain.tld}"
     SSHGATE_USERS_MUST_ACCEPT_TOS="${SSHGATE_USERS_MUST_ACCEPT_TOS:-Y}"
@@ -269,12 +269,22 @@ if [ "${__SETUP_FUNC__:-}" != 'Loaded' ]; then
 
     good='0'
     while [ "${good}" = '0' ]; do
-      private_CONF SSHGATE_EDITOR "Which editor to use [%%%] ?"
-      which "${SSHGATE_EDITOR}" >/dev/null 2>/dev/null
-      if [ $? -eq 0 ]; then
-        good='1'; break;
+      private_CONF --allow-empty SSHGATE_EDITOR "Which editor to use (empty: use \${EDITOR} environnement variable) [%%%] ?"
+      if [ -n "${SSHGATE_EDITOR}" ]; then
+        which "${SSHGATE_EDITOR}" >/dev/null 2>/dev/null
+        if [ $? -eq 0 ]; then
+          good='1'; break;
+        fi
+        ERROR "Can't find editor '${SSHGATE_EDITOR}'. (Set the full path ?)"
+      else
+        if [ -z "${EDITOR}" ]; then
+          MESSAGE "You don't set an editor for sshGate, and \${EDITOR} isn't set."
+          ASK --yesno reply "Are you sure to continue [N] ?" 'N'
+          if [ "${reply}" = 'Y' ]; then
+            good='1'; break;
+          fi
+        fi
       fi
-      ERROR "Can't find editor '${SSHGATE_EDITOR}'. (Set the full path ?)"
     done
 
     private_CONF --yesno SSHGATE_MAIL_SEND "Activate mail notification system [%%%] ?"
