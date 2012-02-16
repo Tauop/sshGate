@@ -18,6 +18,11 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+INTERACTIVE_MODE='N'
+if [ "$1" = '-i' ]; then
+  INTERACTIVE_MODE='Y'
+fi
+
 # load dependencies
 load() {
   local var= value= file=
@@ -54,22 +59,26 @@ load __LIB_ASK__     "${SCRIPT_HELPER_DIRECTORY}/ask.lib.sh"
 
 # ----------------------------------------------------------------------------
 version=
-ASK version "sshgate version ?"
 
-# build are used for testing :-) (can be empty)
-build=
-ASK --allow-empty build "sshGate build number ?"
+if [ "${INTERACTIVE_MODE}" = 'Y' ]; then
+  ASK version "sshgate version ?"
 
-include_script_helper='N'
-if [ "${action}" = 'all' -o "${action}" = 'server' ]; then
+  # build are used for testing :-) (can be empty)
+  build=
+  ASK --allow-empty build "sshGate build number ?"
+  [ -n "${build}" ] && version="${version}-${build}"
+
+  include_script_helper='N'
   ASK --yesno include_script_helper 'Include ScriptHelper in package ?'
+else
+  version=$( cat VERSION )
+  include_script_helper='Y'
 fi
 
 # ----------------------------------------------------------------------------
 
 DOTHIS 'Build sshgate-server package'
   softname=sshGate-server-${version}
-  [ -n "${build}" ] && softname="${softname}-${build}"
   dir="/tmp/${softname}"
 
   [ -d "${dir}/" ] && rm -rf "${dir}/"
@@ -79,8 +88,9 @@ DOTHIS 'Build sshgate-server package'
   export COPYFILE_DISABLE=true
 
   cp -r ./  "${dir}/"
-  if [ "${include_script_helper}" = 'Y' ]; then
-    cp -r ./lib  ${dir}/
+  if [ "${include_script_helper}" = 'N' ]; then
+#    cp -r ./lib  ${dir}/
+    rm -rf "${dir}/lib/"
   fi
 
   # specific action for package built with build.sh script
