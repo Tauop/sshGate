@@ -36,6 +36,10 @@ load() {
   return 2;
 }
 
+load_or_exit() {
+  load "$1" "$2" || ( echo "[ERROR] Unable to load $2"; exit $? )
+}
+
 # Load ScriptHelper libraries ------------------------------------------------
 # Here is the loading order :
 #  - local sub-directory -> for installation/upgrade stage
@@ -54,17 +58,17 @@ if [ ! -d "${SCRIPT_HELPER_DIRECTORY:-}" ]; then
 fi
 
 # Load ScriptHelper needed libraries
-load __LIB_RANDOM__  "${SCRIPT_HELPER_DIRECTORY}/random.lib.sh"  || ( echo '[ERROR] Unable to load random.lib.sh';  exit $? )
-load __LIB_MESSAGE__ "${SCRIPT_HELPER_DIRECTORY}/message.lib.sh" || ( echo '[ERROR] Unable to load message.lib.sh'; exit $? )
-load __LIB_ASK__     "${SCRIPT_HELPER_DIRECTORY}/ask.lib.sh"     || ( echo '[ERROR] Unable to load ask.lib.sh';     exit $? )
-load __LIB_CONF__    "${SCRIPT_HELPER_DIRECTORY}/conf.lib.sh"    || ( echo '[ERROR] Unable to load conf.lib.sh';    exit $? )
+load_or_exit __LIB_RANDOM__  "${SCRIPT_HELPER_DIRECTORY}/random.lib.sh"
+load_or_exit __LIB_MESSAGE__ "${SCRIPT_HELPER_DIRECTORY}/message.lib.sh"
+load_or_exit __LIB_ASK__     "${SCRIPT_HELPER_DIRECTORY}/ask.lib.sh"
+load_or_exit __LIB_CONF__    "${SCRIPT_HELPER_DIRECTORY}/conf.lib.sh"
 
 
 # Load setup.func ! ----------------------------------------------------------
 # try to load local one (installation/upgrade), then installed sshGate one
-load __SETUP_FUNC__ './bin/core/setup.func'
-load __SETUP_FUNC__ "${SSHGATE_DIR_CORE:-}/setup.func"
-load __SETUP_FUNC__ "${SSHGATE_DIRECTORY:-}/setup.func"
+load_or_exit __SETUP_FUNC__ './bin/core/setup.func'
+load_or_exit __SETUP_FUNC__ "${SSHGATE_DIR_CORE:-}/setup.func"
+load_or_exit __SETUP_FUNC__ "${SSHGATE_DIRECTORY:-}/setup.func"
 
 [ -z "${__SETUP_FUNC__:-}" ] && ( echo 'Unable to load setup.func'; exit 2; )
 
