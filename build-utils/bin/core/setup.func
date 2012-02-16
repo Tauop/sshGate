@@ -24,7 +24,7 @@
 if [ "${__SETUP_FUNC__:-}" != 'Loaded' ]; then
   __SETUP_FUNC__='Loaded'
 
-  # usage: private_SED_SEPARATOR <string> 
+  # usage: private_SED_SEPARATOR <string>
   # desc: determine a good sed separator
   private_SED_SEPARATOR () {
     for s in '/' '@' ',' '|'; do
@@ -91,6 +91,7 @@ if [ "${__SETUP_FUNC__:-}" != 'Loaded' ]; then
       return 1;
     fi
 
+    private_SETUP_RESET_CONF
     CONF_LOAD "${config_file}"
     private_SETUP_SET_DEFAULT
 
@@ -157,6 +158,16 @@ if [ "${__SETUP_FUNC__:-}" != 'Loaded' ]; then
 
 
   # ----------------------------------------------------------------------------
+  # usage: private_SETUP_RESET_CONF
+  # desc: set all configuration variable defined in /etc/sshgate.conf to empty string
+  private_SETUP_RESET_CONF () {
+    local config_file='/etc/sshgate.conf' var=
+
+    for var in $( < "${config_file}" grep '^[^#]*=' | cut -d'=' -f1 ); do
+      unset "${var}"
+    done
+  }
+
   # usage: private_SETUP_SET_DEFAULT
   # desc: set default value to configuration variables when they aren't set
   private_SETUP_SET_DEFAULT () {
@@ -220,7 +231,9 @@ if [ "${__SETUP_FUNC__:-}" != 'Loaded' ]; then
     cp "${config_file}" "${new_config_file}"
 
     # load and work on a copy of sshGate configuration file ------------------
+    # FIXME: what happens if ${__CONF_FILE__} isn't set ??
     old_conf_set_file="${__CONF_FILE__}"
+    private_SETUP_RESET_CONF
     CONF_SET_FILE "${new_config_file}"
     CONF_LOAD
     private_SETUP_SET_DEFAULT
@@ -267,7 +280,10 @@ if [ "${__SETUP_FUNC__:-}" != 'Loaded' ]; then
     private_CONF --yesno SSHGATE_MAIL_SEND "Activate mail notification system [%%%] ?"
     if [ "${SSHGATE_MAIL_SEND}" = 'Y' ]; then
       private_CONF SSHGATE_MAIL_TO "Who will receive mail notification (comma separated mails) [%%%] ?"
-      [ -z "${SSHGATE_MAIL_TO}" ] && SSHGATE_MAIl_SEND='N'
+      if [ -z "${SSHGATE_MAIL_TO}" ]; then
+        NOTICE "As e-mail is empty, mail notification is disabled"
+        SSHGATE_MAIl_SEND='N'
+      fi
     fi
 
     private_CONF --yesno SSHGATE_USERS_MUST_ACCEPT_TOS "Do users have to accept TOS when connecting for the first time [%%%] ? "
@@ -297,6 +313,7 @@ if [ "${__SETUP_FUNC__:-}" != 'Loaded' ]; then
 
     # reload set configuration file
     CONF_SET_FILE "${old_conf_set_file}"
+    private_SETUP_RESET_CONF
     CONF_LOAD
 
     return 0;
@@ -458,6 +475,7 @@ if [ "${__SETUP_FUNC__:-}" != 'Loaded' ]; then
     # save and load manipulated configuration file
     __SSHGATE_SETUP__=
     SSHGATE_DIR_DATA=
+    private_SETUP_RESET_CONF
     CONF_LOAD "${config_file}"
     [ -n "${SSHGATE_DIR_DATA}" ] && . "${SSHGATE_DIR_DATA}/sshgate.setup" || . "${SSHGATE_DIRECTORY}/data/sshgate.setup"
 
@@ -506,6 +524,7 @@ if [ "${__SETUP_FUNC__:-}" != 'Loaded' ]; then
     [ -e "${home_dir}/.ssh/known_hosts"      ] && chmod a=r,u+w "${home_dir}/.ssh/known_hosts"
 
     # reload previous configuration file
+    private_SETUP_RESET_CONF
     CONF_LOAD
 
     return 0
