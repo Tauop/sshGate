@@ -194,7 +194,7 @@ if [ "${__USERGROUP_FUNC__:-}" != 'Loaded' ]; then
   # usage: USERGROUP_ACCESS_INFO <user_group>
   # desc: List all target whose users of the group have access to
   USERGROUP_ACCESS_INFO () {
-    local usergroup= users= targets=
+    local usergroup= users= targets= targetgroup=
     if [ $# -ne 1 ]; then
       BAD_ARGUMENTS ; return 1;
     fi
@@ -210,7 +210,7 @@ if [ "${__USERGROUP_FUNC__:-}" != 'Loaded' ]; then
     echo "  ${users} --- usergroup(${usergroup}) ---> ${targets}"
 
     # access through targetgroups ( users --- usergroup --- targetgroups ---> targets)
-    for targetgroups in $( USERGROUP_LIST_TARGETGROUPS "${usergroup}" ); do
+    for targetgroup in $( USERGROUP_LIST_TARGETGROUPS "${usergroup}" ); do
       users=$(   TARGETGROUP_ACCESS_LIST_USERS "${targetgroup}" ); users=$(   echo -n "${users}"   | tr $'\n' ',' )
       targets=$( TARGETGROUP_LIST_TARGETS "${targetgroup}"      ); targets=$( echo -n "${targets}" | tr $'\n' ',' )
       echo "  ${users} --- targetgroup(${targetgroup}) ---> ${targets}"
