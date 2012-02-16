@@ -84,47 +84,56 @@ MESSAGE "            by Patrick Guiran"
 BR
 
 if [ -r /etc/sshgate.conf ]; then
-  action='update'
-  MESSAGE "It seems that sshGate is already installed on your system."
+  MESSAGE "sshGate configuration file found."
   ASK --yesno reply \
       "Do you want to re-use the installed configuration [Y] ?" \
       'Y'
   [ "${reply}" = 'Y' ] && configure='no'
 
-  # get installed version and this package version to know wether
-  # we have to make migration (update sshGate internal data)
-  CONF_GET --conf-file ./data/sshgate.conf SSHGATE_VERSION this_version
-  CONF_GET --conf-file /etc/sshgate.conf   SSHGATE_VERSION installed_version
+  # check if sshGate is still installed
+  CONF_GET --conf-file /etc/sshgate.conf SSHGATE_DIRECTORY installed_version_dir
+  if [ -d "${installed_version_dir}" ]; then
+    BR
+    MESSAGE "It seems that sshGate is already installed on your system."
+    action='update'
+    # get installed version and this package version to know wether
+    # we have to make migration (update sshGate internal data)
+    CONF_GET --conf-file ./data/sshgate.conf SSHGATE_VERSION this_version
+    CONF_GET --conf-file /etc/sshgate.conf   SSHGATE_VERSION installed_version
 
-  # old version of sshGate hasn't a SSHGATE_VERSION conf variable
-  [ -z "${installed_version}" ] && installed_version='0'
+    # old version of sshGate hasn't a SSHGATE_VERSION conf variable
+    [ -z "${installed_version}" ] && installed_version='0'
+  fi
 fi
 
-if [ "${configure}" = 'yes' ]; then
-  # ScriptHelper dependency
-  if [ -r /etc/ScriptHelper.conf ]; then
-    CONF_GET --conf-file /etc/ScriptHelper.conf SCRIPT_HELPER_DIRECTORY
-  elif [ "${action}" = 'install' ]; then
-    if [ ! -d ./lib/ ]; then
-      ERROR "sshGate depends on ScriptHelper which doesn't seem to be installed"
-      exit 1;
-    fi
-    BR
-    NOTICE "ScriptHelper will be installed as part of sshGate, not system-wide"
-    MESSAGE "If you want to install ScriptHelper system-wide, please visit http://github.com/Tauop/ScriptHelper"
-    BR
-    install_script_helper='Y'
-  fi
-  CONF_SAVE SCRIPT_HELPER_DIRECTORY
 
+# ScriptHelper dependency
+if [ -r /etc/ScriptHelper.conf ]; then
+  CONF_GET --conf-file /etc/ScriptHelper.conf SCRIPT_HELPER_DIRECTORY
+elif [ "${action}" = 'install' ]; then
+  if [ ! -d ./lib/ ]; then
+    ERROR "sshGate depends on ScriptHelper which doesn't seem to be installed"
+    exit 1;
+  fi
+  BR
+  NOTICE "ScriptHelper will be installed as part of sshGate, not system-wide"
+  MESSAGE "If you want to install ScriptHelper system-wide, please visit http://github.com/Tauop/ScriptHelper"
+  BR
+  install_script_helper='Y'
+fi
+CONF_SAVE SCRIPT_HELPER_DIRECTORY
+
+# ----------------------------------------------------------------------------
+
+if [ "${configure}" = 'yes' ]; then
   # configure sshGate installation
   # sh ./bin/sshgate-configure --silent configure ./data/sshgate.conf
   SETUP_CONFIGURE ./data/sshgate.conf
-
+  BR
 fi # end of : if [ "${configure}" = 'yes' ]; then
 
 # ----------------------------------------------------------------------------
-BR ; BR
+BR
 
 if [ "${action}" = 'update' ]; then
   chmod +x ./do_migration.sh
