@@ -133,7 +133,7 @@ if [ "${__TARGET_FUNC__:-}" != 'Loaded' ]; then
   # usage: TARGET_DEL <target_host>
   # desc: Delete a target host
   TARGET_DEL () {
-    local target=
+    local target= targetgroup=
     if [ $# -ne 1 ]; then
       BAD_ARGUMENTS ; return 1;
     fi
@@ -149,6 +149,9 @@ if [ "${__TARGET_FUNC__:-}" != 'Loaded' ]; then
       rm -f "${SSHGATE_DIR_TARGETS}/${alias}"
     done
 
+    for targetgroup in $( TARGET_ACCESS_LIST_TARGETGROUPS "${target}" ); do
+      TARGETGROUP_DEL_TARGET "${targetgroup}" "${target}"
+    done
     rm -rf "${SSHGATE_DIR_TARGETS}/${target}"
 
     private_MAIL_APPEND "Target ${target} removed"
