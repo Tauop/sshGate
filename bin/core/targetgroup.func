@@ -130,6 +130,8 @@ if [ "${__TARGETGROUP_FUNC__:-}" != 'Loaded' ]; then
       fi
       item="${login}@${target_real}"
     else
+      # This will delete all <login>@<target> from targetgroup target access list
+      TARGETGROUP_DEL_TARGET "${targetgroup}" "${target_real}"
       item="${target_real}"
     fi
 
@@ -142,7 +144,7 @@ if [ "${__TARGETGROUP_FUNC__:-}" != 'Loaded' ]; then
   # usage: TARGETGROUP_DEL_TARGET <target_group> [<login>@]<target>
   # desc: Remove an target from a group
   TARGETGROUP_DEL_TARGET () {
-    local targetgroup= target= login= target_real= item=
+    local targetgroup= target= login= target_real= item= pattern= file= tmpfile=
     if [ $# -ne 2 ]; then
       BAD_ARGUMENTS ; return 1;
     fi
@@ -155,6 +157,8 @@ if [ "${__TARGETGROUP_FUNC__:-}" != 'Loaded' ]; then
       ERROR "Target '${target}' doesn't exist" ; return 1;
     fi
 
+    file="${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/${SSHGATE_TARGETS_GROUPS_TARGETS_FILENAME}"
+
     if [ "${target}" != "${target%%@*}" ]; then
       login="${target%%@*}";
       TARGET_SSH_LIST_LOGINS "${target_real}" | grep "^${login}$" >/dev/null
@@ -162,11 +166,18 @@ if [ "${__TARGETGROUP_FUNC__:-}" != 'Loaded' ]; then
         ERROR "Login '${login}' doesn't exist on target '${target_real}'"; return 1;
       fi
       item="${login}@${target_real}"
+      pattern="${item}"
     else
       item="${target_real}"
+      pattern="(${target_real}|[^@]*@${target_real})"
     fi
 
-    private_ACL_FILE_DEL "${item}" "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/${SSHGATE_TARGETS_GROUPS_TARGETS_FILENAME}"
+    # remove target from targetgroup
+    TARGETGROUP_LIST_TARGETS "${targetgroup}" | grep -v -E "^${pattern}\$" > "${file}"
+    if [ ! -s "${tmp_file}" ]; then
+      rm -f "${file}"
+    fi
+
     private_MAIL_APPEND  "Target ${item} removed from User Group ${targetgroup}"
 
     return 0;
