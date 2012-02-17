@@ -207,13 +207,24 @@ if [ "${__USERGROUP_FUNC__:-}" != 'Loaded' ]; then
     # direct access ( users --- usergroup ---> targets)
     users=$(   USERGROUP_LIST_USERS "${usergroup}"   ); users=$(   echo -n "${users}"   | tr $'\n' ',' )
     targets=$( USERGROUP_LIST_TARGETS "${usergroup}" ); targets=$( echo -n "${targets}" | tr $'\n' ',' )
-    echo "  ${users} --- usergroup(${usergroup}) ---> ${targets}"
+    if [ -n "${targets}" ]; then
+      echo -n "  "
+      [ -n "${users}" ] && echo -n "${users} ---"
+      echo "usergroup(${usergroup}) ---> ${targets}"
+    fi
 
     # access through targetgroups ( users --- usergroup --- targetgroups ---> targets)
     for targetgroup in $( USERGROUP_LIST_TARGETGROUPS "${usergroup}" ); do
-      users=$(   TARGETGROUP_ACCESS_LIST_USERS "${targetgroup}" ); users=$(   echo -n "${users}"   | tr $'\n' ',' )
-      targets=$( TARGETGROUP_LIST_TARGETS "${targetgroup}"      ); targets=$( echo -n "${targets}" | tr $'\n' ',' )
-      echo "  ${users} --- targetgroup(${targetgroup}) ---> ${targets}"
+      targets=$( TARGETGROUP_LIST_TARGETS "${targetgroup}" ); targets=$( echo -n "${targets}" | tr $'\n' ',' )
+
+      echo -n "  "
+      [ -n "${users}" ] && echo -n "${users} --- "
+      if [ -n "${targets}" ]; then
+        echo -n "usergroup(${usergroup}) --- targetgroup(${targetgroup}) ---> ${targets}"
+      else
+        echo -n "usergroup(${usergroup}) ---> targetgroup(${targetgroup})"
+      fi
+      echo
     done
 
     return 0;
