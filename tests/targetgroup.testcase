@@ -52,6 +52,11 @@ sshGate >  targetgroup Internet add target ${ip}
 sshGate >  targetgroup Internet del target ${ip}
 sshGate >  targetgroup Internet list targets
 ${hostname}
+sshGate >  target del ${hostname}
+sshGate >  targetgroup LAN list targets
+${ip}
+sshGate >  targetgroup Internet list targets
+
 sshGate >  targetgroup del LAN
 sshGate >  targetgroup list
 Internet
