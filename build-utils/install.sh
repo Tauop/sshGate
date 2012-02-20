@@ -146,37 +146,34 @@ OK
 
 
 DOTHIS 'Installing sshGate'
-  if [ "${action}" = 'install' ]; then
+  # create directories
+  MK () { [ ! -d "$1/" ] && mkdir -p "$1"; }
+  for dir in $( SETUP_GET_DIRECTORY_VARIABLES ); do
+    MK "$( eval "echo \"\${${dir}}\"" )"
+  done
 
-    # create directories
-    MK () { [ ! -d "$1/" ] && mkdir -p "$1"; }
-    for dir in $( SETUP_GET_DIRECTORY_VARIABLES ); do
-      MK "$( eval "echo \"\${${dir}}\"" )"
-    done
-
-    # Create sshGate unix account
-    grep "^${SSHGATE_GATE_ACCOUNT}:" /etc/passwd >/dev/null 2>/dev/null
+  # Create sshGate unix account
+  grep "^${SSHGATE_GATE_ACCOUNT}:" /etc/passwd >/dev/null 2>/dev/null
+  if [ $? -ne 0 ]; then
+    useradd "${SSHGATE_GATE_ACCOUNT}" 2>/dev/null
     if [ $? -ne 0 ]; then
-      useradd "${SSHGATE_GATE_ACCOUNT}" 2>/dev/null
-      if [ $? -ne 0 ]; then
-        echo "ERROR: Can't create ${SSHGATE_GATE_ACCOUNT} unix account"
-        exit 1;
-      fi
+      echo "ERROR: Can't create ${SSHGATE_GATE_ACCOUNT} unix account"
+      exit 1;
     fi
-
-    # Create sshGate unix group
-    grep "^${SSHGATE_GATE_ACCOUNT}:" /etc/group >/dev/null 2>/dev/null
-    if [ $? -ne 0 ]; then
-      groupadd "${SSHGATE_GATE_ACCOUNT}" 2>/dev/null
-      if [ $? -ne 0 ]; then
-        echo "ERROR: Can't create ${SSHGATE_GATE_ACCOUNT} unix account"
-        exit 1;
-      fi
-    fi
-
-    home_dir=$( cat /etc/passwd | grep "^${SSHGATE_GATE_ACCOUNT}:" | cut -d':' -f6 )
-    MK "${home_dir}/.ssh/"
   fi
+
+  # Create sshGate unix group
+  grep "^${SSHGATE_GATE_ACCOUNT}:" /etc/group >/dev/null 2>/dev/null
+  if [ $? -ne 0 ]; then
+    groupadd "${SSHGATE_GATE_ACCOUNT}" 2>/dev/null
+    if [ $? -ne 0 ]; then
+      echo "ERROR: Can't create ${SSHGATE_GATE_ACCOUNT} unix account"
+      exit 1;
+    fi
+  fi
+
+  home_dir=$( cat /etc/passwd | grep "^${SSHGATE_GATE_ACCOUNT}:" | cut -d':' -f6 )
+  MK "${home_dir}/.ssh/"
 
   # install stuff
   cp -r ./bin/ ./data/ COPYING "${SSHGATE_DIRECTORY}/"
