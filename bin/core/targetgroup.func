@@ -88,9 +88,9 @@ if [ "${__TARGETGROUP_FUNC__:-}" != 'Loaded' ]; then
   }
 
   # usage: TARGETGROUP_LIST_TARGETS <target_group>
-  # desc: List users who has access to the targetgroup
+  # desc: List targets in the targetgroup
   TARGETGROUP_LIST_TARGETS () {
-  local targetgroup=
+    local targetgroup= file=
     if [ $# -ne 1 ]; then
       BAD_ARGUMENTS ; return 1;
     fi
@@ -100,7 +100,8 @@ if [ "${__TARGETGROUP_FUNC__:-}" != 'Loaded' ]; then
       ERROR "Target group '${targetgroup}' doesn't exist" ; return 1;
     fi
 
-    cat "${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/${SSHGATE_TARGETS_GROUPS_TARGETS_FILENAME}" | sort -u
+    file="${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/${SSHGATE_TARGETS_GROUPS_TARGETS_FILENAME}"
+    [ -f "${file}" ] && ( cat "${file}" | sort -u ) || echo
     return 0;
   }
 
