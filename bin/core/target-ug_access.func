@@ -78,9 +78,9 @@ if [ "${__TARGET_UG_ACCESS_FUNC__:-}" != 'Loaded' ]; then
     fi
 
     for login in $( TARGET_SSH_LIST_LOGINS "${target}" ); do
-      echo "= ${login}@${target} ="
+      # echo "= ${login}@${target} ="
       TARGET_ACCESS_LIST_USERGROUPS "${target}" "${login}"
-    done
+    done | sort -u
     return 0;
   }
 
