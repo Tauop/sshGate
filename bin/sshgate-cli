@@ -64,7 +64,7 @@ if [ "${SSHGATE_TEST:-}" != 'sshGateTest' ]; then
     exit 1
   fi
 
-  is_admin=$( USER_GET_CONF "${SSHKEY_USER}" IS_ADMIN >/dev/null )
+  is_admin=$( USER_GET_CONF "${SSHKEY_USER}" IS_ADMIN )
   if [ "${is_admin}" != 'true' ]; then
     echo "ERROR: '${SSHKEY_USER}' hasn't the ADMIN status in sshGate or doesn't exist."
     exit 1
@@ -203,7 +203,8 @@ CLI_REGISTER_COMMAND 'session kill <pid>'               'SESSION_KILL \1'
 #CLI_REGISTER_COMMAND 'session user <user> list'         'SESSION_USER_LIST \1'
 #CLI_REGISTER_COMMAND 'session user <user> list <n>'     'SESSION_USER_LIST \1 \2'
 
-CLI_REGISTER_COMMAND 'debug' 'set -x'
+CLI_REGISTER_COMMAND 'debug on'  'set -x'
+CLI_REGISTER_COMMAND 'debug off' 'set +x'
 
 
 # use --force when CLI is called from remote
