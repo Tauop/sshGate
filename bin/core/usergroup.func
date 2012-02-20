@@ -209,7 +209,7 @@ if [ "${__USERGROUP_FUNC__:-}" != 'Loaded' ]; then
     targets=$( USERGROUP_LIST_TARGETS "${usergroup}" ); targets=$( echo -n "${targets}" | tr $'\n' ',' )
     if [ -n "${targets}" ]; then
       echo -n "  "
-      [ -n "${users}" ] && echo -n "${users} ---"
+      [ -n "${users}" ] && echo -n "${users} --- "
       echo "usergroup(${usergroup}) ---> ${targets}"
     fi
 
