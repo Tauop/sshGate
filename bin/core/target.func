@@ -114,6 +114,7 @@ if [ "${__TARGET_FUNC__:-}" != 'Loaded' ]; then
     if [ $? -ne 0 ]; then
       target_add_rollback; return 1;
     fi
+    TARGET_SET_CONF "${target}" DEFAULT_SSH_LOGIN "${login}"
 
     private_TARGET_KNOWN_HOSTS_ADD "${target}"
     if [ $? -ne 0 ]; then
