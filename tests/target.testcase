@@ -57,7 +57,7 @@ Target alias '${ip}' created
 sshGate >  target alias list
 ${ip}
 sshGate >  target ${hostname} display conf
-NOTICE: Target host '${hostname}' has no configuration file
+DEFAULT_SSH_LOGIN="${user_unix_test_account}"
 sshGate >  target ${ip} set conf DEFAULT_SSH_LOGIN ${user_unix_test_account}
 sshGate >  target ${alias} display conf
 DEFAULT_SSH_LOGIN="${user_unix_test_account}"
