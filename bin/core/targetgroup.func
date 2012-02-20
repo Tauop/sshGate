@@ -145,7 +145,7 @@ if [ "${__TARGETGROUP_FUNC__:-}" != 'Loaded' ]; then
   # usage: TARGETGROUP_DEL_TARGET <target_group> [<login>@]<target>
   # desc: Remove an target from a group
   TARGETGROUP_DEL_TARGET () {
-    local targetgroup= target= login= target_real= item= pattern= file= tmpfile=
+    local targetgroup= target= login= target_real= item= pattern= file= tmp_file=
     if [ $# -ne 2 ]; then
       BAD_ARGUMENTS ; return 1;
     fi
@@ -159,27 +159,31 @@ if [ "${__TARGETGROUP_FUNC__:-}" != 'Loaded' ]; then
     fi
 
     file="${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/${SSHGATE_TARGETS_GROUPS_TARGETS_FILENAME}"
-
-    if [ "${target}" != "${target%%@*}" ]; then
-      login="${target%%@*}";
-      TARGET_SSH_LIST_LOGINS "${target_real}" | grep "^${login}$" >/dev/null
-      if [ $? -ne 0 ]; then
-        ERROR "Login '${login}' doesn't exist on target '${target_real}'"; return 1;
+    if [ -f "${file}" ]; then
+      if [ "${target}" != "${target%%@*}" ]; then
+        login="${target%%@*}";
+        TARGET_SSH_LIST_LOGINS "${target_real}" | grep "^${login}$" >/dev/null
+        if [ $? -ne 0 ]; then
+          ERROR "Login '${login}' doesn't exist on target '${target_real}'"; return 1;
+        fi
+        item="${login}@${target_real}"
+        pattern="${item}"
+      else
+        item="${target_real}"
+        pattern="(${target_real}|[^@]*@${target_real})"
       fi
-      item="${login}@${target_real}"
-      pattern="${item}"
-    else
-      item="${target_real}"
-      pattern="(${target_real}|[^@]*@${target_real})"
-    fi
 
-    # remove target from targetgroup
-    TARGETGROUP_LIST_TARGETS "${targetgroup}" | grep -v -E "^${pattern}\$" > "${file}"
-    if [ ! -s "${tmp_file}" ]; then
-      rm -f "${file}"
-    fi
+      # remove target from targetgroup
+      tmp_file="/tmp/file.$(RANDOM)"
+      cat "${file}" | grep -v -E "^${pattern}\$" > "${tmp_file}"
+      if [ ! -s "${tmp_file}" ]; then
+        rm -f "${file}" "${tmp_file}"
+      else
+        mv "${tmp_file}" "${file}"
+      fi
 
-    private_MAIL_APPEND  "Target ${item} removed from User Group ${targetgroup}"
+      private_MAIL_APPEND  "Target ${item} removed from User Group ${targetgroup}"
+    fi
 
     return 0;
   }
