@@ -95,7 +95,7 @@ if [ "${__TARGET_ACCESS_FUNC__:-}" != 'Loaded' ]; then
   # desc: List users who have access to the target host
   # note: if no <login> is given, use ${SSHGATE_TARGETS_DEFAULT_SSH_LOGIN}
   TARGET_ACCESS_LIST_USERS () {
-    local target= login= files= pattern= login_given='true'
+    local target= login= files= pattern=
     if [ $# -ne 1 -a $# -ne 2 ]; then
       BAD_ARGUMENTS ; return 1;
     fi
@@ -103,7 +103,6 @@ if [ "${__TARGET_ACCESS_FUNC__:-}" != 'Loaded' ]; then
     if [ $# -eq 1 ]; then
       target=$( GET_HOST "$1" )
       login=$( GET_LOGIN "$1" )
-      [ "${1}" = "${1%%@*}" ] && login_given='false'
     else
       target="$1"; login="$2"
     fi
@@ -118,29 +117,26 @@ if [ "${__TARGET_ACCESS_FUNC__:-}" != 'Loaded' ]; then
       ERROR "Login '${login}' doesn't exist on target '${target}'"; return 1;
     fi
 
+    # direct access : user -> target
     files="${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USER_ACCESS_FILENAME}.${login}"
 
     # through groups : target -> usergroup -> users
-    for usergroup in $( cat "${SSHGATE_DIR_TARGETS}/${target}/${SSHGATE_TARGETS_USERGROUP_ACCESS_FILENAME}.${login}" ); do
+    for usergroup in $( TARGET_ACCESS_LIST_USERGROUPS "${target}" "${login}" ); do
       files="${files} ${SSHGATE_DIR_USERS_GROUPS}/${usergroup}"
     done
 
     # through targetgroups : target -> targetgroup -> users
     # and through targetgroups and usergroups : target -> targetgroup -> usergroup -> users
     for targetgroup in $( TARGETGROUPS_LIST ); do
-      if [ "${login_given}" = 'true' ]; then
-         pattern="${login}@${target}"
-      else
-         pattern="(${target}|[^@]*@${target})"
-      fi
+      pattern="(${login}@${target}|${target}|[^@]*@${target})"
       TARGETGROUP_LIST_TARGETS "${targetgroup}" | grep  -E "^${pattern}\$" >/dev/null 2>/dev/null
       if [ $? -eq 0 ]; then
-       # targetgroup has target in its list !
-         files="${files} ${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/${SSHGATE_TARGETS_GROUPS_USER_ACCESS_FILENAME}"
-         for usergroup in $( TARGETGROUP_ACCESS_LIST_USERGROUPS "${targetgroup}" ); do
-           files="${files} ${SSHGATE_DIR_USERS_GROUPS}/${usergroup}"
-         done
-    fi
+        # targetgroup has target in its list !
+        files="${files} ${SSHGATE_DIR_TARGETS_GROUPS}/${targetgroup}/${SSHGATE_TARGETS_GROUPS_USER_ACCESS_FILENAME}"
+        for usergroup in $( TARGETGROUP_ACCESS_LIST_USERGROUPS "${targetgroup}" ); do
+          files="${files} ${SSHGATE_DIR_USERS_GROUPS}/${usergroup}"
+        done
+      fi
     done
 
     cat ${files} | sort -u
