@@ -251,30 +251,6 @@ if [ "${__TARGET_FUNC__:-}" != 'Loaded' ]; then
     return 0;
   }
 
-  TARGET_DEL_CONF () {
-    local target= var= file=
-    if [ $# -ne 2 ]; then
-      BAD_ARGUMENTS; return 1;
-    fi
-
-    target="$1"; var="$2"
-    if [ -z "${target}" -o -z "${var}" ]; then
-      BAD_ARGUMENTS; return 1;
-    fi
-
-    target=$( TARGET_REAL "${target}" )
-    if [ -z "${target}" ]; then
-      ERROR "Target host '${target}' doesn't exist" ; return 1;
-    fi
-
-    file="${SSHGATE_DIR_TARGETS}/${target}/properties"
-    CONF_DEL --conf-file "${file}" "${var}"
-    [ -f "${file}" ] && chmod a+r "${file}" # ensure file permissions
-
-    private_MAIL_APPEND "Target '${target}' configuration: ${var} removed"
-    return 0;
-  }
-
   # usage: TARGET_GET_CONF <target> <variable>
   # desc: Get the <variable> value from the target configuration file
   TARGET_GET_CONF () {
